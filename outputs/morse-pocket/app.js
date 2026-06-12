@@ -487,6 +487,12 @@ const state = {
   spaceSignals: JSON.parse(localStorage.getItem("morse-space-signals") || "[]"),
   spaceReceivedText: "",
   spaceReceivedMorse: "",
+  spaceSendText: "",
+  spaceSendSignal: "",
+  spaceSendLetterTimer: null,
+  spaceSendSpaceTimer: null,
+  spaceSendKeyerStartX: 0,
+  spaceSendKeyerStartY: 0,
   userId: localStorage.getItem("morse-user-id") || createSignalId(),
   serverUrl: location.protocol.startsWith("http") ? location.origin : "http://localhost:8787",
   serverConnected: false,
@@ -932,8 +938,61 @@ function todayKey() {
 function renderSpace() {
   const sentToday = localStorage.getItem("morse-space-last-sent") === todayKey();
   $("#spaceSendStatus").textContent = sentToday ? "오늘은 이미 시그널을 발신했습니다." : "오늘 아직 시그널을 발신하지 않았습니다.";
+  $("#spaceSendInput").value = state.spaceSendText;
   $("#spaceSendInput").disabled = sentToday;
-  $("#spaceSendForm").querySelector("button").disabled = sentToday;
+  $("#spaceSendKeyer").disabled = sentToday;
+  $("#submitSpaceSignal").disabled = sentToday;
+  $("#spaceSendSignal").textContent = state.spaceSendSignal
+    ? `현재 글자: ${prettyMorse(state.spaceSendSignal)}`
+    : "현재 글자: 비어 있음";
+  $("#spaceSendKeyer").querySelector("small").textContent = state.chatKeyerMode === "auto"
+    ? "3단위 휴식: 글자 확정 · 7단위 휴식: 띄어쓰기"
+    : `${state.reverseChatSwipe ? "오른쪽" : "왼쪽"} 스와이프: 글자 확정 · ${state.reverseChatSwipe ? "왼쪽" : "오른쪽"}: 띄어쓰기`;
+}
+
+function commitSpaceSendLetter() {
+  clearTimeout(state.spaceSendLetterTimer);
+  state.spaceSendLetterTimer = null;
+  if (!state.spaceSendSignal) return false;
+  const decoded = REVERSE_MORSE[state.spaceSendSignal];
+  if (!decoded || !LETTERS.includes(decoded)) {
+    showToast("해당 모스 조합의 알파벳이 없습니다.");
+    state.spaceSendSignal = "";
+    renderSpace();
+    return false;
+  }
+  if (state.spaceSendText.length >= 300) return false;
+  state.spaceSendText += decoded;
+  state.spaceSendSignal = "";
+  renderSpace();
+  return true;
+}
+
+function commitSpaceSendSpace() {
+  commitSpaceSendLetter();
+  if (state.spaceSendText && !state.spaceSendText.endsWith(" ")) state.spaceSendText += " ";
+  renderSpace();
+}
+
+function addSpaceSendSignal(mark) {
+  clearTimeout(state.spaceSendLetterTimer);
+  clearTimeout(state.spaceSendSpaceTimer);
+  if (state.spaceSendSignal.length >= 6) return;
+  pulseSignal(mark);
+  state.spaceSendSignal += mark;
+  renderSpace();
+  if (state.chatKeyerMode === "auto") {
+    state.spaceSendLetterTimer = setTimeout(commitSpaceSendLetter, state.unit * 3);
+    state.spaceSendSpaceTimer = setTimeout(commitSpaceSendSpace, state.unit * 7);
+  }
+}
+
+function playSpaceTransmitAnimation() {
+  const animation = $("#spaceTransmitAnimation");
+  animation.classList.remove("transmitting");
+  void animation.offsetWidth;
+  animation.classList.add("transmitting");
+  setTimeout(() => animation.classList.remove("transmitting"), 2100);
 }
 
 function speedName(value) {
@@ -2100,16 +2159,50 @@ document.querySelectorAll("[data-space-view]").forEach(button => button.addEvent
   $("#spaceTransmit").hidden = button.dataset.spaceView !== "transmit";
   $("#spaceReceive").hidden = button.dataset.spaceView !== "receive";
 }));
+$("#spaceSendInput").addEventListener("input", event => {
+  clearTimeout(state.spaceSendLetterTimer);
+  clearTimeout(state.spaceSendSpaceTimer);
+  state.spaceSendSignal = "";
+  state.spaceSendText = event.target.value;
+  renderSpace();
+});
+$("#spaceSendKeyer").addEventListener("pointerdown", event => {
+  clearTimeout(state.spaceSendLetterTimer);
+  clearTimeout(state.spaceSendSpaceTimer);
+  state.keyerPressStart = performance.now();
+  state.spaceSendKeyerStartX = event.clientX;
+  state.spaceSendKeyerStartY = event.clientY;
+  $("#spaceSendKeyer").classList.add("pressed");
+  $("#spaceSendKeyer").setPointerCapture?.(event.pointerId);
+});
+$("#spaceSendKeyer").addEventListener("pointerup", event => {
+  $("#spaceSendKeyer").classList.remove("pressed");
+  const deltaX = event.clientX - state.spaceSendKeyerStartX;
+  const deltaY = event.clientY - state.spaceSendKeyerStartY;
+  if (state.chatKeyerMode === "manual" && Math.abs(deltaX) >= 45 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
+    const right = deltaX > 0;
+    const commitLetter = state.reverseChatSwipe ? right : !right;
+    if (commitLetter) commitSpaceSendLetter();
+    else commitSpaceSendSpace();
+    return;
+  }
+  const held = performance.now() - state.keyerPressStart;
+  addSpaceSendSignal(held < state.unit * 2 ? "." : "-");
+});
+$("#spaceSendKeyer").addEventListener("pointercancel", () => $("#spaceSendKeyer").classList.remove("pressed"));
 $("#spaceSendForm").addEventListener("submit", event => {
   event.preventDefault();
-  const text = $("#spaceSendInput").value.trim();
+  commitSpaceSendLetter();
+  const text = state.spaceSendText.trim();
   if (!text) return;
   api("/api/space/send", {
     method: "POST",
     body: JSON.stringify({ sender: state.userId, text, day: todayKey() })
   }).then(() => {
     localStorage.setItem("morse-space-last-sent", todayKey());
-    $("#spaceSendInput").value = "";
+    state.spaceSendText = "";
+    state.spaceSendSignal = "";
+    playSpaceTransmitAnimation();
     renderSpace();
     showToast("우주로 시그널을 발신했습니다.");
   }).catch(error => showToast(error.status === 409 ? "오늘은 이미 시그널을 발신했습니다." : "서버 연결에 실패했습니다."));

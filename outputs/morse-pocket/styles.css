@@ -120,6 +120,23 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 .space-send-form { display: grid; gap: 8px; }
 .space-send-form textarea { min-height: 150px; resize: vertical; padding: 14px; border: 1px solid rgba(255,255,255,.22); border-radius: 14px; color: white; background: rgba(1,8,24,.72); font: inherit; }
 .space-send-form textarea::placeholder { color: #8eaed9; }
+.space-send-signal { min-height: 18px; color: #b9d2ff; font-size: 10px; }
+.space-send-form .space-keyer { min-height: 125px; margin-top: 0; color: white; border: 2px solid rgba(210,234,255,.75); background: rgba(3,20,55,.72); }
+.space-send-form .space-keyer.pressed { color: #04132f; background: #dcecff; }
+.space-transmit-animation { position: relative; display: grid; place-items: center; height: 0; opacity: 0; pointer-events: none; }
+.space-transmit-animation.transmitting { height: 150px; margin-bottom: 12px; opacity: 1; }
+.space-signal-core, .space-signal-wave, .space-signal-flight { position: absolute; display: block; border-radius: 50%; }
+.space-signal-core { width: 12px; height: 12px; background: white; box-shadow: 0 0 18px 7px rgba(116,193,255,.85); }
+.space-signal-wave { width: 18px; height: 18px; border: 2px solid rgba(183,225,255,.95); opacity: 0; }
+.space-signal-flight { width: 7px; height: 7px; background: white; box-shadow: 0 0 12px 5px rgba(116,193,255,.85); opacity: 0; }
+.space-transmit-animation.transmitting .space-signal-core { animation: spaceCore 1.5s ease-out; }
+.space-transmit-animation.transmitting .space-signal-wave { animation: spaceWave 1.45s ease-out; }
+.space-transmit-animation.transmitting .wave-two { animation-delay: .22s; }
+.space-transmit-animation.transmitting .wave-three { animation-delay: .44s; }
+.space-transmit-animation.transmitting .space-signal-flight { animation: spaceFlight 1.55s .25s ease-in forwards; }
+@keyframes spaceCore { 0%, 70% { transform: scale(1); opacity: 1; } 100% { transform: scale(.3); opacity: 0; } }
+@keyframes spaceWave { 0% { transform: scale(.2); opacity: .95; } 100% { transform: scale(7); opacity: 0; } }
+@keyframes spaceFlight { 0% { transform: translateY(0) scale(1); opacity: 1; } 70% { opacity: 1; } 100% { transform: translateY(-115px) scale(.25); opacity: 0; } }
 .space-send-form button, .space-received button { padding: 14px; border: 0; border-radius: 13px; color: #04132f; background: #dcecff; font-weight: 850; }
 .space-send-form button:disabled { opacity: .3; }
 .space-received { margin-top: 12px; padding: 20px; border: 1px solid rgba(255,255,255,.22); border-radius: 17px; color: white; background: rgba(1,8,24,.76); }

@@ -277,9 +277,22 @@
       </nav>
       <section id="spaceTransmit" class="space-panel">
         <p id="spaceSendStatus" class="space-status"></p>
+        <div id="spaceTransmitAnimation" class="space-transmit-animation" aria-hidden="true">
+          <span class="space-signal-core"></span>
+          <span class="space-signal-wave wave-one"></span>
+          <span class="space-signal-wave wave-two"></span>
+          <span class="space-signal-wave wave-three"></span>
+          <span class="space-signal-flight"></span>
+        </div>
         <form id="spaceSendForm" class="space-send-form">
           <textarea id="spaceSendInput" maxlength="300" placeholder="우주로 보낼 문장을 입력하세요"></textarea>
-          <button type="submit">오늘의 시그널 발신</button>
+          <small id="spaceSendSignal" class="space-send-signal">현재 글자: 비어 있음</small>
+          <button id="spaceSendKeyer" class="morse-keyer space-keyer" type="button">
+            <strong>PRESS & HOLD</strong>
+            <span>짧게 누르면 · / 길게 누르면 —</span>
+            <small>3단위 휴식: 글자 확정 · 7단위 휴식: 띄어쓰기</small>
+          </button>
+          <button id="submitSpaceSignal" type="submit">오늘의 시그널 발신</button>
         </form>
       </section>
       <section id="spaceReceive" class="space-panel" hidden>
