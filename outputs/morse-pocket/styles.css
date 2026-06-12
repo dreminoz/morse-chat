@@ -139,8 +139,20 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 @keyframes spaceFlight { 0% { transform: translateY(0) scale(1); opacity: 1; } 70% { opacity: 1; } 100% { transform: translateY(-115px) scale(.25); opacity: 0; } }
 .space-send-form button, .space-received button { padding: 14px; border: 0; border-radius: 13px; color: #04132f; background: #dcecff; font-weight: 850; }
 .space-send-form button:disabled { opacity: .3; }
+.space-radar { position: relative; width: 180px; height: 180px; margin: 4px auto 15px; overflow: hidden; border: 1px solid rgba(190,226,255,.65); border-radius: 50%; background: repeating-radial-gradient(circle, transparent 0 28px, rgba(167,216,255,.19) 29px 30px), linear-gradient(90deg, transparent 49.5%, rgba(167,216,255,.2) 50%, transparent 50.5%), linear-gradient(transparent 49.5%, rgba(167,216,255,.2) 50%, transparent 50.5%), radial-gradient(circle, rgba(36,139,222,.28), rgba(1,8,24,.84) 70%); box-shadow: inset 0 0 28px rgba(67,172,255,.22), 0 0 24px rgba(36,139,222,.15); }
+.space-radar-sweep { position: absolute; inset: 50% 0 0 50%; transform-origin: 0 0; background: conic-gradient(from 270deg, rgba(130,211,255,.72), rgba(83,174,255,.18) 24deg, transparent 62deg); animation: spaceRadarSweep 3.2s linear infinite; }
+.space-radar.scanning .space-radar-sweep { animation-duration: 1.15s; }
+.space-radar-center { position: absolute; left: calc(50% - 4px); top: calc(50% - 4px); width: 8px; height: 8px; border-radius: 50%; background: white; box-shadow: 0 0 10px 4px rgba(116,193,255,.8); }
+.space-radar-blip { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: #dcecff; box-shadow: 0 0 10px 4px rgba(116,193,255,.7); animation: spaceRadarBlip 2.2s ease-in-out infinite; }
+.space-radar .blip-one { left: 68%; top: 28%; }
+.space-radar .blip-two { left: 27%; top: 64%; animation-delay: 1.1s; }
+@keyframes spaceRadarSweep { to { transform: rotate(360deg); } }
+@keyframes spaceRadarBlip { 0%, 55%, 100% { opacity: .15; transform: scale(.6); } 65%, 78% { opacity: 1; transform: scale(1.25); } }
 .space-received { margin-top: 12px; padding: 20px; border: 1px solid rgba(255,255,255,.22); border-radius: 17px; color: white; background: rgba(1,8,24,.76); }
-.space-received strong { display: block; margin: 20px 0; overflow-wrap: anywhere; font-size: 22px; line-height: 1.4; }
+.space-received strong { display: block; min-height: 62px; margin: 20px 0 8px; overflow-wrap: anywhere; font-size: 22px; line-height: 1.4; }
+.space-received small { display: block; min-height: 18px; margin-bottom: 14px; color: #b9d2ff; font-size: 10px; }
+.space-received.decoding strong::after { content: "▋"; margin-left: 3px; color: #9fd1ff; animation: decodeCursor .55s steps(1) infinite; }
+@keyframes decodeCursor { 50% { opacity: 0; } }
 .space-received button { width: 100%; color: #04132f; background: #dcecff; }
 .random-signal-world { color: var(--ink); background: var(--paper); }
 .random-signal-world > .random-signal-shell { display: grid; grid-template-rows: auto minmax(0, 1fr); place-items: stretch; height: calc(100dvh - max(250px, env(safe-area-inset-top))); min-height: 560px; text-align: left; }

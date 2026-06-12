@@ -296,11 +296,19 @@
         </form>
       </section>
       <section id="spaceReceive" class="space-panel" hidden>
+        <div id="spaceRadar" class="space-radar" aria-hidden="true">
+          <span class="space-radar-sweep"></span>
+          <span class="space-radar-blip blip-one"></span>
+          <span class="space-radar-blip blip-two"></span>
+          <span class="space-radar-center"></span>
+        </div>
+        <p id="spaceReceiveStatus" class="space-status">레이더가 우주 시그널을 탐색하고 있습니다.</p>
         <button id="receiveSpaceSignal" class="primary-button" type="button">랜덤 시그널 수신</button>
         <article id="spaceReceivedSignal" class="space-received" hidden>
           <p class="label">RECEIVED FROM SPACE</p>
           <strong data-no-i18n></strong>
-          <button type="button">모스 진동으로 읽기</button>
+          <small id="spaceDecodeStatus">모스 진동에 맞춰 해석 중</small>
+          <button type="button">다시 해석하기</button>
         </article>
       </section>
     </section>

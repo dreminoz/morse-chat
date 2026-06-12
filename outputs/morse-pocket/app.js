@@ -53,6 +53,12 @@ const I18N_PAIRS = [
   ["오늘은 이미 시그널을 발신했습니다.", "You already transmitted a signal today."],
   ["오늘 아직 시그널을 발신하지 않았습니다.", "You have not transmitted a signal today."],
   ["우주로 시그널을 발신했습니다.", "Signal transmitted into space."],
+  ["레이더가 우주 시그널을 탐색하고 있습니다.", "Radar is scanning for a Space signal."],
+  ["레이더가 시그널을 추적하고 있습니다.", "Radar is tracking a signal."],
+  ["우주 시그널을 수신했습니다.", "Space signal received."],
+  ["모스 진동에 맞춰 해석 중", "Decoding with Morse vibration"],
+  ["해석 완료", "Decoding complete"],
+  ["다시 해석하기", "Decode again"],
   ["시그널 발신", "Signal Transmit"],
   ["시그널 수신", "Signal Receive"],
   ["시그널 재생 횟수", "Signal play limit"],
@@ -487,6 +493,8 @@ const state = {
   spaceSignals: JSON.parse(localStorage.getItem("morse-space-signals") || "[]"),
   spaceReceivedText: "",
   spaceReceivedMorse: "",
+  spaceDecodeTimers: [],
+  spaceReceiving: false,
   spaceSendText: "",
   spaceSendSignal: "",
   spaceSendLetterTimer: null,
@@ -995,6 +1003,61 @@ function playSpaceTransmitAnimation() {
   setTimeout(() => animation.classList.remove("transmitting"), 2100);
 }
 
+function clearSpaceDecode() {
+  state.spaceDecodeTimers.forEach(clearTimeout);
+  state.spaceDecodeTimers = [];
+  $("#spaceReceivedSignal").classList.remove("decoding");
+}
+
+function morseCharacterDuration(char) {
+  const code = MORSE[char.toUpperCase()];
+  if (!code) return 0;
+  return [...code].reduce((duration, mark, index) =>
+    duration + state.unit * (mark === "." ? 1 : 3) + (index < code.length - 1 ? state.unit : 0), 0
+  );
+}
+
+function decodeSpaceSignal() {
+  if (!state.spaceReceivedText) return;
+  clearSpaceDecode();
+  stopMorse(false);
+  const output = $("#spaceReceivedSignal strong");
+  const status = $("#spaceDecodeStatus");
+  const article = $("#spaceReceivedSignal");
+  output.textContent = "";
+  status.textContent = "모스 진동에 맞춰 해석 중";
+  article.classList.add("decoding");
+
+  let elapsed = 0;
+  graphemes(state.spaceReceivedText).forEach(value => {
+    if (isEmojiGrapheme(value)) {
+      state.spaceDecodeTimers.push(setTimeout(() => { output.textContent += value; }, elapsed));
+      return;
+    }
+    [...value].forEach(char => {
+      if (char === " ") {
+        elapsed += state.unit * 4;
+        state.spaceDecodeTimers.push(setTimeout(() => { output.textContent += " "; }, elapsed));
+        return;
+      }
+      const duration = morseCharacterDuration(char);
+      if (!duration) {
+        state.spaceDecodeTimers.push(setTimeout(() => { output.textContent += char; }, elapsed));
+        return;
+      }
+      elapsed += duration;
+      state.spaceDecodeTimers.push(setTimeout(() => { output.textContent += char; }, elapsed));
+      elapsed += state.unit * 3;
+    });
+  });
+
+  state.spaceDecodeTimers.push(setTimeout(() => {
+    article.classList.remove("decoding");
+    status.textContent = "해석 완료";
+  }, elapsed + 100));
+  playMorse(state.spaceReceivedMorse, null, "");
+}
+
 function speedName(value) {
   if (value <= 90) return "아주 빠름";
   if (value <= 140) return "보통";
@@ -1314,6 +1377,7 @@ function closeChat() {
 
 function switchWorld(world) {
   if (!["friends", "hall", "space", "randomSignal"].includes(world)) world = "hall";
+  if (world !== "space") clearSpaceDecode();
   if (world !== "hall" && !state.account) {
     openAuthPanel();
     world = "hall";
@@ -2208,15 +2272,38 @@ $("#spaceSendForm").addEventListener("submit", event => {
   }).catch(error => showToast(error.status === 409 ? "오늘은 이미 시그널을 발신했습니다." : "서버 연결에 실패했습니다."));
 });
 $("#receiveSpaceSignal").addEventListener("click", () => {
+  if (state.spaceReceiving) return;
+  state.spaceReceiving = true;
+  clearSpaceDecode();
+  $("#spaceRadar").classList.add("scanning");
+  $("#spaceReceiveStatus").textContent = "레이더가 시그널을 추적하고 있습니다.";
+  $("#receiveSpaceSignal").disabled = true;
+  setTimeout(() => {
+    if (!state.spaceReceiving) return;
+    state.spaceReceiving = false;
+    $("#spaceRadar").classList.remove("scanning");
+    $("#receiveSpaceSignal").disabled = false;
+    $("#spaceReceiveStatus").textContent = "레이더가 우주 시그널을 탐색하고 있습니다.";
+  }, 10000);
   api(`/api/space/random?exclude=${encodeURIComponent(state.userId)}`).then(signal => {
     state.spaceReceivedText = signal.text;
     state.spaceReceivedMorse = signal.text;
     $("#spaceReceivedSignal").hidden = false;
-    $("#spaceReceivedSignal strong").textContent = state.spaceReceivedText;
-  }).catch(() => showToast("수신할 우주 시그널이 아직 없습니다."));
+    $("#spaceReceiveStatus").textContent = "우주 시그널을 수신했습니다.";
+    decodeSpaceSignal();
+    state.spaceReceiving = false;
+    $("#spaceRadar").classList.remove("scanning");
+    $("#receiveSpaceSignal").disabled = false;
+  }).catch(() => {
+    state.spaceReceiving = false;
+    $("#spaceRadar").classList.remove("scanning");
+    $("#receiveSpaceSignal").disabled = false;
+    $("#spaceReceiveStatus").textContent = "레이더가 우주 시그널을 탐색하고 있습니다.";
+    showToast("수신할 우주 시그널이 아직 없습니다.");
+  });
 });
 $("#spaceReceivedSignal button").addEventListener("click", () => {
-  if (state.spaceReceivedMorse) playMorse(state.spaceReceivedMorse, null, state.spaceReceivedText);
+  decodeSpaceSignal();
 });
 $("#speed").addEventListener("input", event => {
   state.unit = Number(event.target.value);
