@@ -20,7 +20,7 @@ The included server provides working IDs, messaging, matching, and persistence f
 3. Set `GOOGLE_CLIENT_ID` on the server.
 4. Open MORSE CHAT through the server URL, not a `file://` URL.
 
-Registration verifies the Google ID token on the server. Users must also create a unique nickname and an 8-character-or-longer password. Passwords are stored as `scrypt` hashes.
+Registration verifies the Google ID token on the server. New users only need to create a unique ID; returning users sign in immediately with Google.
 
 ## Railway persistent storage
 

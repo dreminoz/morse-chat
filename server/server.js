@@ -25,16 +25,6 @@ function saveData() {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
-function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
-  return { salt, hash: crypto.scryptSync(password, salt, 64).toString("hex") };
-}
-
-function passwordMatches(password, account) {
-  const actual = Buffer.from(hashPassword(password, account.passwordSalt).hash, "hex");
-  const expected = Buffer.from(account.passwordHash, "hex");
-  return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
-}
-
 async function verifyGoogleCredential(credential) {
   if (!GOOGLE_CLIENT_ID) throw new Error("google-client-id-not-configured");
   const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: GOOGLE_CLIENT_ID });
@@ -131,21 +121,22 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "GET" && url.pathname === "/api/health") return json(res, 200, { ok: true, googleConfigured: Boolean(GOOGLE_CLIENT_ID), googleClientId: GOOGLE_CLIENT_ID });
   if (req.method === "GET" && url.pathname === "/api/auth/config") return json(res, 200, { googleClientId: GOOGLE_CLIENT_ID });
-  if (req.method === "POST" && url.pathname === "/api/auth/register") {
+  if (req.method === "POST" && url.pathname === "/api/auth/google") {
     try {
-      const { credential, nickname, password } = await readBody(req);
-      if (!nickname?.trim() || nickname.trim().length < 2 || !password || password.length < 8) return json(res, 400, { error: "nickname-password-required" });
+      const { credential, nickname } = await readBody(req);
       const google = await verifyGoogleCredential(credential);
-      if (data.accounts.some(account => account.googleSub === google.sub)) return json(res, 409, { error: "already-registered" });
+      const existing = data.accounts.find(account => account.googleSub === google.sub);
+      if (existing) {
+        const token = createSession(existing);
+        return json(res, 200, { token, account: publicAccount(existing) });
+      }
+      if (!nickname?.trim() || nickname.trim().length < 2) return json(res, 409, { error: "nickname-required" });
       if (data.accounts.some(account => account.nickname.toLowerCase() === nickname.trim().toLowerCase())) return json(res, 409, { error: "nickname-taken" });
-      const passwordData = hashPassword(password);
       const account = {
         googleSub: google.sub,
         email: google.email,
         nickname: nickname.trim(),
         signalId: `SIGNAL-${crypto.randomBytes(4).toString("hex").toUpperCase()}`,
-        passwordSalt: passwordData.salt,
-        passwordHash: passwordData.hash,
         createdAt: Date.now()
       };
       data.accounts.push(account);
@@ -153,18 +144,6 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { token, account: publicAccount(account) });
     } catch (error) {
       return json(res, 401, { error: error.message || "google-verification-failed" });
-    }
-  }
-  if (req.method === "POST" && url.pathname === "/api/auth/login") {
-    try {
-      const { credential, password } = await readBody(req);
-      const google = await verifyGoogleCredential(credential);
-      const account = data.accounts.find(item => item.googleSub === google.sub);
-      if (!account || !passwordMatches(password || "", account)) return json(res, 401, { error: "invalid-login" });
-      const token = createSession(account);
-      return json(res, 200, { token, account: publicAccount(account) });
-    } catch (error) {
-      return json(res, 401, { error: error.message || "invalid-login" });
     }
   }
   if (req.method === "GET" && url.pathname === "/api/auth/me") {

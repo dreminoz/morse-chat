@@ -16,16 +16,11 @@
     <section class="auth-card">
       <p class="eyebrow">MORSE CHAT ACCOUNT</p>
       <h2>계정 연결</h2>
-      <p>대화, 우주, 랜덤 시그널을 사용하려면 Google 계정과 닉네임·비밀번호가 필요합니다.</p>
+      <p>대화, 우주, 랜덤 시그널을 사용하려면 Google 계정과 아이디가 필요합니다.</p>
       <div id="googleSignInButton" class="google-sign-in"></div>
       <div id="authFields" hidden>
-        <div class="auth-tabs">
-          <button class="active" type="button" data-auth-mode="register">회원가입</button>
-          <button type="button" data-auth-mode="login">로그인</button>
-        </div>
-        <label id="nicknameField"><span>닉네임</span><input id="authNickname" maxlength="24" autocomplete="nickname"></label>
-        <label><span>비밀번호</span><input id="authPassword" type="password" minlength="8" autocomplete="current-password"></label>
-        <button id="submitAuth" class="primary-button" type="button">회원가입</button>
+        <label><span>아이디</span><input id="authNickname" maxlength="24" autocomplete="username"></label>
+        <button id="submitAuth" class="primary-button" type="button">아이디 설정</button>
       </div>
       <p id="authStatus" class="auth-status">Google 계정을 먼저 선택하세요.</p>
       <button id="closeAuthPanel" class="light-button auth-close" type="button">훈련장으로 돌아가기</button>

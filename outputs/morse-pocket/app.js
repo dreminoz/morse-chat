@@ -66,10 +66,10 @@ const I18N_PAIRS = [
   ["서버 연결", "Connect server"],
   ["친구의 시그널 ID", "Friend's Signal ID"],
   ["수신할 우주 시그널이 아직 없습니다.", "There are no Space signals to receive yet."],
-  ["대화, 우주, 랜덤 시그널을 사용하려면 Google 계정과 닉네임·비밀번호가 필요합니다.", "A Google account, nickname, and password are required for Conversations, Space, and Random Signal."],
+  ["대화, 우주, 랜덤 시그널을 사용하려면 Google 계정과 아이디가 필요합니다.", "A Google account and ID are required for Conversations, Space, and Random Signal."],
   ["Google 계정을 먼저 선택하세요.", "Select a Google account first."],
   ["Google 로그인이 설정되지 않았습니다.", "Google Sign-In is not configured."],
-  ["닉네임은 2자 이상, 비밀번호는 8자 이상 입력하세요.", "Enter a nickname of at least 2 characters and a password of at least 8 characters."],
+  ["아이디는 2자 이상 입력하세요.", "Enter an ID of at least 2 characters."],
   ["회원가입 / 로그인", "Register / Sign in"],
   ["훈련장으로 돌아가기", "Return to Training"],
   ["로그인하지 않음", "Not signed in"],
@@ -77,12 +77,17 @@ const I18N_PAIRS = [
   ["회원가입", "Register"],
   ["로그인", "Sign in"],
   ["로그아웃", "Sign out"],
-  ["닉네임", "Nickname"],
+  ["아이디", "ID"],
   ["Google 계정이 확인되었습니다.", "Google account verified."],
   ["회원가입 또는 로그인에 실패했습니다.", "Registration or sign-in failed."],
   ["회원가입되었습니다.", "Registration complete."],
   ["로그인되었습니다.", "Signed in."],
-  ["비밀번호", "Password"],
+  ["아이디 설정", "Set ID"],
+  ["Google 계정을 확인하고 있습니다.", "Checking your Google account."],
+  ["처음 로그인입니다. 사용할 아이디를 설정하세요.", "First sign-in. Choose an ID to use."],
+  ["Google 로그인에 실패했습니다.", "Google sign-in failed."],
+  ["아이디가 설정되었습니다.", "ID set."],
+  ["아이디 설정에 실패했습니다.", "Failed to set ID."],
   ["계정", "Account"],
   ["시그널 연결", "Connect Signal"],
   ["시그널 끊기", "Disconnect Signal"],
@@ -467,7 +472,6 @@ const state = {
   authToken: localStorage.getItem("morse-auth-token") || "",
   account: JSON.parse(localStorage.getItem("morse-account") || "null"),
   googleCredential: "",
-  authMode: "register",
   googleClientId: ""
 };
 if (state.account?.signalId) state.userId = state.account.signalId;
@@ -543,6 +547,7 @@ function setAccount(token, account) {
   $("#authPanel").hidden = true;
   connectServer();
   renderSettings();
+  switchWorld("friends");
 }
 
 function logoutAccount() {
@@ -558,6 +563,9 @@ function logoutAccount() {
 
 function openAuthPanel() {
   $("#authPanel").hidden = false;
+  $("#authFields").hidden = true;
+  $("#authNickname").value = "";
+  state.googleCredential = "";
   $("#authStatus").textContent = state.googleClientId ? "Google 계정을 먼저 선택하세요." : "Google 로그인이 설정되지 않았습니다.";
 }
 
@@ -565,10 +573,25 @@ function renderGoogleButton() {
   if (!state.googleClientId || !globalThis.google?.accounts?.id) return;
   google.accounts.id.initialize({
     client_id: state.googleClientId,
-    callback: response => {
+    callback: async response => {
       state.googleCredential = response.credential;
-      $("#authFields").hidden = false;
-      $("#authStatus").textContent = "Google 계정이 확인되었습니다.";
+      $("#authStatus").textContent = "Google 계정을 확인하고 있습니다.";
+      try {
+        const result = await api("/api/auth/google", {
+          method: "POST",
+          body: JSON.stringify({ credential: state.googleCredential })
+        });
+        setAccount(result.token, result.account);
+        showToast("로그인되었습니다.");
+      } catch (error) {
+        if (error.body?.error === "nickname-required") {
+          $("#authFields").hidden = false;
+          $("#authStatus").textContent = "처음 로그인입니다. 사용할 아이디를 설정하세요.";
+          $("#authNickname").focus();
+          return;
+        }
+        showToast(error.body?.error || "Google 로그인에 실패했습니다.");
+      }
     }
   });
   google.accounts.id.renderButton($("#googleSignInButton"), { theme: "outline", size: "large", width: 330 });
@@ -1833,26 +1856,19 @@ $("#closeAuthPanel").addEventListener("click", () => {
   $("#authPanel").hidden = true;
   switchWorld("hall");
 });
-document.querySelectorAll("[data-auth-mode]").forEach(button => button.addEventListener("click", () => {
-  state.authMode = button.dataset.authMode;
-  document.querySelectorAll("[data-auth-mode]").forEach(item => item.classList.toggle("active", item === button));
-  $("#nicknameField").hidden = state.authMode === "login";
-  $("#submitAuth").textContent = state.authMode === "login" ? "로그인" : "회원가입";
-}));
 $("#submitAuth").addEventListener("click", async () => {
   const nickname = $("#authNickname").value.trim();
-  const password = $("#authPassword").value;
   if (!state.googleCredential) return showToast("Google 계정을 먼저 선택하세요.");
-  if (password.length < 8 || (state.authMode === "register" && nickname.length < 2)) return showToast("닉네임은 2자 이상, 비밀번호는 8자 이상 입력하세요.");
+  if (nickname.length < 2) return showToast("아이디는 2자 이상 입력하세요.");
   try {
-    const result = await api(`/api/auth/${state.authMode}`, {
+    const result = await api("/api/auth/google", {
       method: "POST",
-      body: JSON.stringify({ credential: state.googleCredential, nickname, password })
+      body: JSON.stringify({ credential: state.googleCredential, nickname })
     });
     setAccount(result.token, result.account);
-    showToast(state.authMode === "login" ? "로그인되었습니다." : "회원가입되었습니다.");
+    showToast("아이디가 설정되었습니다.");
   } catch (error) {
-    showToast(error.body?.error || "회원가입 또는 로그인에 실패했습니다.");
+    showToast(error.body?.error || "아이디 설정에 실패했습니다.");
   }
 });
 $("#saveServerSettings").addEventListener("click", () => {
