@@ -529,8 +529,32 @@ async function api(path, options = {}) {
     }
   });
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw Object.assign(new Error(body.error || "server-error"), { status: response.status, body });
+  if (!response.ok) {
+    const error = Object.assign(new Error(body.error || "server-error"), { status: response.status, body });
+    if (response.status === 401 && body.error === "auth-required" && !path.startsWith("/api/auth/")) {
+      expireAccountSession();
+      error.handled = true;
+    }
+    throw error;
+  }
   return body;
+}
+
+function expireAccountSession() {
+  state.eventSource?.close();
+  state.authToken = "";
+  state.account = null;
+  state.serverConnected = false;
+  localStorage.removeItem("morse-auth-token");
+  localStorage.removeItem("morse-account");
+  renderSettings();
+  openAuthPanel();
+  showToast("로그인이 만료되었습니다. Google 계정으로 다시 로그인하세요.");
+}
+
+function showApiFailure(error, fallback = "서버 연결에 실패했습니다.") {
+  if (error?.handled) return;
+  showToast(fallback);
 }
 
 function connectServer() {
@@ -657,7 +681,8 @@ async function initializeAuth() {
     } else {
       renderSettings();
     }
-  } catch {
+  } catch (error) {
+    if (error?.status === 401) expireAccountSession();
     renderSettings();
   }
 }
@@ -862,10 +887,10 @@ function connectRandomSignal() {
   api("/api/random/join", {
     method: "POST",
     body: JSON.stringify({ userId: state.userId })
-  }).catch(() => {
+  }).catch(error => {
     state.randomSignalState = "idle";
     renderRandomSignal();
-    showToast("서버 연결에 실패했습니다.");
+    showApiFailure(error);
   });
 }
 
@@ -2269,7 +2294,10 @@ $("#spaceSendForm").addEventListener("submit", event => {
     playSpaceTransmitAnimation();
     renderSpace();
     showToast("우주로 시그널을 발신했습니다.");
-  }).catch(error => showToast(error.status === 409 ? "오늘은 이미 시그널을 발신했습니다." : "서버 연결에 실패했습니다."));
+  }).catch(error => {
+    if (error.status === 409) showToast("오늘은 이미 시그널을 발신했습니다.");
+    else showApiFailure(error);
+  });
 });
 $("#receiveSpaceSignal").addEventListener("click", () => {
   if (state.spaceReceiving) return;
@@ -2294,12 +2322,13 @@ $("#receiveSpaceSignal").addEventListener("click", () => {
     state.spaceReceiving = false;
     $("#spaceRadar").classList.remove("scanning");
     $("#receiveSpaceSignal").disabled = false;
-  }).catch(() => {
+  }).catch(error => {
     state.spaceReceiving = false;
     $("#spaceRadar").classList.remove("scanning");
     $("#receiveSpaceSignal").disabled = false;
     $("#spaceReceiveStatus").textContent = "레이더가 우주 시그널을 탐색하고 있습니다.";
-    showToast("수신할 우주 시그널이 아직 없습니다.");
+    if (error.status === 404) showToast("수신할 우주 시그널이 아직 없습니다.");
+    else showApiFailure(error);
   });
 });
 $("#spaceReceivedSignal button").addEventListener("click", () => {
