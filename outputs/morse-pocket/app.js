@@ -265,6 +265,34 @@ function translateElement(root, language) {
 }
 
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const GRAPHEME_SEGMENTER = globalThis.Intl?.Segmenter
+  ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
+  : null;
+const EMOJI_GRAPHEME = /[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji_Modifier}\uFE0F\u20E3]/u;
+
+function graphemes(text) {
+  return GRAPHEME_SEGMENTER
+    ? [...GRAPHEME_SEGMENTER.segment(text)].map(item => item.segment)
+    : [...text];
+}
+
+function isEmojiGrapheme(value) {
+  return EMOJI_GRAPHEME.test(value);
+}
+
+function chatInputText(text) {
+  return graphemes(text.toUpperCase())
+    .filter(value => isEmojiGrapheme(value) || [...value].every(char => char === " " || MORSE[char]))
+    .join("");
+}
+
+function morseCharacters(text) {
+  return graphemes(text.toUpperCase())
+    .filter(value => !isEmojiGrapheme(value))
+    .flatMap(value => [...value])
+    .filter(char => char === " " || MORSE[char]);
+}
+
 function createSignalId() {
   return `SIGNAL-${globalThis.crypto?.randomUUID?.().slice(0, 8).toUpperCase() || Math.random().toString(36).slice(2, 10).toUpperCase()}`;
 }
@@ -646,16 +674,18 @@ function syncDirectInbox() {
 }
 
 function textToMorse(text) {
-  return [...text.toUpperCase()].map(char => char === " " ? "/" : MORSE[char]).filter(Boolean).join(" ");
+  return morseCharacters(text).map(char => char === " " ? "/" : MORSE[char]).filter(Boolean).join(" ");
 }
 
 function unsupportedChars(text) {
-  return [...new Set([...text.toUpperCase()].filter(char => char !== " " && !MORSE[char]))];
+  return [...new Set(graphemes(text.toUpperCase()).filter(value =>
+    !isEmojiGrapheme(value) && [...value].some(char => char !== " " && !MORSE[char])
+  ))];
 }
 
 function vibrationPattern(text) {
   const units = [];
-  const chars = [...text.toUpperCase()].filter(char => char === " " || MORSE[char]);
+  const chars = morseCharacters(text);
   chars.forEach((char, charIndex) => {
     if (char === " ") {
       if (units.length) units[units.length - 1] = state.unit * 7;
@@ -1187,7 +1217,7 @@ function deleteChatInputCharacter() {
   clearTimeout(state.chatLetterTimer);
   clearTimeout(state.chatSpaceTimer);
   if (state.chatSignal) state.chatSignal = state.chatSignal.slice(0, -1);
-  else state.chatMorseText = state.chatMorseText.slice(0, -1);
+  else state.chatMorseText = graphemes(state.chatMorseText).slice(0, -1).join("");
   renderChatComposer();
 }
 
@@ -1766,7 +1796,7 @@ $("#chatMorseText").addEventListener("input", event => {
   state.chatSignal = "";
   const raw = event.target.value.toUpperCase();
   const unsupported = unsupportedChars(raw);
-  state.chatMorseText = [...raw].filter(char => char === " " || MORSE[char]).join("");
+  state.chatMorseText = chatInputText(raw);
   event.target.value = state.chatMorseText;
   $("#chatMorseSignal").textContent = "현재 글자: 비어 있음";
   if (unsupported.length) showToast(`지원하지 않는 문자: ${unsupported.slice(0, 5).join(" ")}`);
@@ -2003,7 +2033,7 @@ $("#randomChatInput").addEventListener("input", event => {
 });
 $("#clearRandomChat").addEventListener("click", () => {
   if (state.randomChatSignal) state.randomChatSignal = state.randomChatSignal.slice(0, -1);
-  else state.randomChatText = state.randomChatText.slice(0, -1);
+  else state.randomChatText = graphemes(state.randomChatText).slice(0, -1).join("");
   renderRandomChatComposer();
 });
 $("#sendRandomChat").addEventListener("click", () => {
