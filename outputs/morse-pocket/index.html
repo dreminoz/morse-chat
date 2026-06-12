@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>MORSE CHAT</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="authPanel" class="auth-overlay" hidden>
+    <section class="auth-card">
+      <p class="eyebrow">MORSE CHAT ACCOUNT</p>
+      <h2>계정 연결</h2>
+      <p>대화, 우주, 랜덤 시그널을 사용하려면 Google 계정과 닉네임·비밀번호가 필요합니다.</p>
+      <div id="googleSignInButton" class="google-sign-in"></div>
+      <div id="authFields" hidden>
+        <div class="auth-tabs">
+          <button class="active" type="button" data-auth-mode="register">회원가입</button>
+          <button type="button" data-auth-mode="login">로그인</button>
+        </div>
+        <label id="nicknameField"><span>닉네임</span><input id="authNickname" maxlength="24" autocomplete="nickname"></label>
+        <label><span>비밀번호</span><input id="authPassword" type="password" minlength="8" autocomplete="current-password"></label>
+        <button id="submitAuth" class="primary-button" type="button">회원가입</button>
+      </div>
+      <p id="authStatus" class="auth-status">Google 계정을 먼저 선택하세요.</p>
+      <button id="closeAuthPanel" class="light-button auth-close" type="button">훈련장으로 돌아가기</button>
+    </section>
+  </div>
+  <main class="app-shell">
+    <header>
+      <div>
+        <p class="eyebrow">MORSE CHAT</p>
+        <h1>MORSE<br><span>CHAT</span></h1>
+      </div>
+      <button id="openSettings" class="round-button" type="button" aria-label="설정 열기">···</button>
+    </header>
+
+    <nav class="world-tabs" aria-label="화면 선택">
+      <button class="world-tab" data-world="friends">대화</button>
+      <button class="world-tab active" data-world="hall">훈련장</button>
+      <button class="world-tab" data-world="space">우주</button>
+      <button class="world-tab" data-world="randomSignal">랜덤 시그널</button>
+    </nav>
+
+    <section id="friendsWorld" class="world-view" hidden>
+      <div id="conversationList">
+        <div class="friends-hero">
+          <p class="eyebrow">MORSE CHAT</p>
+          <h2>대화</h2>
+          <p>친구를 눌러 모스 메시지를 보내보세요.</p>
+        </div>
+        <form id="friendForm" class="composer friend-composer">
+          <input id="friendInput" maxlength="24" placeholder="친구의 시그널 ID" autocomplete="off">
+          <button type="submit" aria-label="친구 추가">+</button>
+        </form>
+        <div id="friendList" class="friend-list"></div>
+      </div>
+      <section id="chatRoom" class="chat-room" hidden>
+        <header class="chat-header">
+          <button id="closeChat" type="button" aria-label="대화 목록으로 돌아가기">‹</button>
+          <span id="chatAvatar" class="friend-avatar"></span>
+          <div>
+            <strong id="chatFriendName"></strong>
+            <small>말풍선을 누르면 모스 진동 재생</small>
+          </div>
+        </header>
+        <div id="chatMessages" class="chat-messages"></div>
+        <div id="chatMorseComposer" class="chat-morse-composer">
+          <div class="chat-morse-display">
+            <input id="chatMorseText" maxlength="100" placeholder="모스코드를 입력하세요" autocomplete="off">
+            <small id="chatMorseSignal">현재 글자: 비어 있음</small>
+          </div>
+          <button id="chatKeyer" class="morse-keyer chat-keyer" type="button">
+            <strong>PRESS & HOLD</strong>
+            <span>짧게 누르면 · 점 / 길게 누르면 − 선</span>
+            <small>3단위 휴식: 글자 확정 · 7단위 휴식: 띄어쓰기</small>
+          </button>
+          <div class="chat-morse-actions">
+            <button id="clearChatMorse" class="light-button" type="button">지우기</button>
+            <label class="photo-send-button" for="chatPhotoInput" aria-label="사진을 ASCII 아트로 보내기">
+              <span>사진</span>
+            </label>
+            <div class="send-control">
+              <div id="hiddenViewPicker" class="hidden-view-picker" hidden>
+                <span>숨김 신호 재생 횟수</span>
+                <div>
+                  <button type="button" data-hidden-limit="1">1</button>
+                  <button type="button" data-hidden-limit="3">3</button>
+                  <button type="button" data-hidden-limit="5">5</button>
+                  <button type="button" data-hidden-limit="unlimited">무제한</button>
+                </div>
+              </div>
+              <button id="sendChatMorse" class="primary-button swipe-send" type="button">
+                <strong>보내기</strong>
+                <small id="hiddenLimitHint">오른쪽 밀기: 숨김 신호 · 1회</small>
+              </button>
+            </div>
+          </div>
+          <input id="chatPhotoInput" class="visually-hidden" type="file" accept="image/*">
+        </div>
+      </section>
+    </section>
+
+    <div id="trainingHall" class="world-view">
+    <section class="speed-card">
+      <div class="section-heading">
+        <div>
+          <p class="label">진동 속도</p>
+          <strong id="speedLabel">보통 · 120ms</strong>
+        </div>
+        <span class="pulse" aria-hidden="true"></span>
+      </div>
+      <input id="speed" type="range" min="60" max="300" step="10" value="120" aria-label="진동 속도">
+      <div class="range-labels"><span>빠르게</span><span>느리게</span></div>
+    </section>
+
+    <nav class="tabs" aria-label="화면 선택">
+      <button class="tab active" data-view="library">저장</button>
+      <button class="tab" data-view="training">훈련</button>
+      <button class="tab" data-view="quiz">퀴즈</button>
+      <button class="tab" data-view="writer">쓰기</button>
+      <button class="tab" data-view="reference">목록</button>
+    </nav>
+
+    <section id="library" class="view active">
+      <form id="phraseForm" class="composer">
+        <input id="phraseInput" maxlength="100" placeholder="전달할 문구를 입력하세요" autocomplete="off">
+        <button type="submit" aria-label="문구 저장">+</button>
+      </form>
+      <p class="support-note">영문, 숫자, 주요 문장부호를 지원합니다.</p>
+      <div id="phraseList" class="phrase-list"></div>
+      <div id="emptyState" class="empty-state">
+        <span>· − ·</span>
+        <p>문구를 저장하면<br>여기에 차곡차곡 모입니다.</p>
+      </div>
+    </section>
+
+    <section id="training" class="view">
+      <div class="training-type-wrap">
+        <p class="label">훈련 유형</p>
+        <div class="training-types">
+          <button class="type-button active" data-type="random">랜덤</button>
+          <button class="type-button" data-type="alphabet">알파벳순</button>
+          <button class="type-button" data-type="morse">모스부호순</button>
+          <button class="type-button" data-type="sentence">문장</button>
+        </div>
+        <p class="training-note">문장 훈련은 저장한 영문 문장을 우선 사용합니다.</p>
+      </div>
+      <div class="training-settings">
+        <p class="label">재생 방식</p>
+        <div class="segmented">
+          <button class="mode-button active" data-mode="auto">자동</button>
+          <button class="mode-button" data-mode="tap">탭</button>
+          <button class="mode-button" data-mode="loop">무한 반복</button>
+        </div>
+      </div>
+      <div id="autoSettings" class="auto-settings">
+        <label id="repeatSetting">
+          <span>항목당 반복</span>
+          <select id="repeatCount">
+            <option value="1">1회</option>
+            <option value="2">2회</option>
+            <option value="3">3회</option>
+            <option value="4">4회</option>
+            <option value="5">5회</option>
+          </select>
+        </label>
+        <label>
+          <span id="nextDelayTitle">다음 항목까지</span>
+          <strong id="nextDelayLabel">1.0초</strong>
+          <input id="nextDelay" type="range" min="500" max="10000" step="500" value="1000">
+        </label>
+      </div>
+
+      <button id="trainingCard" class="training-card" type="button">
+        <span id="trainingKicker" class="card-kicker">랜덤 알파벳 · 1/26</span>
+        <strong id="trainingLetter">A</strong>
+        <span id="trainingMorse" class="training-morse">· −</span>
+        <span id="trainingHint" class="training-hint">좌우로 밀어 이전·다음 항목 보기</span>
+      </button>
+      <div class="training-actions">
+        <button id="toggleTraining" class="primary-button">훈련 시작</button>
+      </div>
+      <label class="answer-toggle">
+        <input id="showAnswer" type="checkbox" checked>
+        <span>모스부호 답 보기</span>
+      </label>
+    </section>
+
+    <section id="quiz" class="view">
+      <div class="quiz-modes">
+        <button class="quiz-mode active" data-quiz-mode="listen">진동 듣고 맞히기</button>
+        <button class="quiz-mode" data-quiz-mode="send">글자 보고 입력하기</button>
+      </div>
+      <div class="exam-bar">
+        <button id="toggleExam">시험 시작 · A-Z 전체</button>
+        <button id="toggleRecords" class="light-button">기록 보기</button>
+      </div>
+      <div id="examStatus" class="exam-status" hidden></div>
+      <div id="quizRecords" class="quiz-records" hidden></div>
+      <div id="quizCard" class="quiz-card">
+        <span id="quizKicker" class="card-kicker">LISTEN</span>
+        <strong id="quizPrompt">?</strong>
+        <span id="quizInputDisplay" class="quiz-code">진동을 듣고 알파벳을 입력하세요</span>
+        <p id="quizFeedback" class="quiz-feedback"></p>
+      </div>
+      <div id="listenAnswer" class="quiz-answer">
+        <input id="quizLetterInput" maxlength="1" inputmode="text" placeholder="A-Z" autocomplete="off">
+        <button id="submitListenQuiz">정답 확인</button>
+      </div>
+      <div id="sendAnswer" class="send-answer" hidden>
+        <div class="keyer-settings">
+          <span>입력 확정</span>
+          <div class="keyer-mode">
+            <button class="keyer-mode-button active" data-keyer-target="quiz" data-keyer-mode="auto">자동</button>
+            <button class="keyer-mode-button" data-keyer-target="quiz" data-keyer-mode="manual">수동</button>
+          </div>
+        </div>
+        <button id="quizKeyer" class="morse-keyer" type="button">
+          <strong>PRESS & HOLD</strong>
+          <span>짧게 누르면 점 · 길게 누르면 선</span>
+          <small id="quizKeyerHint">쉬면 자동으로 정답을 확인합니다</small>
+        </button>
+      </div>
+      <p class="quiz-swipe-hint">카드 탭: 정답 보기 · 좌우 스와이프: 문제 이동</p>
+    </section>
+
+    <section id="writer" class="view">
+      <div class="writer-modes">
+        <button class="writer-mode-button active" data-writer-mode="single">한 글자 확인</button>
+        <button class="writer-mode-button" data-writer-mode="sentence">문장 입력</button>
+      </div>
+      <div class="writer-card">
+        <span class="card-kicker">MORSE WRITER</span>
+        <strong id="writerText">글자를 입력하세요</strong>
+        <span id="writerCurrent" class="quiz-code">현재 글자: 비어 있음</span>
+        <p id="writerMorse" class="writer-morse">· 점과 − 선을 눌러 시작하세요</p>
+      </div>
+      <div class="keyer-settings writer-keyer-settings">
+        <span>글자·띄어쓰기 확정</span>
+        <div class="keyer-mode">
+          <button class="keyer-mode-button active" data-keyer-target="writer" data-keyer-mode="auto">자동</button>
+          <button class="keyer-mode-button" data-keyer-target="writer" data-keyer-mode="manual">수동</button>
+        </div>
+      </div>
+      <button id="writerKeyer" class="morse-keyer writer-keyer" type="button">
+        <strong>PRESS & HOLD</strong>
+        <span>짧게 누르면 점 · 길게 누르면 선</span>
+        <small id="writerKeyerHint">3단위 휴식: 글자 확정 · 7단위 휴식: 띄어쓰기</small>
+      </button>
+      <div class="writer-actions">
+        <button id="writerBackspace" class="light-button">한 칸 지우기</button>
+        <button id="clearWriterCode" class="light-button">전체 지우기</button>
+        <button id="resetWriter" class="light-button">초기화</button>
+      </div>
+      <button id="playWriterText" class="primary-button writer-play">작성 문장 재생</button>
+    </section>
+
+    <section id="reference" class="view">
+      <div class="reference-heading">
+        <p class="label">A TO Z REFERENCE</p>
+        <strong>알파벳 모스부호</strong>
+      </div>
+      <div id="morseReference" class="morse-reference"></div>
+    </section>
+    </div>
+
+    <section id="spaceWorld" class="world-view space-world" hidden>
+      <div class="friends-hero space-hero">
+        <p class="eyebrow">MORSE CHAT</p>
+        <h2>우주</h2>
+        <p>하루에 하나의 시그널을 우주로 보내고, 누군가의 시그널을 수신합니다.</p>
+      </div>
+      <nav class="space-tabs">
+        <button class="space-tab active" data-space-view="transmit">시그널 발신</button>
+        <button class="space-tab" data-space-view="receive">시그널 수신</button>
+      </nav>
+      <section id="spaceTransmit" class="space-panel">
+        <p id="spaceSendStatus" class="space-status"></p>
+        <form id="spaceSendForm" class="space-send-form">
+          <textarea id="spaceSendInput" maxlength="300" placeholder="우주로 보낼 문장을 입력하세요"></textarea>
+          <button type="submit">오늘의 시그널 발신</button>
+        </form>
+      </section>
+      <section id="spaceReceive" class="space-panel" hidden>
+        <button id="receiveSpaceSignal" class="primary-button" type="button">랜덤 시그널 수신</button>
+        <article id="spaceReceivedSignal" class="space-received" hidden>
+          <p class="label">RECEIVED FROM SPACE</p>
+          <strong data-no-i18n></strong>
+          <button type="button">모스 진동으로 읽기</button>
+        </article>
+      </section>
+    </section>
+
+    <section id="randomSignalWorld" class="world-view random-signal-world" hidden>
+      <div class="random-signal-shell">
+        <header class="random-signal-header">
+          <div>
+            <p class="eyebrow">MORSE CHAT</p>
+            <h2>랜덤 시그널</h2>
+          </div>
+          <span id="randomSignalStatus" class="random-signal-status">연결 대기 중</span>
+        </header>
+
+        <section id="randomSignalIdle" class="random-signal-state">
+          <div class="random-signal-orbit" aria-hidden="true"><span></span></div>
+          <strong>랜덤한 상대와 연결합니다</strong>
+          <p>연결되면 서로 이름을 공개하지 않고 대화할 수 있습니다.</p>
+          <button id="connectRandomSignal" class="random-signal-primary" type="button">시그널 연결</button>
+        </section>
+
+        <section id="randomSignalSearching" class="random-signal-state" hidden>
+          <div class="random-signal-searching" aria-hidden="true"><span></span><span></span><span></span></div>
+          <strong>상대를 찾는 중...</strong>
+          <p>근처의 새로운 시그널을 탐색하고 있습니다.</p>
+          <button id="cancelRandomSignal" class="random-signal-secondary" type="button">취소</button>
+        </section>
+
+        <section id="randomSignalConnected" class="random-chat" hidden>
+          <div id="randomChatMessages" class="random-chat-messages"></div>
+          <div class="random-chat-composer">
+            <div class="chat-morse-display">
+              <input id="randomChatInput" type="text" maxlength="300" autocomplete="off" placeholder="모스코드를 입력하세요">
+              <small id="randomChatSignal">현재 글자: 비어 있음</small>
+            </div>
+            <button id="randomChatKeyer" class="morse-keyer chat-keyer" type="button">
+              <strong>PRESS & HOLD</strong>
+              <span>짧게 누르면 · 점 / 길게 누르면 − 선</span>
+              <small>3단위 휴식: 글자 확정 · 7단위 휴식: 띄어쓰기</small>
+            </button>
+            <div class="random-chat-actions">
+              <button id="clearRandomChat" class="light-button" type="button">지우기</button>
+              <label class="photo-send-button" for="randomPhotoInput" aria-label="사진을 ASCII 아트로 보내기"><span>사진</span></label>
+              <div class="send-control">
+                <div id="randomHiddenPicker" class="hidden-view-picker" hidden>
+                  <span>시그널 재생 횟수</span>
+                  <div>
+                    <button type="button" data-random-limit="1">1</button>
+                    <button type="button" data-random-limit="3">3</button>
+                    <button type="button" data-random-limit="5">5</button>
+                    <button type="button" data-random-limit="unlimited">무제한</button>
+                  </div>
+                </div>
+                <button id="sendRandomChat" class="primary-button" type="button">보내기</button>
+              </div>
+            </div>
+            <input id="randomPhotoInput" class="visually-hidden" type="file" accept="image/*">
+            <button id="disconnectRandomSignal" class="random-signal-secondary disconnect-signal" type="button">시그널 끊기</button>
+          </div>
+        </section>
+
+        <section id="randomSignalLast" class="random-signal-state last-signal-state" hidden>
+          <strong>라스트 시그널</strong>
+          <p>연결이 끊겼습니다. 마지막 문장을 보낼지 선택하세요.</p>
+          <form id="lastSignalForm" class="last-signal-form">
+            <input id="lastSignalInput" type="text" maxlength="300" autocomplete="off" placeholder="마지막 문장을 입력하세요">
+            <div class="last-signal-actions">
+              <button id="skipLastSignal" class="light-button" type="button">보내지 않기</button>
+              <button type="submit">보내기</button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <div id="player" class="player" hidden>
+    <div>
+      <span id="playerPulse" class="player-dot"></span>
+      <div><small>재생 중</small><strong id="playerText"></strong></div>
+    </div>
+    <button id="stopPlayer">중지</button>
+  </div>
+
+  <div id="asciiPreview" class="ascii-preview-overlay" hidden>
+    <section class="ascii-preview-card">
+      <div>
+        <p class="label">ASCII ART PREVIEW</p>
+        <strong>사진 변환 결과</strong>
+      </div>
+      <pre id="asciiPreviewText"></pre>
+      <div class="ascii-preview-actions">
+        <button id="cancelAscii" class="light-button" type="button">취소</button>
+        <button id="sendAscii" class="primary-button" type="button">보내기</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="settingsPanel" class="settings-overlay" hidden>
+    <section class="settings-card">
+      <header class="settings-header">
+        <div>
+          <p class="eyebrow">MORSE CHAT</p>
+          <h2>설정</h2>
+        </div>
+        <button id="closeSettings" type="button" aria-label="설정 닫기">×</button>
+      </header>
+      <div class="settings-section server-settings">
+        <p class="label">서버 연결</p>
+        <strong id="serverConnectionStatus">연결 확인 중</strong>
+        <label>
+          <span>내 시그널 ID</span>
+          <input id="mySignalId" data-no-i18n readonly>
+        </label>
+        <label>
+          <span>서버 주소</span>
+          <input id="serverUrl" data-no-i18n type="url" placeholder="http://localhost:8787">
+        </label>
+        <button id="saveServerSettings" type="button">서버 연결</button>
+      </div>
+      <div class="settings-section account-settings">
+        <p class="label">계정</p>
+        <strong id="accountStatus">로그인하지 않음</strong>
+        <button id="openAuthSettings" type="button">회원가입 / 로그인</button>
+        <button id="logoutAccount" class="light-button" type="button" hidden>로그아웃</button>
+      </div>
+      <div class="settings-section">
+        <p class="label">언어</p>
+        <div class="settings-options language-options">
+          <button type="button" data-language="ko">
+            <strong>한국어</strong>
+            <small>앱 전체를 한국어로 표시</small>
+          </button>
+          <button type="button" data-language="en">
+            <strong>English</strong>
+            <small>Show the entire app in English</small>
+          </button>
+        </div>
+      </div>
+      <div class="settings-section">
+        <p class="label">대화 모스 입력 확정</p>
+        <div class="settings-options">
+          <button type="button" data-chat-keyer-mode="auto">
+            <strong>자동</strong>
+            <small>쉬는 시간으로 글자·띄어쓰기 확정</small>
+          </button>
+          <button type="button" data-chat-keyer-mode="manual">
+            <strong>수동</strong>
+            <small>좌우 스와이프로 직접 확정</small>
+          </button>
+        </div>
+      </div>
+      <label id="swipeReverseSetting" class="settings-switch">
+        <div>
+          <strong>좌우 방향 반전</strong>
+          <small id="swipeDirectionHint">왼쪽: 글자 확정 · 오른쪽: 띄어쓰기</small>
+        </div>
+        <input id="reverseChatSwipe" type="checkbox">
+      </label>
+    </section>
+  </div>
+
+  <div id="toast" class="toast" role="status"></div>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="app.js"></script>
+</body>
+</html>

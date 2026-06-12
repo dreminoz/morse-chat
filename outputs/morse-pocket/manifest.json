@@ -1,0 +1,12 @@
+{
+  "name": "MORSE CHAT",
+  "short_name": "MORSE CHAT",
+  "description": "문구를 저장하고 진동으로 전달하며 모스부호를 훈련하는 앱",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f1f1ef",
+  "theme_color": "#000000",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
