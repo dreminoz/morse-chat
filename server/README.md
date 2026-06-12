@@ -9,7 +9,7 @@ node server/server.js
 
 Open `http://localhost:8787` on the computer. Other devices on the same network can use `http://COMPUTER_IP:8787`.
 
-For internet use, deploy this folder and the project `outputs/morse-pocket` folder to a Node.js hosting provider with HTTPS. Set the app's server address in Settings.
+For internet use, deploy this folder and the project `outputs/morse-pocket` folder to a Node.js hosting provider with HTTPS. The app automatically uses the same origin for its API.
 
 The included server provides working IDs, messaging, matching, and persistence for a prototype. Before a public release, add account authentication, abuse reporting, moderation, rate limits, and a managed database.
 
@@ -20,7 +20,7 @@ The included server provides working IDs, messaging, matching, and persistence f
 3. Set `GOOGLE_CLIENT_ID` on the server.
 4. Open MORSE CHAT through the server URL, not a `file://` URL.
 
-Registration verifies the Google ID token on the server. New users only need to create a unique ID; returning users sign in immediately with Google.
+Registration verifies the Google ID token on the server. New users create one unique nickname, which is stored with their account and cannot be changed. Returning users sign in immediately with Google.
 
 ## Railway persistent storage
 

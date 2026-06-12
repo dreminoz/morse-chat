@@ -16,11 +16,11 @@
     <section class="auth-card">
       <p class="eyebrow">MORSE CHAT ACCOUNT</p>
       <h2>계정 연결</h2>
-      <p>대화, 우주, 랜덤 시그널을 사용하려면 Google 계정과 아이디가 필요합니다.</p>
+      <p>Google 계정으로 계속한 뒤, 최초 한 번만 닉네임을 설정합니다.</p>
       <div id="googleSignInButton" class="google-sign-in"></div>
       <div id="authFields" hidden>
-        <label><span>아이디</span><input id="authNickname" maxlength="24" autocomplete="username"></label>
-        <button id="submitAuth" class="primary-button" type="button">아이디 설정</button>
+        <label><span>닉네임</span><input id="authNickname" maxlength="24" autocomplete="nickname"></label>
+        <button id="submitAuth" class="primary-button" type="button">닉네임 설정</button>
       </div>
       <p id="authStatus" class="auth-status">Google 계정을 먼저 선택하세요.</p>
       <button id="closeAuthPanel" class="light-button auth-close" type="button">훈련장으로 돌아가기</button>
@@ -395,23 +395,10 @@
         </div>
         <button id="closeSettings" type="button" aria-label="설정 닫기">×</button>
       </header>
-      <div class="settings-section server-settings">
-        <p class="label">서버 연결</p>
-        <strong id="serverConnectionStatus">연결 확인 중</strong>
-        <label>
-          <span>내 시그널 ID</span>
-          <input id="mySignalId" data-no-i18n readonly>
-        </label>
-        <label>
-          <span>서버 주소</span>
-          <input id="serverUrl" data-no-i18n type="url" placeholder="http://localhost:8787">
-        </label>
-        <button id="saveServerSettings" type="button">서버 연결</button>
-      </div>
       <div class="settings-section account-settings">
         <p class="label">계정</p>
         <strong id="accountStatus">로그인하지 않음</strong>
-        <button id="openAuthSettings" type="button">회원가입 / 로그인</button>
+        <button id="openAuthSettings" type="button">Google 계정으로 계속하기</button>
         <button id="logoutAccount" class="light-button" type="button" hidden>로그아웃</button>
       </div>
       <div class="settings-section">

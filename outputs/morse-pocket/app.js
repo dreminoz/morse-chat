@@ -62,32 +62,30 @@ const I18N_PAIRS = [
   ["연결 확인 중", "Checking connection"],
   ["연결 안 됨", "Disconnected"],
   ["내 시그널 ID", "My Signal ID"],
-  ["서버 주소", "Server address"],
-  ["서버 연결", "Connect server"],
   ["친구의 시그널 ID", "Friend's Signal ID"],
   ["수신할 우주 시그널이 아직 없습니다.", "There are no Space signals to receive yet."],
-  ["대화, 우주, 랜덤 시그널을 사용하려면 Google 계정과 아이디가 필요합니다.", "A Google account and ID are required for Conversations, Space, and Random Signal."],
+  ["Google 계정으로 계속한 뒤, 최초 한 번만 닉네임을 설정합니다.", "Continue with Google, then choose a nickname once."],
   ["Google 계정을 먼저 선택하세요.", "Select a Google account first."],
   ["Google 로그인이 설정되지 않았습니다.", "Google Sign-In is not configured."],
-  ["아이디는 2자 이상 입력하세요.", "Enter an ID of at least 2 characters."],
-  ["회원가입 / 로그인", "Register / Sign in"],
+  ["닉네임은 2자 이상 입력하세요.", "Enter a nickname of at least 2 characters."],
+  ["Google 계정으로 계속하기", "Continue with Google"],
   ["훈련장으로 돌아가기", "Return to Training"],
   ["로그인하지 않음", "Not signed in"],
   ["계정 연결", "Connect account"],
   ["회원가입", "Register"],
   ["로그인", "Sign in"],
   ["로그아웃", "Sign out"],
-  ["아이디", "ID"],
+  ["닉네임", "Nickname"],
   ["Google 계정이 확인되었습니다.", "Google account verified."],
   ["회원가입 또는 로그인에 실패했습니다.", "Registration or sign-in failed."],
   ["회원가입되었습니다.", "Registration complete."],
   ["로그인되었습니다.", "Signed in."],
-  ["아이디 설정", "Set ID"],
+  ["닉네임 설정", "Set nickname"],
   ["Google 계정을 확인하고 있습니다.", "Checking your Google account."],
-  ["처음 로그인입니다. 사용할 아이디를 설정하세요.", "First sign-in. Choose an ID to use."],
+  ["처음 로그인입니다. 사용할 닉네임을 설정하세요.", "First sign-in. Choose a nickname to use."],
   ["Google 로그인에 실패했습니다.", "Google sign-in failed."],
-  ["아이디가 설정되었습니다.", "ID set."],
-  ["아이디 설정에 실패했습니다.", "Failed to set ID."],
+  ["닉네임이 설정되었습니다.", "Nickname set."],
+  ["닉네임 설정에 실패했습니다.", "Failed to set nickname."],
   ["계정", "Account"],
   ["시그널 연결", "Connect Signal"],
   ["시그널 끊기", "Disconnect Signal"],
@@ -465,7 +463,7 @@ const state = {
   spaceReceivedText: "",
   spaceReceivedMorse: "",
   userId: localStorage.getItem("morse-user-id") || createSignalId(),
-  serverUrl: localStorage.getItem("morse-server-url") || (location.protocol.startsWith("http") ? location.origin : "http://localhost:8787"),
+  serverUrl: location.protocol.startsWith("http") ? location.origin : "http://localhost:8787",
   serverConnected: false,
   eventSource: null,
   receivedDirectIds: new Set(JSON.parse(localStorage.getItem("morse-received-direct-ids") || "[]")),
@@ -586,7 +584,7 @@ function renderGoogleButton() {
       } catch (error) {
         if (error.body?.error === "nickname-required") {
           $("#authFields").hidden = false;
-          $("#authStatus").textContent = "처음 로그인입니다. 사용할 아이디를 설정하세요.";
+          $("#authStatus").textContent = "처음 로그인입니다. 사용할 닉네임을 설정하세요.";
           $("#authNickname").focus();
           return;
         }
@@ -1034,9 +1032,6 @@ function renderSettings() {
   document.querySelectorAll("[data-language]").forEach(button =>
     button.classList.toggle("active", button.dataset.language === state.language)
   );
-  $("#mySignalId").value = state.userId;
-  $("#serverUrl").value = state.serverUrl;
-  $("#serverConnectionStatus").textContent = state.serverConnected ? "서버에 연결되었습니다." : "연결 안 됨";
   $("#accountStatus").textContent = state.account ? `${state.account.nickname} · ${state.account.signalId}` : "로그인하지 않음";
   $("#openAuthSettings").hidden = Boolean(state.account);
   $("#logoutAccount").hidden = !state.account;
@@ -1859,24 +1854,17 @@ $("#closeAuthPanel").addEventListener("click", () => {
 $("#submitAuth").addEventListener("click", async () => {
   const nickname = $("#authNickname").value.trim();
   if (!state.googleCredential) return showToast("Google 계정을 먼저 선택하세요.");
-  if (nickname.length < 2) return showToast("아이디는 2자 이상 입력하세요.");
+  if (nickname.length < 2) return showToast("닉네임은 2자 이상 입력하세요.");
   try {
     const result = await api("/api/auth/google", {
       method: "POST",
       body: JSON.stringify({ credential: state.googleCredential, nickname })
     });
     setAccount(result.token, result.account);
-    showToast("아이디가 설정되었습니다.");
+    showToast("닉네임이 설정되었습니다.");
   } catch (error) {
-    showToast(error.body?.error || "아이디 설정에 실패했습니다.");
+    showToast(error.body?.error || "닉네임 설정에 실패했습니다.");
   }
-});
-$("#saveServerSettings").addEventListener("click", () => {
-  const value = $("#serverUrl").value.trim().replace(/\/+$/, "");
-  if (!value) return;
-  state.serverUrl = value;
-  localStorage.setItem("morse-server-url", value);
-  initializeAuth();
 });
 document.querySelectorAll("[data-chat-keyer-mode]").forEach(button => button.addEventListener("click", () => {
   state.chatKeyerMode = button.dataset.chatKeyerMode;
