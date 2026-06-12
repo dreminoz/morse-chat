@@ -1,0 +1,22 @@
+# Generated deliverables
+outputs/*.apk
+outputs/*.idsig
+outputs/*.zip
+
+# Android build output
+work/morse-pocket-android/.gradle/
+work/morse-pocket-android/manual-build-*/
+work/morse-pocket-android/**/build/
+work/morse-pocket-android/local.properties
+work/android-sdk/
+server/data.json
+work/server-test.*
+node_modules/
+.npm-cache/
+
+# Editor and operating system files
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.repo-git/

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: morse-chat
+    runtime: node
+    plan: free
+    buildCommand: echo "No build step"
+    startCommand: node server/server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: DATA_DIR
+        value: /data
