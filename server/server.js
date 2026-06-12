@@ -111,7 +111,10 @@ function serveFile(req, res) {
   }
   const ext = path.extname(filePath);
   const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml" };
-  res.writeHead(200, { "Content-Type": `${types[ext] || "application/octet-stream"}; charset=utf-8` });
+  res.writeHead(200, {
+    "Content-Type": `${types[ext] || "application/octet-stream"}; charset=utf-8`,
+    "Cache-Control": "no-cache, must-revalidate"
+  });
   fs.createReadStream(filePath).pipe(res);
 }
 
