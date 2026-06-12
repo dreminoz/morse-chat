@@ -467,7 +467,12 @@ const state = {
   authToken: localStorage.getItem("morse-auth-token") || "",
   account: JSON.parse(localStorage.getItem("morse-account") || "null"),
   googleCredential: "",
-  googleClientId: ""
+  googleClientId: "",
+  chatMessageHoldTimer: null,
+  chatMessageHoldIndex: -1,
+  chatMessageLongPressed: false,
+  chatMessageHoldX: 0,
+  chatMessageHoldY: 0
 };
 if (state.account?.signalId) state.userId = state.account.signalId;
 localStorage.setItem("morse-user-id", state.userId);
@@ -992,7 +997,6 @@ function renderChat() {
       const exhausted = hiddenSignalExhausted(message);
       return `
       <div class="chat-message-row">
-        <button type="button" class="chat-delete" data-delete-chat="${index}" aria-label="메시지 삭제">×</button>
         <button type="button" class="chat-bubble${hidden ? " hidden-signal" : ""}${exhausted ? " exhausted" : ""}${ascii ? " ascii-message" : ""}" data-chat-message="${index}" aria-label="${hidden ? (exhausted ? "만료된 숨김 모스 신호" : "숨김 모스 신호 재생") : (ascii ? "ASCII 아트 사진" : "문자 메시지")}">
           ${hidden ? "" : (ascii ? `<pre data-no-i18n>${escapeHtml(text)}</pre>` : `<span data-no-i18n>${escapeHtml(text)}</span>`)}
           ${hidden || ascii ? "" : `<small>${textToMorse(text).replaceAll(".", "·").replaceAll("-", "−")}</small>`}
@@ -1688,14 +1692,59 @@ $("#friendList").addEventListener("click", event => {
   if (card) openChat(state.friends[Number(card.dataset.friendIndex)]);
 });
 $("#closeChat").addEventListener("click", closeChat);
+
+function cancelChatMessageHold() {
+  clearTimeout(state.chatMessageHoldTimer);
+  state.chatMessageHoldTimer = null;
+  state.chatMessageHoldIndex = -1;
+}
+
+function deleteChatMessage(index) {
+  if (!state.activeFriend || index < 0 || index >= (state.chats[state.activeFriend]?.length || 0)) return;
+  const prompt = state.language === "en" ? "Delete this message?" : "이 메시지를 삭제할까요?";
+  if (!confirm(prompt)) return;
+  state.chats[state.activeFriend].splice(index, 1);
+  saveChats();
+  renderChat();
+  renderFriends();
+  showToast("메시지를 삭제했습니다.");
+}
+
+$("#chatMessages").addEventListener("pointerdown", event => {
+  const bubble = event.target.closest("[data-chat-message]");
+  if (!bubble || !state.activeFriend) return;
+  cancelChatMessageHold();
+  state.chatMessageLongPressed = false;
+  state.chatMessageHoldIndex = Number(bubble.dataset.chatMessage);
+  state.chatMessageHoldX = event.clientX;
+  state.chatMessageHoldY = event.clientY;
+  state.chatMessageHoldTimer = setTimeout(() => {
+    const index = state.chatMessageHoldIndex;
+    state.chatMessageLongPressed = true;
+    cancelChatMessageHold();
+    navigator.vibrate?.(35);
+    deleteChatMessage(index);
+  }, 650);
+});
+
+$("#chatMessages").addEventListener("pointermove", event => {
+  if (!state.chatMessageHoldTimer) return;
+  if (Math.hypot(event.clientX - state.chatMessageHoldX, event.clientY - state.chatMessageHoldY) > 12) {
+    cancelChatMessageHold();
+  }
+});
+
+["pointerup", "pointercancel", "pointerleave"].forEach(type =>
+  $("#chatMessages").addEventListener(type, cancelChatMessageHold)
+);
+
+$("#chatMessages").addEventListener("contextmenu", event => {
+  if (event.target.closest("[data-chat-message]")) event.preventDefault();
+});
+
 $("#chatMessages").addEventListener("click", event => {
-  const remove = event.target.closest("[data-delete-chat]");
-  if (remove && state.activeFriend) {
-    state.chats[state.activeFriend].splice(Number(remove.dataset.deleteChat), 1);
-    saveChats();
-    renderChat();
-    renderFriends();
-    showToast("메시지를 삭제했습니다.");
+  if (state.chatMessageLongPressed) {
+    state.chatMessageLongPressed = false;
     return;
   }
   const bubble = event.target.closest("[data-chat-message]");
