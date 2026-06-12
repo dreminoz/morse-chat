@@ -1,25 +1,34 @@
-# MORSE CHAT
+# MORSE CHAT Server
 
-MORSE CHAT is a mobile-first Morse code messenger and training app.
+Run:
 
-## Features
+```powershell
+$env:GOOGLE_CLIENT_ID="YOUR_WEB_CLIENT_ID.apps.googleusercontent.com"
+node server/server.js
+```
 
-- Save and play phrases as Morse vibration
-- Alphabet, Morse-order, sentence, repeat, and quiz training
-- Morse writing and A-Z reference
-- Friend conversations with text, hidden vibration signals, and ASCII-art photos
-- Korean and English interface
-- Real-time friend chat, Space signals, and random matching through the included Node.js server
-- Android WebView wrapper source
+Open `http://localhost:8787` on the computer. Other devices on the same network can use `http://COMPUTER_IP:8787`.
 
-## Run
+For internet use, deploy this folder and the project `outputs/morse-pocket` folder to a Node.js hosting provider with HTTPS. Set the app's server address in Settings.
 
-Set `GOOGLE_CLIENT_ID`, run `node server/server.js`, then open `http://localhost:8787`.
+The included server provides working IDs, messaging, matching, and persistence for a prototype. Before a public release, add account authentication, abuse reporting, moderation, rate limits, and a managed database.
 
-The Android wrapper source is in `work/morse-pocket-android`.
+## Google Sign-In setup
 
-Set the server address in the app Settings. Devices on the same Wi-Fi can use the computer's local IP address. Internet-wide use requires deploying the server with HTTPS.
+1. Create an OAuth 2.0 Web Client ID in Google Cloud Console.
+2. Add the deployed HTTPS domain and local development URL as authorized JavaScript origins.
+3. Set `GOOGLE_CLIENT_ID` on the server.
+4. Open MORSE CHAT through the server URL, not a `file://` URL.
 
-Google registration is required for Conversations, Space, and Random Signal. Training remains available without an account.
+Registration verifies the Google ID token on the server. Users must also create a unique nickname and an 8-character-or-longer password. Passwords are stored as `scrypt` hashes.
 
-For Railway deployment, mount a persistent volume at `/data` and set `DATA_DIR=/data`.
+## Railway persistent storage
+
+Attach a Railway volume mounted at `/data`, then set:
+
+```text
+DATA_DIR=/data
+GOOGLE_CLIENT_ID=YOUR_WEB_CLIENT_ID.apps.googleusercontent.com
+```
+
+The public Railway domain serves both the app and API, so the app automatically connects to the same server.
