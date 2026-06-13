@@ -18,8 +18,8 @@ Set `GOOGLE_CLIENT_ID`, run `node server/server.js`, then open `http://localhost
 
 The Android wrapper source is in `work/morse-pocket-android`.
 
-Set the server address in the app Settings. Devices on the same Wi-Fi can use the computer's local IP address. Internet-wide use requires deploying the server with HTTPS.
+Devices on the same Wi-Fi can use the computer's local IP address. Internet-wide use requires deploying the server with HTTPS.
 
 Google registration is required for Conversations, Space, and Random Signal. Training remains available without an account.
 
-For Railway deployment, mount a persistent volume at `/data` and set `DATA_DIR=/data`.
+For Railway deployment, add a MongoDB service and reference its `MONGO_URL` variable from the MORSE CHAT app service. MongoDB stores users, nicknames, profiles, direct-message history, login sessions, and Space signals.

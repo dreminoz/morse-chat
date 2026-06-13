@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { OAuth2Client } = require("google-auth-library");
+const { createStore } = require("./storage");
 
 const PORT = Number(process.env.PORT) || 8787;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
@@ -14,16 +15,7 @@ const clients = new Map();
 const randomQueue = [];
 const randomPairs = new Map();
 const lastPartners = new Map();
-
-let data = { direct: [], space: [], accounts: [], sessions: [] };
-try {
-  data = { ...data, ...JSON.parse(fs.readFileSync(DATA_FILE, "utf8")) };
-} catch {}
-
-function saveData() {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-}
+let store;
 
 async function verifyGoogleCredential(credential) {
   if (!GOOGLE_CLIENT_ID) throw new Error("google-client-id-not-configured");
@@ -33,19 +25,16 @@ async function verifyGoogleCredential(credential) {
   return payload;
 }
 
-function createSession(account) {
+async function createSession(account) {
   const token = crypto.randomBytes(32).toString("hex");
-  data.sessions = data.sessions.filter(item => item.googleSub !== account.googleSub);
-  data.sessions.push({ token, googleSub: account.googleSub, createdAt: Date.now() });
-  saveData();
+  await store.createSession({ token, googleSub: account.googleSub, createdAt: Date.now() });
   return token;
 }
 
-function sessionAccount(req, url) {
+async function sessionAccount(req, url) {
   const bearer = req.headers.authorization?.startsWith("Bearer ") ? req.headers.authorization.slice(7) : "";
   const token = bearer || url.searchParams.get("token") || "";
-  const session = data.sessions.find(item => item.token === token);
-  return session ? data.accounts.find(account => account.googleSub === session.googleSub) : null;
+  return token ? store.accountFromSession(token) : null;
 }
 
 function publicAccount(account) {
@@ -127,19 +116,26 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "OPTIONS") return json(res, 204, {});
   const url = new URL(req.url, "http://localhost");
 
-  if (req.method === "GET" && url.pathname === "/api/health") return json(res, 200, { ok: true, googleConfigured: Boolean(GOOGLE_CLIENT_ID), googleClientId: GOOGLE_CLIENT_ID });
+  if (req.method === "GET" && url.pathname === "/api/health") {
+    try {
+      const storage = await store.health();
+      return json(res, 200, { ok: true, googleConfigured: Boolean(GOOGLE_CLIENT_ID), googleClientId: GOOGLE_CLIENT_ID, storage });
+    } catch (error) {
+      return json(res, 503, { ok: false, error: "storage-unavailable" });
+    }
+  }
   if (req.method === "GET" && url.pathname === "/api/auth/config") return json(res, 200, { googleClientId: GOOGLE_CLIENT_ID });
   if (req.method === "POST" && url.pathname === "/api/auth/google") {
     try {
       const { credential, nickname } = await readBody(req);
       const google = await verifyGoogleCredential(credential);
-      const existing = data.accounts.find(account => account.googleSub === google.sub);
+      const existing = await store.findAccountByGoogleSub(google.sub);
       if (existing) {
-        const token = createSession(existing);
+        const token = await createSession(existing);
         return json(res, 200, { token, account: publicAccount(existing) });
       }
       if (!nickname?.trim() || nickname.trim().length < 2) return json(res, 409, { error: "nickname-required" });
-      if (data.accounts.some(account => account.nickname.toLowerCase() === nickname.trim().toLowerCase())) return json(res, 409, { error: "nickname-taken" });
+      if (await store.nicknameTaken(nickname.trim())) return json(res, 409, { error: "nickname-taken" });
       const account = {
         googleSub: google.sub,
         email: google.email,
@@ -147,30 +143,30 @@ const server = http.createServer(async (req, res) => {
         signalId: `SIGNAL-${crypto.randomBytes(4).toString("hex").toUpperCase()}`,
         createdAt: Date.now()
       };
-      data.accounts.push(account);
-      const token = createSession(account);
+      await store.insertAccount(account);
+      const token = await createSession(account);
       return json(res, 200, { token, account: publicAccount(account) });
     } catch (error) {
       return json(res, 401, { error: error.message || "google-verification-failed" });
     }
   }
   if (req.method === "GET" && url.pathname === "/api/auth/me") {
-    const account = sessionAccount(req, url);
+    const account = await sessionAccount(req, url);
     return account ? json(res, 200, { account: publicAccount(account) }) : json(res, 401, { error: "auth-required" });
   }
 
-  const account = sessionAccount(req, url);
+  const account = await sessionAccount(req, url);
   if (url.pathname.startsWith("/api/") && !account) return json(res, 401, { error: "auth-required" });
   if (req.method === "GET" && url.pathname === "/api/profile") {
     const signalId = url.searchParams.get("signalId") || account.signalId;
-    const profile = data.accounts.find(item => item.signalId === signalId);
+    const profile = await store.findAccountBySignalId(signalId);
     return profile ? json(res, 200, { profile: publicAccount(profile) }) : json(res, 404, { error: "profile-not-found" });
   }
   if (req.method === "PATCH" && url.pathname === "/api/profile/me") {
     const { nickname, description, profileAscii } = await readBody(req);
     const nextNickname = typeof nickname === "string" ? nickname.trim() : account.nickname;
     if (nextNickname.length < 2 || nextNickname.length > 24) return json(res, 400, { error: "invalid-nickname" });
-    if (data.accounts.some(item => item !== account && item.nickname.toLowerCase() === nextNickname.toLowerCase())) {
+    if (await store.nicknameTaken(nextNickname, account.googleSub)) {
       return json(res, 409, { error: "nickname-taken" });
     }
     if (typeof description === "string" && description.length > 240) return json(res, 400, { error: "description-too-long" });
@@ -178,7 +174,7 @@ const server = http.createServer(async (req, res) => {
     account.nickname = nextNickname;
     if (typeof description === "string") account.description = description.trim();
     if (typeof profileAscii === "string") account.profileAscii = profileAscii;
-    saveData();
+    await store.updateAccount(account);
     return json(res, 200, { account: publicAccount(account) });
   }
   if (req.method === "GET" && url.pathname === "/api/events") {
@@ -206,39 +202,33 @@ const server = http.createServer(async (req, res) => {
     const from = account.signalId;
     if (!to || !message) return json(res, 400, { error: "to and message required" });
     const item = { id: crypto.randomUUID(), from, to, message, createdAt: Date.now() };
-    data.direct.push(item);
-    data.direct = data.direct.slice(-2000);
-    saveData();
+    await store.addDirect(item);
     emit(to, "direct-message", item);
     return json(res, 200, item);
   }
   if (req.method === "GET" && url.pathname === "/api/direct/history") {
     const user = account.signalId;
     const friend = url.searchParams.get("friend");
-    const messages = data.direct.filter(item => (item.from === user && item.to === friend) || (item.from === friend && item.to === user)).slice(-200);
+    const messages = await store.directHistory(user, friend);
     return json(res, 200, { messages });
   }
   if (req.method === "GET" && url.pathname === "/api/direct/inbox") {
     const user = account.signalId;
-    return json(res, 200, { messages: data.direct.filter(item => item.to === user).slice(-500) });
+    return json(res, 200, { messages: await store.directInbox(user) });
   }
 
   if (req.method === "POST" && url.pathname === "/api/space/send") {
     const { text, day = localDay() } = await readBody(req);
     const sender = account.signalId;
     if (!text) return json(res, 400, { error: "text required" });
-    if (data.space.some(item => item.sender === sender && item.day === day)) return json(res, 409, { error: "daily-limit" });
     const signal = { id: crypto.randomUUID(), sender, text, day, createdAt: Date.now() };
-    data.space.push(signal);
-    data.space = data.space.slice(-5000);
-    saveData();
+    if (!await store.addSpace(signal)) return json(res, 409, { error: "daily-limit" });
     return json(res, 200, signal);
   }
   if (req.method === "GET" && url.pathname === "/api/space/random") {
     const exclude = account.signalId;
-    const choices = data.space.filter(item => item.sender !== exclude);
-    if (!choices.length) return json(res, 404, { error: "no-signals" });
-    return json(res, 200, choices[Math.floor(Math.random() * choices.length)]);
+    const signal = await store.randomSpace(exclude);
+    return signal ? json(res, 200, signal) : json(res, 404, { error: "no-signals" });
   }
 
   if (req.method === "POST" && url.pathname === "/api/random/join") {
@@ -285,6 +275,14 @@ const server = http.createServer(async (req, res) => {
   serveFile(req, res);
 });
 
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`MORSE CHAT server running at http://0.0.0.0:${PORT}`);
+async function start() {
+  store = await createStore({ dataFile: DATA_FILE });
+  server.listen(PORT, "0.0.0.0", () => {
+    console.log(`MORSE CHAT server running at http://0.0.0.0:${PORT}`);
+  });
+}
+
+start().catch(error => {
+  console.error("Failed to start MORSE CHAT server:", error);
+  process.exitCode = 1;
 });
