@@ -55,10 +55,8 @@
           <button type="submit" aria-label="친구 추가">+</button>
         </form>
         <section id="friendRequestSection" class="friend-request-section">
-          <p class="label">받은 친구 요청</p>
-          <div id="friendRequests" class="friend-requests"></div>
-          <p class="label">보낸 친구 요청</p>
-          <div id="sentFriendRequests" class="friend-requests"></div>
+          <button id="openReceivedRequests" type="button"><span>받은 요청</span><strong id="receivedRequestCount">0</strong></button>
+          <button id="openSentRequests" type="button"><span>보낸 요청</span><strong id="sentRequestCount">0</strong></button>
         </section>
         <div id="friendList" class="friend-list"></div>
       </div>
@@ -431,6 +429,16 @@
       <p id="friendProfileDescription" class="profile-description"></p>
       <button id="chatFromProfile" class="primary-button" type="button">대화하기</button>
       <button id="removeFriend" class="danger-button" type="button">친구 끊기</button>
+    </section>
+  </div>
+
+  <div id="friendRequestPanel" class="profile-overlay" hidden>
+    <section class="request-panel-card">
+      <button id="closeFriendRequests" class="profile-close" type="button" aria-label="친구 요청 닫기">×</button>
+      <p class="eyebrow">MORSE CHAT</p>
+      <h2 id="friendRequestPanelTitle">받은 요청</h2>
+      <div id="friendRequests" class="friend-requests"></div>
+      <div id="sentFriendRequests" class="friend-requests" hidden></div>
     </section>
   </div>
 

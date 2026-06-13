@@ -1293,7 +1293,18 @@ function renderFriendRequests() {
       <span class="friend-request-status">${state.language === "en" ? "Waiting" : "수락 대기 중"}</span>
     </article>
   `).join("");
-  $("#friendRequestSection").hidden = !state.friendRequests.length && !state.sentFriendRequests.length;
+  $("#receivedRequestCount").textContent = state.friendRequests.length;
+  $("#sentRequestCount").textContent = state.sentFriendRequests.length;
+}
+
+function openFriendRequestPanel(type) {
+  const received = type === "received";
+  $("#friendRequestPanelTitle").textContent = received
+    ? (state.language === "en" ? "Received requests" : "받은 요청")
+    : (state.language === "en" ? "Sent requests" : "보낸 요청");
+  $("#friendRequests").hidden = !received;
+  $("#sentFriendRequests").hidden = received;
+  $("#friendRequestPanel").hidden = false;
 }
 
 function loadFriendRequests() {
@@ -1776,6 +1787,10 @@ function armBackExit() {
 function closeOpenOverlay() {
   if (!$("#settingsPanel").hidden) {
     $("#settingsPanel").hidden = true;
+    return true;
+  }
+  if (!$("#friendRequestPanel").hidden) {
+    $("#friendRequestPanel").hidden = true;
     return true;
   }
   if (!$("#friendProfilePanel").hidden) {
@@ -2354,6 +2369,9 @@ $("#friendRequests").addEventListener("click", async event => {
     showApiFailure(error, state.language === "en" ? "Failed to respond." : "친구 요청 처리에 실패했습니다.");
   }
 });
+$("#openReceivedRequests").addEventListener("click", () => openFriendRequestPanel("received"));
+$("#openSentRequests").addEventListener("click", () => openFriendRequestPanel("sent"));
+$("#closeFriendRequests").addEventListener("click", () => $("#friendRequestPanel").hidden = true);
 $("#friendList").addEventListener("click", event => {
   const profile = event.target.closest("[data-profile-friend]");
   if (profile) return openFriendProfile(profile.dataset.profileFriend);
