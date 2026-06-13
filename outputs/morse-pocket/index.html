@@ -52,11 +52,6 @@
 
     <section id="friendsWorld" class="world-view" hidden>
       <div id="conversationList">
-        <div class="friends-hero">
-          <p class="eyebrow">MORSE CHAT</p>
-          <h2>대화</h2>
-          <p>친구를 눌러 모스 메시지를 보내보세요.</p>
-        </div>
         <form id="friendForm" class="composer friend-composer">
           <input id="friendInput" maxlength="24" placeholder="친구 닉네임" autocomplete="off">
           <button type="submit" aria-label="친구 추가">+</button>
@@ -64,7 +59,11 @@
         <section id="friendRequestSection" class="friend-request-section">
           <button id="openReceivedRequests" type="button"><span>받은 요청</span><strong id="receivedRequestCount">0</strong></button>
           <button id="openSentRequests" type="button"><span>보낸 요청</span><strong id="sentRequestCount">0</strong></button>
+          <button id="openCreateGroup" type="button"><span>그룹챗 만들기</span><strong>+</strong></button>
         </section>
+        <p class="label">그룹챗</p>
+        <div id="groupList" class="friend-list group-list"></div>
+        <p class="label friend-list-label">친구</p>
         <div id="friendList" class="friend-list"></div>
       </div>
       <section id="chatRoom" class="chat-room" hidden>
@@ -111,6 +110,20 @@
           </div>
           <input id="chatPhotoInput" class="visually-hidden" type="file" accept="image/*">
         </div>
+      </section>
+      <section id="groupRoom" class="chat-room group-room" hidden>
+        <header class="chat-header">
+          <button id="closeGroupChat" type="button" aria-label="그룹 목록으로 돌아가기">‹</button>
+          <button id="openGroupManage" class="chat-profile-info" type="button">
+            <strong id="groupRoomName"></strong>
+            <small id="groupRoomMembers"></small>
+          </button>
+        </header>
+        <div id="groupMessages" class="chat-messages"></div>
+        <form id="groupMessageForm" class="group-message-form">
+          <textarea id="groupMessageInput" maxlength="1000" placeholder="그룹 메시지를 입력하세요"></textarea>
+          <button type="submit">보내기</button>
+        </form>
       </section>
     </section>
 
@@ -425,12 +438,17 @@
       </section>
     </section>
 
-    <section id="dailyGroupWorld" class="world-view placeholder-world" hidden>
-      <section class="placeholder-card">
+    <section id="dailyGroupWorld" class="world-view daily-group-world" hidden>
+      <header class="daily-group-header">
         <p class="eyebrow">MORSE CHAT DAILY</p>
         <h2>데일리 그룹챗</h2>
-        <p>준비 중입니다.</p>
-      </section>
+        <p id="dailyGroupStatus">오늘의 익명 그룹을 불러오는 중입니다.</p>
+      </header>
+      <div id="dailyGroupMessages" class="chat-messages daily-group-messages"></div>
+      <form id="dailyGroupForm" class="group-message-form">
+        <textarea id="dailyGroupInput" maxlength="1000" placeholder="익명 메시지를 입력하세요"></textarea>
+        <button type="submit">보내기</button>
+      </form>
     </section>
 
     <section id="gamesWorld" class="world-view placeholder-world" hidden>
@@ -470,6 +488,30 @@
       <h2 id="friendRequestPanelTitle">받은 요청</h2>
       <div id="friendRequests" class="friend-requests"></div>
       <div id="sentFriendRequests" class="friend-requests" hidden></div>
+    </section>
+  </div>
+
+  <div id="createGroupPanel" class="profile-overlay" hidden>
+    <section class="request-panel-card">
+      <button id="closeCreateGroup" class="profile-close" type="button">×</button>
+      <p class="eyebrow">NEW GROUP CHAT</p>
+      <h2>그룹챗 만들기</h2>
+      <form id="createGroupForm" class="group-create-form">
+        <input id="groupNameInput" maxlength="40" placeholder="그룹 이름">
+        <div id="groupFriendChoices" class="group-friend-choices"></div>
+        <button type="submit">선택한 친구와 만들기</button>
+      </form>
+    </section>
+  </div>
+
+  <div id="groupManagePanel" class="profile-overlay" hidden>
+    <section class="request-panel-card">
+      <button id="closeGroupManage" class="profile-close" type="button">×</button>
+      <p class="eyebrow">GROUP CHAT</p>
+      <h2 id="groupManageName">그룹챗</h2>
+      <p id="groupManageMembers" class="profile-description"></p>
+      <div id="groupAddFriendChoices" class="group-friend-choices"></div>
+      <button id="leaveGroup" class="danger-button" type="button">그룹챗 나가기</button>
     </section>
   </div>
 

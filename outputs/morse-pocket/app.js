@@ -437,6 +437,11 @@ const state = {
   friendRequests: [],
   sentFriendRequests: [],
   chats: JSON.parse(localStorage.getItem("morse-chats") || "{}"),
+  groups: [],
+  activeGroup: null,
+  groupMessages: [],
+  dailyGroup: null,
+  dailyGroupMessages: [],
   activeFriend: null,
   chatSignal: "",
   chatMorseText: "",
@@ -622,6 +627,21 @@ function connectServer() {
     renderSettings();
   };
   stream.addEventListener("direct-message", event => receiveDirectMessage(JSON.parse(event.data)));
+  stream.addEventListener("group-message", event => {
+    const message = JSON.parse(event.data);
+    if (state.activeGroup?.id === message.groupId && !state.groupMessages.some(item => item.id === message.id)) {
+      state.groupMessages.push(message);
+      renderGroupMessages();
+    }
+    if (state.dailyGroup?.id === message.groupId && !state.dailyGroupMessages.some(item => item.id === message.id)) {
+      state.dailyGroupMessages.push(message);
+      renderDailyGroup();
+    }
+  });
+  stream.addEventListener("group-updated", () => {
+    loadGroups();
+    if (state.activeGroup) loadGroupHistory(state.activeGroup.id);
+  });
   stream.addEventListener("friend-request", event => {
     const request = JSON.parse(event.data);
     if (!state.friendRequests.some(item => item.id === request.id)) state.friendRequests.unshift(request);
@@ -1284,6 +1304,123 @@ function renderFriends() {
     : '<article class="record-item"><strong>아직 친구가 없습니다.</strong><span>이름을 입력해 친구를 추가하세요.</span></article>';
 }
 
+function renderGroups() {
+  $("#groupList").innerHTML = state.groups.length
+    ? state.groups.map(group => `
+      <button type="button" class="friend-card" data-open-group="${escapeHtml(group.id)}">
+        <span class="friend-avatar">#</span>
+        <span class="friend-info">
+          <strong data-no-i18n>${escapeHtml(group.name)}</strong>
+          <small>${group.members.length}명 참여 중</small>
+        </span>
+      </button>
+    `).join("")
+    : '<article class="record-item"><strong>아직 그룹챗이 없습니다.</strong><span>그룹챗 만들기로 친구들과 시작하세요.</span></article>';
+}
+
+function loadGroups() {
+  if (!state.authToken) return;
+  api("/api/groups").then(({ groups }) => {
+    state.groups = groups;
+    renderGroups();
+  }).catch(() => {});
+}
+
+function groupMemberName(group, signalId, fallback = "") {
+  return group?.members?.find(member => member.signalId === signalId)?.nickname || fallback || signalId;
+}
+
+function renderGroupMessageList(target, messages, group) {
+  target.innerHTML = messages.length ? messages.map(message => {
+    const mine = message.mine || message.from === state.userId;
+    return `<div class="chat-message-row${mine ? " mine" : ""}">
+      <div class="chat-bubble">
+        <small class="group-message-author" data-no-i18n>${escapeHtml(groupMemberName(group, message.from, message.fromNickname))}</small>
+        <span data-no-i18n>${escapeHtml(message.text)}</span>
+      </div>
+    </div>`;
+  }).join("") : '<p class="chat-empty">아직 메시지가 없습니다.</p>';
+  target.scrollTop = target.scrollHeight;
+}
+
+function renderGroupMessages() {
+  if (!state.activeGroup) return;
+  $("#groupRoomName").textContent = state.activeGroup.name;
+  $("#groupRoomMembers").textContent = `${state.activeGroup.members.length}명 참여 중`;
+  renderGroupMessageList($("#groupMessages"), state.groupMessages, state.activeGroup);
+}
+
+function loadGroupHistory(groupId) {
+  api(`/api/groups/history?groupId=${encodeURIComponent(groupId)}`).then(({ group, messages }) => {
+    state.activeGroup = group;
+    state.groupMessages = messages;
+    renderGroupMessages();
+  }).catch(() => closeGroupChat());
+}
+
+function openGroupChat(groupId) {
+  const group = state.groups.find(item => item.id === groupId);
+  if (!group) return;
+  state.activeGroup = group;
+  state.groupMessages = [];
+  document.body.classList.add("chat-open");
+  $("#conversationList").hidden = true;
+  $("#chatRoom").hidden = true;
+  $("#groupRoom").hidden = false;
+  renderGroupMessages();
+  loadGroupHistory(groupId);
+}
+
+function closeGroupChat() {
+  document.body.classList.remove("chat-open");
+  state.activeGroup = null;
+  state.groupMessages = [];
+  $("#groupRoom").hidden = true;
+  $("#conversationList").hidden = false;
+  loadGroups();
+}
+
+function renderGroupFriendChoices(target, addMode = false) {
+  const current = new Set(state.activeGroup?.members?.map(member => member.signalId) || []);
+  const choices = state.friends.filter(friend => !addMode || !current.has(friend));
+  target.innerHTML = choices.length ? choices.map(friend => {
+    const nickname = state.profileCache[friend]?.nickname || friend;
+    return `<label class="group-friend-choice">
+      ${addMode ? "" : `<input type="checkbox" value="${escapeHtml(friend)}">`}
+      <strong data-no-i18n>${escapeHtml(nickname)}</strong>
+      ${addMode ? `<button type="button" data-add-group-friend="${escapeHtml(friend)}">추가</button>` : ""}
+    </label>`;
+  }).join("") : '<p class="autocomplete-note">추가할 수 있는 친구가 없습니다.</p>';
+}
+
+function renderDailyGroup() {
+  if (!state.dailyGroup) return;
+  $("#dailyGroupStatus").textContent = `오늘의 익명 그룹 · ${state.dailyGroup.members.length}/10명`;
+  renderGroupMessageList($("#dailyGroupMessages"), state.dailyGroupMessages, state.dailyGroup);
+}
+
+function loadDailyGroup() {
+  if (!state.authToken) return;
+  api("/api/daily-group").then(({ group, messages }) => {
+    state.dailyGroup = group;
+    state.dailyGroupMessages = messages;
+    renderDailyGroup();
+  }).catch(error => showApiFailure(error));
+}
+
+function sendGroupMessage(group, text, daily = false) {
+  const cleanText = text.trim();
+  if (!group || !cleanText) return;
+  api("/api/groups/send", {
+    method: "POST",
+    body: JSON.stringify({ groupId: group.id, text: cleanText })
+  }).then(message => {
+    const list = daily ? state.dailyGroupMessages : state.groupMessages;
+    if (!list.some(item => item.id === message.id)) list.push(message);
+    daily ? renderDailyGroup() : renderGroupMessages();
+  }).catch(error => showApiFailure(error));
+}
+
 function renderFriendRequests() {
   $("#friendRequests").innerHTML = state.friendRequests.map(request => `
     <article class="friend-request">
@@ -1786,7 +1923,9 @@ function switchWorld(world) {
   if (world === "friends") {
     loadFriends();
     loadFriendRequests();
+    loadGroups();
   }
+  if (world === "dailyGroup") loadDailyGroup();
   if (world === "profile") renderMyProfile();
 }
 
@@ -1806,6 +1945,14 @@ function closeOpenOverlay() {
   }
   if (!$("#friendRequestPanel").hidden) {
     $("#friendRequestPanel").hidden = true;
+    return true;
+  }
+  if (!$("#createGroupPanel").hidden) {
+    $("#createGroupPanel").hidden = true;
+    return true;
+  }
+  if (!$("#groupManagePanel").hidden) {
+    $("#groupManagePanel").hidden = true;
     return true;
   }
   if (!$("#friendProfilePanel").hidden) {
@@ -1828,6 +1975,16 @@ function installBackNavigation() {
   history.pushState({ morseChatGuard: true }, "");
   window.addEventListener("popstate", () => {
     if (closeOpenOverlay()) {
+      history.pushState({ morseChatGuard: true }, "");
+      return;
+    }
+    if (state.activeGroup) {
+      closeGroupChat();
+      history.pushState({ morseChatGuard: true }, "");
+      return;
+    }
+    if (state.activeFriend) {
+      closeChat();
       history.pushState({ morseChatGuard: true }, "");
       return;
     }
@@ -2406,6 +2563,69 @@ $("#friendList").addEventListener("click", event => {
   const card = event.target.closest("[data-friend-index]");
   if (conversation) openChat(state.friends[Number(conversation.dataset.openFriend)]);
   else if (card) openChat(state.friends[Number(card.dataset.friendIndex)]);
+});
+$("#groupList").addEventListener("click", event => {
+  const button = event.target.closest("[data-open-group]");
+  if (button) openGroupChat(button.dataset.openGroup);
+});
+$("#openCreateGroup").addEventListener("click", () => {
+  $("#groupNameInput").value = "";
+  renderGroupFriendChoices($("#groupFriendChoices"));
+  $("#createGroupPanel").hidden = false;
+});
+$("#closeCreateGroup").addEventListener("click", () => $("#createGroupPanel").hidden = true);
+$("#createGroupForm").addEventListener("submit", event => {
+  event.preventDefault();
+  const name = $("#groupNameInput").value.trim();
+  const members = [...$("#groupFriendChoices").querySelectorAll("input:checked")].map(input => input.value);
+  if (!name) return showToast("그룹 이름을 입력하세요.");
+  api("/api/groups/create", { method: "POST", body: JSON.stringify({ name, members }) }).then(({ group }) => {
+    $("#createGroupPanel").hidden = true;
+    state.groups.unshift(group);
+    renderGroups();
+    openGroupChat(group.id);
+  }).catch(error => showApiFailure(error, "그룹챗을 만들지 못했습니다."));
+});
+$("#closeGroupChat").addEventListener("click", closeGroupChat);
+$("#groupMessageForm").addEventListener("submit", event => {
+  event.preventDefault();
+  const input = $("#groupMessageInput");
+  sendGroupMessage(state.activeGroup, input.value);
+  input.value = "";
+});
+$("#openGroupManage").addEventListener("click", () => {
+  if (!state.activeGroup) return;
+  $("#groupManageName").textContent = state.activeGroup.name;
+  $("#groupManageMembers").textContent = state.activeGroup.members.map(member => member.nickname).join(", ");
+  renderGroupFriendChoices($("#groupAddFriendChoices"), true);
+  $("#groupManagePanel").hidden = false;
+});
+$("#closeGroupManage").addEventListener("click", () => $("#groupManagePanel").hidden = true);
+$("#groupAddFriendChoices").addEventListener("click", event => {
+  const button = event.target.closest("[data-add-group-friend]");
+  if (!button || !state.activeGroup) return;
+  api("/api/groups/add", {
+    method: "POST",
+    body: JSON.stringify({ groupId: state.activeGroup.id, friend: button.dataset.addGroupFriend })
+  }).then(({ group }) => {
+    state.activeGroup = group;
+    $("#groupManagePanel").hidden = true;
+    renderGroupMessages();
+    loadGroups();
+  }).catch(error => showApiFailure(error, "친구를 그룹에 추가하지 못했습니다."));
+});
+$("#leaveGroup").addEventListener("click", () => {
+  if (!state.activeGroup || !confirm("이 그룹챗에서 나갈까요?")) return;
+  api("/api/groups/leave", { method: "POST", body: JSON.stringify({ groupId: state.activeGroup.id }) }).then(() => {
+    $("#groupManagePanel").hidden = true;
+    closeGroupChat();
+  }).catch(error => showApiFailure(error, "그룹챗에서 나가지 못했습니다."));
+});
+$("#dailyGroupForm").addEventListener("submit", event => {
+  event.preventDefault();
+  const input = $("#dailyGroupInput");
+  sendGroupMessage(state.dailyGroup, input.value, true);
+  input.value = "";
 });
 $("#closeChat").addEventListener("click", closeChat);
 $("#openChatProfile").addEventListener("click", () => state.activeFriend && openFriendProfile(state.activeFriend));
@@ -3316,6 +3536,7 @@ renderAutoSettings();
 renderSpeed();
 renderPhrases();
 renderFriends();
+renderGroups();
 renderFriendRequests();
 nextTrainingItem(false);
 renderQuiz();

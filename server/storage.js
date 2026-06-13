@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { MongoClient } = require("mongodb");
 
-const emptyData = () => ({ direct: [], space: [], spaceReports: [], friendRequests: [], friendships: [], secretLogs: [], accounts: [], sessions: [] });
+const emptyData = () => ({ direct: [], groupChats: [], groupMessages: [], space: [], spaceReports: [], friendRequests: [], friendships: [], secretLogs: [], accounts: [], sessions: [] });
 
 class FileStore {
   constructor(filePath) {
@@ -81,6 +81,44 @@ class FileStore {
     return this.data.direct.filter(item => (item.from === user && item.to === friend) || (item.from === friend && item.to === user)).slice(-200);
   }
   async directInbox(user) { return this.data.direct.filter(item => item.to === user).slice(-500); }
+  async createGroup(group) { this.data.groupChats.push(group); this.save(); return group; }
+  async groupById(id) { return this.data.groupChats.find(item => item.id === id) || null; }
+  async groupsForUser(user) { return this.data.groupChats.filter(item => item.members.includes(user)); }
+  async ensureDailyGroup(user, day, createId) {
+    const existing = this.data.groupChats.find(item => item.type === "daily" && item.day === day && item.members.includes(user));
+    if (existing) return existing;
+    if (!this.data.groupChats.some(item => item.type === "daily" && item.day === day)) {
+      const users = this.data.accounts.map(item => item.signalId).sort(() => Math.random() - .5);
+      for (let index = 0; index < users.length; index += 10) {
+        this.data.groupChats.push({
+          id: `${createId}-${index / 10}`, type: "daily", name: day, day,
+          members: users.slice(index, index + 10), createdAt: Date.now()
+        });
+      }
+      this.save();
+      return this.data.groupChats.find(item => item.type === "daily" && item.day === day && item.members.includes(user));
+    }
+    const available = this.data.groupChats.filter(item => item.type === "daily" && item.day === day && item.members.length < 10);
+    const group = available.length ? available[Math.floor(Math.random() * available.length)] : {
+      id: createId, type: "daily", name: day, day, members: [], createdAt: Date.now()
+    };
+    if (!this.data.groupChats.includes(group)) this.data.groupChats.push(group);
+    group.members.push(user); this.save(); return group;
+  }
+  async addGroupMember(id, user) {
+    const group = await this.groupById(id);
+    if (!group || group.members.includes(user)) return group;
+    group.members.push(user); this.save(); return group;
+  }
+  async removeGroupMember(id, user) {
+    const group = await this.groupById(id);
+    if (!group) return null;
+    group.members = group.members.filter(item => item !== user);
+    if (!group.members.length) this.data.groupChats = this.data.groupChats.filter(item => item.id !== id);
+    this.save(); return group;
+  }
+  async addGroupMessage(item) { this.data.groupMessages.push(item); this.data.groupMessages = this.data.groupMessages.slice(-10000); this.save(); }
+  async groupHistory(id) { return this.data.groupMessages.filter(item => item.groupId === id).slice(-300); }
   async addSecretLog(item) {
     this.data.secretLogs.push(item);
     this.data.secretLogs = this.data.secretLogs.slice(-10000);
@@ -129,6 +167,8 @@ class MongoStore {
     this.accounts = this.db.collection("accounts");
     this.sessions = this.db.collection("sessions");
     this.direct = this.db.collection("direct_messages");
+    this.groupChats = this.db.collection("group_chats");
+    this.groupMessages = this.db.collection("group_messages");
     this.friendRequests = this.db.collection("friend_requests");
     this.friendships = this.db.collection("friendships");
     this.spaceReports = this.db.collection("space_reports");
@@ -142,6 +182,9 @@ class MongoStore {
       this.sessions.createIndex({ googleSub: 1 }, { unique: true }),
       this.direct.createIndex({ from: 1, to: 1, createdAt: -1 }),
       this.direct.createIndex({ to: 1, createdAt: -1 }),
+      this.groupChats.createIndex({ members: 1, createdAt: -1 }),
+      this.groupChats.createIndex({ type: 1, day: 1, memberCount: 1 }),
+      this.groupMessages.createIndex({ groupId: 1, createdAt: 1 }),
       this.friendRequests.createIndex({ to: 1, status: 1, createdAt: -1 }),
       this.friendRequests.createIndex({ from: 1, to: 1, status: 1 }),
       this.friendships.createIndex({ members: 1 }),
@@ -169,6 +212,8 @@ class MongoStore {
     if (accounts.length) await this.accounts.insertMany(accounts, { ordered: false }).catch(() => {});
     if (legacy.sessions.length) await this.sessions.insertMany(legacy.sessions, { ordered: false }).catch(() => {});
     if (legacy.direct.length) await this.direct.insertMany(legacy.direct, { ordered: false }).catch(() => {});
+    if (legacy.groupChats.length) await this.groupChats.insertMany(legacy.groupChats.map(item => ({ ...item, memberCount: item.members.length })), { ordered: false }).catch(() => {});
+    if (legacy.groupMessages.length) await this.groupMessages.insertMany(legacy.groupMessages, { ordered: false }).catch(() => {});
     if (legacy.friendRequests.length) await this.friendRequests.insertMany(legacy.friendRequests, { ordered: false }).catch(() => {});
     if (legacy.friendships.length) await this.friendships.insertMany(legacy.friendships, { ordered: false }).catch(() => {});
     if (legacy.spaceReports.length) await this.spaceReports.insertMany(legacy.spaceReports, { ordered: false }).catch(() => {});
@@ -255,6 +300,48 @@ class MongoStore {
   }
   async directInbox(user) {
     return this.direct.find({ to: user }, { projection: { _id: 0 } }).sort({ createdAt: -1 }).limit(500).toArray().then(items => items.reverse());
+  }
+  async createGroup(group) { await this.groupChats.insertOne({ ...group, memberCount: group.members.length }); return group; }
+  async groupById(id) { return this.clean(await this.groupChats.findOne({ id })); }
+  async groupsForUser(user) {
+    return this.groupChats.find({ members: user }, { projection: { _id: 0, memberCount: 0 } }).sort({ createdAt: -1 }).toArray();
+  }
+  async ensureDailyGroup(user, day, createId) {
+    const existing = await this.groupChats.findOne({ type: "daily", day, members: user }, { projection: { _id: 0, memberCount: 0 } });
+    if (existing) return existing;
+    if (!await this.groupChats.findOne({ type: "daily", day }, { projection: { _id: 1 } })) {
+      const users = await this.accounts.aggregate([{ $sample: { size: 100000 } }, { $project: { signalId: 1 } }]).toArray();
+      const groups = [];
+      for (let index = 0; index < users.length; index += 10) {
+        const members = users.slice(index, index + 10).map(item => item.signalId);
+        groups.push({ id: `${createId}-${index / 10}`, type: "daily", name: day, day, members, memberCount: members.length, createdAt: Date.now() });
+      }
+      if (groups.length) await this.groupChats.insertMany(groups, { ordered: false }).catch(() => {});
+      const assigned = await this.groupChats.findOne({ type: "daily", day, members: user }, { projection: { _id: 0, memberCount: 0 } });
+      if (assigned) return assigned;
+    }
+    const [available] = await this.groupChats.aggregate([
+      { $match: { type: "daily", day, memberCount: { $lt: 10 } } },
+      { $sample: { size: 1 } }
+    ]).toArray();
+    if (!available) return this.createGroup({ id: createId, type: "daily", name: day, day, members: [user], createdAt: Date.now() });
+    const result = await this.groupChats.updateOne({ id: available.id, memberCount: { $lt: 10 }, members: { $ne: user } }, { $addToSet: { members: user }, $inc: { memberCount: 1 } });
+    if (!result.modifiedCount) return this.ensureDailyGroup(user, day, createId);
+    return this.groupById(available.id);
+  }
+  async addGroupMember(id, user) {
+    await this.groupChats.updateOne({ id, members: { $ne: user } }, { $addToSet: { members: user }, $inc: { memberCount: 1 } });
+    return this.groupById(id);
+  }
+  async removeGroupMember(id, user) {
+    await this.groupChats.updateOne({ id, members: user }, { $pull: { members: user }, $inc: { memberCount: -1 } });
+    const group = await this.groupById(id);
+    if (group && !group.members.length) await this.groupChats.deleteOne({ id });
+    return group;
+  }
+  async addGroupMessage(item) { await this.groupMessages.insertOne(item); }
+  async groupHistory(id) {
+    return this.groupMessages.find({ groupId: id }, { projection: { _id: 0 } }).sort({ createdAt: -1 }).limit(300).toArray().then(items => items.reverse());
   }
   async addSecretLog(item) { await this.secretLogs.insertOne(item); }
   async secretHistory(user, friend) {

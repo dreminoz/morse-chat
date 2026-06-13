@@ -120,6 +120,34 @@ function emit(userId, type, payload = {}) {
   streams.forEach(stream => stream.write(message));
 }
 
+async function publicGroup(group, viewer) {
+  const members = group.type === "daily"
+    ? group.members.map((signalId, index) => ({ signalId: `ANON-${index + 1}`, nickname: signalId === viewer ? "나" : `익명 ${index + 1}` }))
+    : await Promise.all(group.members.map(async signalId => {
+      const member = await store.findAccountBySignalId(signalId);
+      return { signalId, nickname: member?.nickname || signalId };
+    }));
+  return { ...group, members };
+}
+
+function publicGroupMessage(group, item, viewer) {
+  if (group.type !== "daily") return { ...item, mine: item.from === viewer };
+  const index = group.members.indexOf(item.from);
+  return {
+    id: item.id,
+    groupId: item.groupId,
+    from: `ANON-${index + 1}`,
+    fromNickname: item.from === viewer ? "나" : `익명 ${index + 1}`,
+    mine: item.from === viewer,
+    text: item.text,
+    createdAt: item.createdAt
+  };
+}
+
+async function emitGroup(group, type, payload) {
+  group?.members?.forEach(member => emit(member, type, payload));
+}
+
 function pairUsers(a, b) {
   lastPartners.delete(a);
   lastPartners.delete(b);
@@ -151,7 +179,9 @@ async function readBody(req) {
 }
 
 function localDay() {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit"
+  }).format(new Date());
 }
 
 function serveFile(req, res) {
@@ -318,6 +348,66 @@ const server = http.createServer(async (req, res) => {
     await store.addDirect(item);
     emit(to, "direct-message", item);
     return json(res, 200, item);
+  }
+  if (req.method === "GET" && url.pathname === "/api/groups") {
+    const groups = await store.groupsForUser(account.signalId);
+    return json(res, 200, { groups: await Promise.all(groups.filter(group => group.type === "custom").map(group => publicGroup(group, account.signalId))) });
+  }
+  if (req.method === "POST" && url.pathname === "/api/groups/create") {
+    const { name, members = [] } = await readBody(req);
+    const cleanName = String(name || "").trim().slice(0, 40);
+    if (!cleanName) return json(res, 400, { error: "name-required" });
+    const selected = [...new Set(members)].filter(member => member !== account.signalId);
+    for (const member of selected) if (!await store.areFriends(account.signalId, member)) return json(res, 403, { error: "friends-only" });
+    const group = await store.createGroup({
+      id: crypto.randomUUID(), type: "custom", name: cleanName, owner: account.signalId,
+      members: [account.signalId, ...selected], createdAt: Date.now()
+    });
+    await emitGroup(group, "group-updated", { groupId: group.id });
+    return json(res, 200, { group: await publicGroup(group, account.signalId) });
+  }
+  if (req.method === "POST" && url.pathname === "/api/groups/add") {
+    const { groupId, friend } = await readBody(req);
+    const group = await store.groupById(groupId);
+    if (!group || group.type !== "custom" || !group.members.includes(account.signalId)) return json(res, 404, { error: "group-not-found" });
+    if (!await store.areFriends(account.signalId, friend)) return json(res, 403, { error: "friends-only" });
+    const updated = await store.addGroupMember(groupId, friend);
+    await emitGroup(updated, "group-updated", { groupId });
+    return json(res, 200, { group: await publicGroup(updated, account.signalId) });
+  }
+  if (req.method === "POST" && url.pathname === "/api/groups/leave") {
+    const { groupId } = await readBody(req);
+    const group = await store.groupById(groupId);
+    if (!group || group.type !== "custom" || !group.members.includes(account.signalId)) return json(res, 404, { error: "group-not-found" });
+    const updated = await store.removeGroupMember(groupId, account.signalId);
+    await emitGroup(updated, "group-updated", { groupId });
+    return json(res, 200, { ok: true });
+  }
+  if (req.method === "GET" && url.pathname === "/api/groups/history") {
+    const group = await store.groupById(url.searchParams.get("groupId"));
+    if (!group || !group.members.includes(account.signalId)) return json(res, 404, { error: "group-not-found" });
+    return json(res, 200, {
+      group: await publicGroup(group, account.signalId),
+      messages: (await store.groupHistory(group.id)).map(item => publicGroupMessage(group, item, account.signalId))
+    });
+  }
+  if (req.method === "POST" && url.pathname === "/api/groups/send") {
+    const { groupId, text } = await readBody(req);
+    const group = await store.groupById(groupId);
+    const cleanText = String(text || "").trim().slice(0, 1000);
+    if (!group || !group.members.includes(account.signalId)) return json(res, 404, { error: "group-not-found" });
+    if (!cleanText) return json(res, 400, { error: "text-required" });
+    const item = { id: crypto.randomUUID(), groupId, from: account.signalId, fromNickname: account.nickname, text: cleanText, createdAt: Date.now() };
+    await store.addGroupMessage(item);
+    group.members.forEach(member => emit(member, "group-message", publicGroupMessage(group, item, member)));
+    return json(res, 200, publicGroupMessage(group, item, account.signalId));
+  }
+  if (req.method === "GET" && url.pathname === "/api/daily-group") {
+    const group = await store.ensureDailyGroup(account.signalId, localDay(), crypto.randomUUID());
+    return json(res, 200, {
+      group: await publicGroup(group, account.signalId),
+      messages: (await store.groupHistory(group.id)).map(item => publicGroupMessage(group, item, account.signalId))
+    });
   }
   if (req.method === "GET" && url.pathname === "/api/direct/history") {
     const user = account.signalId;
