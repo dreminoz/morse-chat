@@ -42,7 +42,7 @@ header { display: flex; justify-content: space-between; align-items: flex-start;
 h1 { margin: 0; font-family: Arial Black, Inter, sans-serif; font-size: clamp(42px, 12vw, 58px); line-height: .84; letter-spacing: -.09em; font-weight: 950; }
 h1 span { color: var(--ink); -webkit-text-stroke: 1.5px var(--ink); -webkit-text-fill-color: transparent; }
 .round-button { width: 50px; height: 50px; border: 1px solid var(--ink); border-radius: 14px; color: white; background: var(--ink); font-size: 19px; letter-spacing: 2px; }
-.world-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px; margin-bottom: 18px; border: 1px solid var(--line); border-radius: 14px; background: #e5e5e2; }
+.world-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 4px; margin-bottom: 18px; border: 1px solid var(--line); border-radius: 14px; background: #e5e5e2; }
 .world-tab { min-width: 0; padding: 11px 3px; border: 0; border-radius: 10px; color: var(--muted); background: transparent; font-size: 10px; font-weight: 850; }
 .world-tab.active { color: white; background: var(--ink); }
 .world-view[hidden] { display: none; }
@@ -59,13 +59,19 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 .friend-list { display: grid; gap: 8px; }
 .friend-card { display: flex; align-items: center; width: 100%; gap: 11px; padding: 13px; border: 1px solid var(--line); border-radius: 15px; color: var(--ink); text-align: left; background: white; }
 .friend-card:active { transform: scale(.985); background: #e9e9e6; }
+.friend-profile-button, .friend-conversation-button { border: 0; color: inherit; background: transparent; }
+.friend-profile-button { flex: 0 0 auto; padding: 0; border-radius: 50%; }
+.friend-conversation-button { min-width: 0; flex: 1; padding: 0; text-align: left; }
 .friend-avatar { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 auto; border-radius: 50%; color: white; background: var(--ink); font-weight: 900; }
+.ascii-avatar { display: block; max-width: 38px; max-height: 38px; overflow: hidden; color: white; font: 1px/1px "Courier New", monospace; letter-spacing: 0; white-space: pre; }
 .friend-info { min-width: 0; flex: 1; }
 .friend-info strong, .friend-info small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .friend-info small { margin-top: 4px; color: var(--muted); font-size: 10px; }
 .chat-room { display: grid; grid-template-rows: auto minmax(120px, 1fr) auto; height: calc(100dvh - max(28px, env(safe-area-inset-top)) - 186px); min-height: 540px; overflow: hidden; }
 .chat-header { display: flex; align-items: center; gap: 8px; margin: 0; padding: 5px 0 8px; border-bottom: 1px solid var(--line); }
 .chat-header button { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 11px; color: var(--ink); background: white; font-size: 26px; line-height: 1; }
+.chat-header .chat-profile-avatar { padding: 0; overflow: hidden; border: 0; border-radius: 50%; }
+.chat-header .chat-profile-info { width: auto; height: auto; min-width: 0; flex: 1; padding: 4px 2px; border: 0; text-align: left; background: transparent; font-size: inherit; line-height: inherit; }
 .chat-header .friend-avatar { width: 36px; height: 36px; }
 .chat-header div { min-width: 0; }
 .chat-header div { flex: 1; }
@@ -224,6 +230,26 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 .settings-switch small { margin-top: 5px; color: var(--muted); font-size: 9px; }
 .settings-switch input { width: 22px; height: 22px; accent-color: var(--ink); }
 .settings-switch.disabled { opacity: .35; pointer-events: none; }
+.nickname-settings input { width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: white; }
+.nickname-settings button { width: 100%; margin-top: 8px; padding: 12px; border: 0; border-radius: 11px; color: white; background: var(--ink); font-weight: 850; }
+
+.profile-world { padding-bottom: 20px; }
+.profile-card { position: relative; width: min(100%, 480px); margin: 0 auto; padding: 22px; border: 1px solid var(--line); border-radius: 22px; background: white; box-shadow: 0 16px 34px rgba(0,0,0,.08); }
+.profile-card .eyebrow { text-align: center; }
+.profile-visual { display: grid; place-items: center; width: 180px; height: 180px; margin: 18px auto; overflow: hidden; border-radius: 50%; color: white; background: var(--ink); }
+.profile-visual .profile-fallback { font-size: 64px; font-weight: 900; }
+.profile-visual pre { margin: 0; color: white; font: 3px/3px "Courier New", monospace; letter-spacing: 0; white-space: pre; transform: scale(.9); }
+.profile-nickname, .profile-signal-id { display: block; text-align: center; }
+.profile-nickname { font-size: 28px; }
+.profile-signal-id { margin-top: 5px; color: var(--muted); font-size: 10px; }
+.profile-description-field { display: grid; gap: 7px; margin-top: 20px; color: var(--muted); font-size: 10px; font-weight: 850; }
+.profile-description-field textarea { min-height: 110px; padding: 13px; resize: vertical; border: 1px solid var(--line); border-radius: 13px; font: inherit; }
+.profile-actions { display: grid; grid-template-columns: 1.4fr 1fr; gap: 7px; margin: 9px 0; }
+.profile-photo-button, .profile-actions button { display: grid; place-items: center; min-height: 44px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; color: var(--ink); background: white; font-size: 10px; font-weight: 850; }
+.profile-overlay { position: fixed; z-index: 60; inset: 0; padding: max(22px, env(safe-area-inset-top)) 18px 18px; overflow: auto; background: rgba(0,0,0,.72); }
+.friend-profile-card { margin-top: 5vh; }
+.profile-close { position: absolute; top: 12px; right: 12px; width: 38px; height: 38px; border: 1px solid var(--line); border-radius: 11px; background: white; font-size: 22px; }
+.profile-description { min-height: 70px; margin: 20px 0; padding: 14px; border-radius: 13px; color: var(--ink); background: var(--paper); line-height: 1.6; white-space: pre-wrap; }
 
 .speed-card { padding: 20px; border-radius: 18px; color: white; background: var(--ink); box-shadow: 0 14px 28px rgba(0,0,0,.14); }
 .section-heading { display: flex; align-items: center; justify-content: space-between; }

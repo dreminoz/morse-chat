@@ -40,6 +40,7 @@
       <button class="world-tab active" data-world="hall">훈련장</button>
       <button class="world-tab" data-world="space">우주</button>
       <button class="world-tab" data-world="randomSignal">랜덤 시그널</button>
+      <button class="world-tab" data-world="profile">프로필</button>
     </nav>
 
     <section id="friendsWorld" class="world-view" hidden>
@@ -58,11 +59,11 @@
       <section id="chatRoom" class="chat-room" hidden>
         <header class="chat-header">
           <button id="closeChat" type="button" aria-label="대화 목록으로 돌아가기">‹</button>
-          <span id="chatAvatar" class="friend-avatar"></span>
-          <div>
+          <button id="openChatProfile" class="chat-profile-avatar" type="button" aria-label="친구 프로필 보기"><span id="chatAvatar" class="friend-avatar"></span></button>
+          <button id="openChatProfileInfo" class="chat-profile-info" type="button">
             <strong id="chatFriendName"></strong>
             <small>말풍선을 누르면 모스 진동 재생</small>
-          </div>
+          </button>
         </header>
         <div id="chatMessages" class="chat-messages"></div>
         <div id="chatMorseComposer" class="chat-morse-composer">
@@ -383,7 +384,38 @@
         </section>
       </div>
     </section>
+
+    <section id="profileWorld" class="world-view profile-world" hidden>
+      <section class="profile-card">
+        <p class="eyebrow">MORSE CHAT PROFILE</p>
+        <div id="myProfileVisual" class="profile-visual"></div>
+        <strong id="myProfileNickname" class="profile-nickname"></strong>
+        <small id="myProfileSignalId" class="profile-signal-id" data-no-i18n></small>
+        <label class="profile-description-field">
+          <span>자기소개</span>
+          <textarea id="myProfileDescription" maxlength="240" placeholder="자신을 소개해보세요"></textarea>
+        </label>
+        <div class="profile-actions">
+          <label class="profile-photo-button" for="profilePhotoInput">프로필 사진 선택</label>
+          <button id="removeProfilePhoto" class="light-button" type="button">사진 지우기</button>
+        </div>
+        <input id="profilePhotoInput" class="visually-hidden" type="file" accept="image/*">
+        <button id="saveMyProfile" class="primary-button" type="button">프로필 저장</button>
+      </section>
+    </section>
   </main>
+
+  <div id="friendProfilePanel" class="profile-overlay" hidden>
+    <section class="profile-card friend-profile-card">
+      <button id="closeFriendProfile" class="profile-close" type="button" aria-label="프로필 닫기">×</button>
+      <p class="eyebrow">MORSE CHAT PROFILE</p>
+      <div id="friendProfileVisual" class="profile-visual"></div>
+      <strong id="friendProfileNickname" class="profile-nickname"></strong>
+      <small id="friendProfileSignalId" class="profile-signal-id" data-no-i18n></small>
+      <p id="friendProfileDescription" class="profile-description"></p>
+      <button id="chatFromProfile" class="primary-button" type="button">대화하기</button>
+    </section>
+  </div>
 
   <div id="player" class="player" hidden>
     <div>
@@ -421,6 +453,11 @@
         <strong id="accountStatus">로그인하지 않음</strong>
         <button id="openAuthSettings" type="button">Google 계정으로 계속하기</button>
         <button id="logoutAccount" class="light-button" type="button" hidden>로그아웃</button>
+      </div>
+      <div id="nicknameSettings" class="settings-section nickname-settings" hidden>
+        <p class="label">닉네임 변경</p>
+        <input id="settingsNickname" maxlength="24" autocomplete="nickname">
+        <button id="saveNickname" type="button">닉네임 저장</button>
       </div>
       <div class="settings-section">
         <p class="label">언어</p>

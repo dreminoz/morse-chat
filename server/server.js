@@ -49,7 +49,12 @@ function sessionAccount(req, url) {
 }
 
 function publicAccount(account) {
-  return { nickname: account.nickname, signalId: account.signalId };
+  return {
+    nickname: account.nickname,
+    signalId: account.signalId,
+    description: account.description || "",
+    profileAscii: account.profileAscii || ""
+  };
 }
 
 function json(res, status, body) {
@@ -156,6 +161,26 @@ const server = http.createServer(async (req, res) => {
 
   const account = sessionAccount(req, url);
   if (url.pathname.startsWith("/api/") && !account) return json(res, 401, { error: "auth-required" });
+  if (req.method === "GET" && url.pathname === "/api/profile") {
+    const signalId = url.searchParams.get("signalId") || account.signalId;
+    const profile = data.accounts.find(item => item.signalId === signalId);
+    return profile ? json(res, 200, { profile: publicAccount(profile) }) : json(res, 404, { error: "profile-not-found" });
+  }
+  if (req.method === "PATCH" && url.pathname === "/api/profile/me") {
+    const { nickname, description, profileAscii } = await readBody(req);
+    const nextNickname = typeof nickname === "string" ? nickname.trim() : account.nickname;
+    if (nextNickname.length < 2 || nextNickname.length > 24) return json(res, 400, { error: "invalid-nickname" });
+    if (data.accounts.some(item => item !== account && item.nickname.toLowerCase() === nextNickname.toLowerCase())) {
+      return json(res, 409, { error: "nickname-taken" });
+    }
+    if (typeof description === "string" && description.length > 240) return json(res, 400, { error: "description-too-long" });
+    if (typeof profileAscii === "string" && profileAscii.length > 30000) return json(res, 400, { error: "profile-image-too-large" });
+    account.nickname = nextNickname;
+    if (typeof description === "string") account.description = description.trim();
+    if (typeof profileAscii === "string") account.profileAscii = profileAscii;
+    saveData();
+    return json(res, 200, { account: publicAccount(account) });
+  }
   if (req.method === "GET" && url.pathname === "/api/events") {
     const userId = account.signalId;
     res.writeHead(200, {

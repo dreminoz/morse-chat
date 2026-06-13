@@ -59,6 +59,21 @@ const I18N_PAIRS = [
   ["모스 진동에 맞춰 해석 중", "Decoding with Morse vibration"],
   ["해석 완료", "Decoding complete"],
   ["다시 해석하기", "Decode again"],
+  ["프로필", "Profile"],
+  ["자기소개", "About me"],
+  ["자신을 소개해보세요", "Tell others about yourself"],
+  ["프로필 사진 선택", "Choose profile photo"],
+  ["사진 지우기", "Remove photo"],
+  ["프로필 저장", "Save profile"],
+  ["닉네임 변경", "Change nickname"],
+  ["닉네임 저장", "Save nickname"],
+  ["친구 프로필 보기", "View friend profile"],
+  ["프로필 닫기", "Close profile"],
+  ["아직 자기소개가 없습니다.", "No introduction yet."],
+  ["대화하기", "Chat"],
+  ["닉네임을 변경했습니다.", "Nickname changed."],
+  ["이미 사용 중인 닉네임입니다.", "That nickname is already in use."],
+  ["프로필을 저장했습니다.", "Profile saved."],
   ["시그널 발신", "Signal Transmit"],
   ["시그널 수신", "Signal Receive"],
   ["시그널 재생 횟수", "Signal play limit"],
@@ -436,6 +451,9 @@ const state = {
   chatKeyerStartY: 0,
   asciiDraft: "",
   asciiTarget: "friend",
+  profileDraftAscii: null,
+  profileCache: {},
+  viewingProfileSignalId: "",
   language: localStorage.getItem("morse-language") || "ko",
   world: localStorage.getItem("morse-world") || "hall",
   unit: Number(localStorage.getItem("morse-speed")) || 120,
@@ -610,10 +628,22 @@ function setAccount(token, account) {
   localStorage.setItem("morse-auth-token", token);
   localStorage.setItem("morse-account", JSON.stringify(account));
   localStorage.setItem("morse-user-id", account.signalId);
+  state.profileDraftAscii = account.profileAscii || "";
   $("#authPanel").hidden = true;
   connectServer();
   renderSettings();
   switchWorld("friends");
+  loadFriendProfiles();
+}
+
+function applyAccountUpdate(account) {
+  state.account = account;
+  state.userId = account.signalId;
+  state.profileDraftAscii = account.profileAscii || "";
+  localStorage.setItem("morse-account", JSON.stringify(account));
+  localStorage.setItem("morse-user-id", account.signalId);
+  renderSettings();
+  renderMyProfile();
 }
 
 function logoutAccount() {
@@ -1123,14 +1153,69 @@ function savePhrases() {
 function renderFriends() {
   $("#friendList").innerHTML = state.friends.length
     ? state.friends.map((friend, index) => `
-      <button type="button" class="friend-card" data-friend-index="${index}">
-        <span class="friend-avatar">${escapeHtml(friend).charAt(0).toUpperCase()}</span>
+      <article class="friend-card" data-friend-index="${index}">
+        <button type="button" class="friend-profile-button" data-profile-friend="${escapeHtml(friend)}" aria-label="친구 프로필 보기">
+          ${profileAvatarHtml(state.profileCache[friend], friend)}
+        </button>
+        <button type="button" class="friend-conversation-button" data-open-friend="${index}">
         <div class="friend-info">
-          <strong data-no-i18n>${escapeHtml(friend)}</strong>
+          <strong data-no-i18n>${escapeHtml(state.profileCache[friend]?.nickname || friend)}</strong>
           <small>${state.chats[friend]?.length ? chatPreview(state.chats[friend][state.chats[friend].length - 1]) : "신호 받을 준비 완료"}</small>
         </div>
-      </button>`).join("")
+        </button>
+      </article>`).join("")
     : '<article class="record-item"><strong>아직 친구가 없습니다.</strong><span>이름을 입력해 친구를 추가하세요.</span></article>';
+}
+
+function profileVisualHtml(profile, fallback = "?") {
+  return profile?.profileAscii
+    ? `<pre data-no-i18n>${escapeHtml(profile.profileAscii)}</pre>`
+    : `<span class="profile-fallback">${escapeHtml(profile?.nickname || fallback).charAt(0).toUpperCase()}</span>`;
+}
+
+function profileAvatarHtml(profile, fallback = "?") {
+  return `<span class="friend-avatar">${profile?.profileAscii
+    ? `<span class="ascii-avatar" data-no-i18n>${escapeHtml(profile.profileAscii)}</span>`
+    : escapeHtml(profile?.nickname || fallback).charAt(0).toUpperCase()}</span>`;
+}
+
+async function loadFriendProfiles() {
+  if (!state.authToken) return;
+  await Promise.all(state.friends.map(async signalId => {
+    try {
+      const { profile } = await api(`/api/profile?signalId=${encodeURIComponent(signalId)}`);
+      state.profileCache[signalId] = profile;
+    } catch {}
+  }));
+  renderFriends();
+  if (state.activeFriend) renderChat();
+}
+
+function renderMyProfile() {
+  if (!state.account) return;
+  const profile = { ...state.account, profileAscii: state.profileDraftAscii ?? state.account.profileAscii ?? "" };
+  $("#myProfileVisual").innerHTML = profileVisualHtml(profile, state.account.signalId);
+  $("#myProfileNickname").textContent = state.account.nickname;
+  $("#myProfileSignalId").textContent = state.account.signalId;
+  $("#myProfileDescription").value = state.account.description || "";
+  $("#removeProfilePhoto").disabled = !profile.profileAscii;
+}
+
+async function openFriendProfile(signalId) {
+  try {
+    const { profile } = await api(`/api/profile?signalId=${encodeURIComponent(signalId)}`);
+    state.profileCache[signalId] = profile;
+    state.viewingProfileSignalId = signalId;
+    $("#friendProfileVisual").innerHTML = profileVisualHtml(profile, signalId);
+    $("#friendProfileNickname").textContent = profile.nickname;
+    $("#friendProfileSignalId").textContent = profile.signalId;
+    $("#friendProfileDescription").textContent = profile.description || "아직 자기소개가 없습니다.";
+    $("#friendProfilePanel").hidden = false;
+    renderFriends();
+    if (state.activeFriend === signalId) renderChat();
+  } catch (error) {
+    showApiFailure(error, "프로필을 불러오지 못했습니다.");
+  }
 }
 
 function saveChats() {
@@ -1164,8 +1249,11 @@ function renderChat() {
   const friend = state.activeFriend;
   if (!friend) return;
   const messages = state.chats[friend] || [];
-  $("#chatFriendName").textContent = friend;
-  $("#chatAvatar").textContent = friend.charAt(0).toUpperCase();
+  const profile = state.profileCache[friend];
+  $("#chatFriendName").textContent = profile?.nickname || friend;
+  $("#chatAvatar").innerHTML = profile?.profileAscii
+    ? `<span class="ascii-avatar" data-no-i18n>${escapeHtml(profile.profileAscii)}</span>`
+    : escapeHtml(profile?.nickname || friend).charAt(0).toUpperCase();
   $("#chatMessages").innerHTML = messages.length
     ? messages.map((message, index) => {
       const text = chatMessageText(message);
@@ -1213,6 +1301,8 @@ function renderSettings() {
   $("#accountStatus").textContent = state.account ? `${state.account.nickname} · ${state.account.signalId}` : "로그인하지 않음";
   $("#openAuthSettings").hidden = Boolean(state.account);
   $("#logoutAccount").hidden = !state.account;
+  $("#nicknameSettings").hidden = !state.account;
+  if (state.account) $("#settingsNickname").value = state.account.nickname;
 }
 
 function refreshLocalizedViews() {
@@ -1401,7 +1491,7 @@ function closeChat() {
 }
 
 function switchWorld(world) {
-  if (!["friends", "hall", "space", "randomSignal"].includes(world)) world = "hall";
+  if (!["friends", "hall", "space", "randomSignal", "profile"].includes(world)) world = "hall";
   if (world !== "space") clearSpaceDecode();
   if (world !== "hall" && !state.account) {
     openAuthPanel();
@@ -1413,6 +1503,7 @@ function switchWorld(world) {
   $("#trainingHall").hidden = world !== "hall";
   $("#spaceWorld").hidden = world !== "space";
   $("#randomSignalWorld").hidden = world !== "randomSignal";
+  $("#profileWorld").hidden = world !== "profile";
   document.querySelectorAll(".world-tab").forEach(button =>
     button.classList.toggle("active", button.dataset.world === world)
   );
@@ -1427,6 +1518,8 @@ function switchWorld(world) {
   }
   if (world === "space") renderSpace();
   if (world === "randomSignal") renderRandomSignal();
+  if (world === "friends") loadFriendProfiles();
+  if (world === "profile") renderMyProfile();
 }
 
 function showToast(message) {
@@ -1866,10 +1959,28 @@ $("#friendForm").addEventListener("submit", event => {
   renderFriends();
 });
 $("#friendList").addEventListener("click", event => {
+  const profile = event.target.closest("[data-profile-friend]");
+  if (profile) return openFriendProfile(profile.dataset.profileFriend);
+  const conversation = event.target.closest("[data-open-friend]");
   const card = event.target.closest("[data-friend-index]");
-  if (card) openChat(state.friends[Number(card.dataset.friendIndex)]);
+  if (conversation) openChat(state.friends[Number(conversation.dataset.openFriend)]);
+  else if (card) openChat(state.friends[Number(card.dataset.friendIndex)]);
 });
 $("#closeChat").addEventListener("click", closeChat);
+$("#openChatProfile").addEventListener("click", () => state.activeFriend && openFriendProfile(state.activeFriend));
+$("#openChatProfileInfo").addEventListener("click", () => state.activeFriend && openFriendProfile(state.activeFriend));
+$("#closeFriendProfile").addEventListener("click", () => $("#friendProfilePanel").hidden = true);
+$("#chatFromProfile").addEventListener("click", () => {
+  const signalId = state.viewingProfileSignalId;
+  $("#friendProfilePanel").hidden = true;
+  if (!signalId) return;
+  if (!state.friends.includes(signalId)) {
+    state.friends.push(signalId);
+    localStorage.setItem("morse-friends", JSON.stringify(state.friends));
+  }
+  switchWorld("friends");
+  openChat(signalId);
+});
 
 function cancelChatMessageHold() {
   clearTimeout(state.chatMessageHoldTimer);
@@ -2071,6 +2182,63 @@ $("#openSettings").addEventListener("click", () => {
 $("#closeSettings").addEventListener("click", () => $("#settingsPanel").hidden = true);
 $("#openAuthSettings").addEventListener("click", openAuthPanel);
 $("#logoutAccount").addEventListener("click", logoutAccount);
+$("#saveNickname").addEventListener("click", async () => {
+  const nickname = $("#settingsNickname").value.trim();
+  if (nickname.length < 2) return showToast("닉네임은 2자 이상 입력하세요.");
+  try {
+    const { account } = await api("/api/profile/me", {
+      method: "PATCH",
+      body: JSON.stringify({ nickname })
+    });
+    applyAccountUpdate(account);
+    showToast("닉네임을 변경했습니다.");
+  } catch (error) {
+    if (error.status === 409) showToast("이미 사용 중인 닉네임입니다.");
+    else showApiFailure(error, "닉네임을 변경하지 못했습니다.");
+  }
+});
+$("#profilePhotoInput").addEventListener("change", event => {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+  if (!file.type.startsWith("image/")) return showToast("사진 파일만 선택할 수 있습니다.");
+  const image = new Image();
+  const objectUrl = URL.createObjectURL(file);
+  image.onload = () => {
+    const description = $("#myProfileDescription").value;
+    state.profileDraftAscii = imageToAscii(image);
+    URL.revokeObjectURL(objectUrl);
+    renderMyProfile();
+    $("#myProfileDescription").value = description;
+  };
+  image.onerror = () => {
+    URL.revokeObjectURL(objectUrl);
+    showToast("사진을 읽을 수 없습니다.");
+  };
+  image.src = objectUrl;
+});
+$("#removeProfilePhoto").addEventListener("click", () => {
+  const description = $("#myProfileDescription").value;
+  state.profileDraftAscii = "";
+  renderMyProfile();
+  $("#myProfileDescription").value = description;
+});
+$("#saveMyProfile").addEventListener("click", async () => {
+  if (!state.account) return openAuthPanel();
+  try {
+    const { account } = await api("/api/profile/me", {
+      method: "PATCH",
+      body: JSON.stringify({
+        description: $("#myProfileDescription").value,
+        profileAscii: state.profileDraftAscii
+      })
+    });
+    applyAccountUpdate(account);
+    showToast("프로필을 저장했습니다.");
+  } catch (error) {
+    showApiFailure(error, "프로필을 저장하지 못했습니다.");
+  }
+});
 $("#closeAuthPanel").addEventListener("click", () => {
   $("#authPanel").hidden = true;
   switchWorld("hall");
