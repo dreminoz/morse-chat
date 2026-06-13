@@ -549,7 +549,9 @@ const state = {
   chatMessageHoldIndex: -1,
   chatMessageLongPressed: false,
   chatMessageHoldX: 0,
-  chatMessageHoldY: 0
+  chatMessageHoldY: 0,
+  backExitArmed: false,
+  backExitTimer: null
 };
 if (state.account?.signalId) state.userId = state.account.signalId;
 localStorage.setItem("morse-user-id", state.userId);
@@ -1713,6 +1715,61 @@ function switchWorld(world) {
   if (world === "randomSignal") renderRandomSignal();
   if (world === "friends") loadFriendProfiles();
   if (world === "profile") renderMyProfile();
+}
+
+function armBackExit() {
+  state.backExitArmed = true;
+  clearTimeout(state.backExitTimer);
+  state.backExitTimer = setTimeout(() => {
+    state.backExitArmed = false;
+  }, 2000);
+  showToast(state.language === "en" ? "Press back again to exit." : "한 번 더 누르면 앱이 종료됩니다.");
+}
+
+function closeOpenOverlay() {
+  if (!$("#settingsPanel").hidden) {
+    $("#settingsPanel").hidden = true;
+    return true;
+  }
+  if (!$("#friendProfilePanel").hidden) {
+    $("#friendProfilePanel").hidden = true;
+    return true;
+  }
+  if (!$("#asciiPreview").hidden) {
+    $("#asciiPreview").hidden = true;
+    return true;
+  }
+  if (!$("#authPanel").hidden) {
+    $("#authPanel").hidden = true;
+    return true;
+  }
+  return false;
+}
+
+function installBackNavigation() {
+  history.replaceState({ morseChatBase: true }, "");
+  history.pushState({ morseChatGuard: true }, "");
+  window.addEventListener("popstate", () => {
+    if (closeOpenOverlay()) {
+      history.pushState({ morseChatGuard: true }, "");
+      return;
+    }
+    if (state.world !== "friends") {
+      state.backExitArmed = false;
+      clearTimeout(state.backExitTimer);
+      switchWorld("friends");
+      history.pushState({ morseChatGuard: true }, "");
+      return;
+    }
+    if (!state.backExitArmed) {
+      armBackExit();
+      history.pushState({ morseChatGuard: true }, "");
+      return;
+    }
+    state.backExitArmed = false;
+    clearTimeout(state.backExitTimer);
+    history.back();
+  });
 }
 
 function showToast(message) {
@@ -3172,6 +3229,7 @@ document.querySelectorAll(`[data-keyer-target="writer"]`).forEach(button =>
 );
 switchWorld(state.world);
 applyLanguage(state.language);
+installBackNavigation();
 initializeAuth();
 
 const languageObserver = new MutationObserver(mutations => {
