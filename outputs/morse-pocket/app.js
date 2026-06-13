@@ -2994,17 +2994,6 @@ $("#openSettings").addEventListener("click", () => {
   $("#settingsPanel").hidden = false;
 });
 $("#closeSettings").addEventListener("click", () => $("#settingsPanel").hidden = true);
-$("#enableNotifications").addEventListener("click", async () => {
-  if (window.AndroidAuth) {
-    window.AndroidAuth.requestNotifications();
-    showToast(state.language === "en" ? "Notifications enabled." : "알림을 켰습니다.");
-    return;
-  }
-  const enabled = await setupPushNotifications();
-  showToast(enabled
-    ? (state.language === "en" ? "Notifications enabled." : "알림을 켰습니다.")
-    : (state.language === "en" ? "Please allow notifications in your browser settings." : "브라우저 설정에서 알림을 허용해 주세요."));
-});
 $("#androidGoogleSignIn").addEventListener("click", () => window.AndroidAuth?.signIn());
 $("#openAuthSettings").addEventListener("click", openAuthPanel);
 $("#logoutAccount").addEventListener("click", logoutAccount);
