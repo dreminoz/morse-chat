@@ -1443,7 +1443,6 @@ function renderAutocompletes() {
 function renderAutocompleteCode() {
   const code = normalizeAutocompleteCode($("#autocompleteCode").value);
   $("#autocompleteCode").value = code;
-  $("#autocompleteCodePreview").textContent = code ? prettyMorse(code) : (state.language === "en" ? "Empty" : "비어 있음");
 }
 
 function addAutocompleteMark(mark) {
