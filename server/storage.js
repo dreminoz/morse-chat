@@ -60,6 +60,15 @@ class FileStore {
       (item.from === user && item.to === friend) || (item.from === friend && item.to === user)
     ).slice(-1000);
   }
+  async secretSessionLogs(sessionId) { return this.data.secretLogs.filter(item => item.sessionId === sessionId); }
+  async saveSecretDecode(item) {
+    const index = this.data.secretLogs.findIndex(log =>
+      log.sessionId === item.sessionId && log.from === item.from && log.action === "decoded"
+    );
+    if (index >= 0) this.data.secretLogs[index] = item;
+    else this.data.secretLogs.push(item);
+    this.save();
+  }
   async addSpace(signal) {
     if (this.data.space.some(item => item.sender === signal.sender && item.day === signal.day)) return false;
     this.data.space.push(signal);
@@ -98,6 +107,10 @@ class MongoStore {
       this.direct.createIndex({ to: 1, createdAt: -1 }),
       this.secretLogs.createIndex({ sessionId: 1, createdAt: 1 }),
       this.secretLogs.createIndex({ from: 1, to: 1, createdAt: -1 }),
+      this.secretLogs.createIndex(
+        { sessionId: 1, from: 1, action: 1 },
+        { unique: true, partialFilterExpression: { action: "decoded" } }
+      ),
       this.space.createIndex({ sender: 1, day: 1 }, { unique: true }),
       this.space.createIndex({ createdAt: -1 })
     ]);
@@ -164,6 +177,16 @@ class MongoStore {
       { $or: [{ from: user, to: friend }, { from: friend, to: user }] },
       { projection: { _id: 0 } }
     ).sort({ createdAt: -1 }).limit(1000).toArray().then(items => items.reverse());
+  }
+  async secretSessionLogs(sessionId) {
+    return this.secretLogs.find({ sessionId }, { projection: { _id: 0 } }).sort({ createdAt: 1 }).toArray();
+  }
+  async saveSecretDecode(item) {
+    await this.secretLogs.replaceOne(
+      { sessionId: item.sessionId, from: item.from, action: "decoded" },
+      item,
+      { upsert: true }
+    );
   }
   async addSpace(signal) {
     try { await this.space.insertOne(signal); return true; }

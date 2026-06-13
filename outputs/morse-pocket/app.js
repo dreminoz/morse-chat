@@ -1354,6 +1354,8 @@ function renderSettings() {
   document.querySelectorAll("[data-language]").forEach(button =>
     button.classList.toggle("active", button.dataset.language === state.language)
   );
+  $("#settingsSpeed").value = state.unit;
+  $("#settingsSpeedLabel").textContent = `${speedName(state.unit)} · ${state.unit}ms`;
   $("#accountStatus").textContent = state.account ? `${state.account.nickname} · ${state.account.signalId}` : "로그인하지 않음";
   $("#openAuthSettings").hidden = Boolean(state.account);
   $("#logoutAccount").hidden = !state.account;
@@ -1658,7 +1660,7 @@ function sendSecretSignal(action) {
   if (!state.secretPartner || !state.secretSessionId || !state.authToken) return;
   api("/api/direct/secret", {
     method: "POST",
-    body: JSON.stringify({ to: state.secretPartner, action, sessionId: state.secretSessionId })
+    body: JSON.stringify({ to: state.secretPartner, action, sessionId: state.secretSessionId, unit: state.unit })
   }).catch(() => {});
 }
 
@@ -2569,6 +2571,12 @@ $("#reverseChatSwipe").addEventListener("change", event => {
   renderSettings();
   renderChatComposer();
   if (state.randomSignalState === "connected") renderRandomChatComposer();
+});
+$("#settingsSpeed").addEventListener("input", event => {
+  state.unit = Number(event.target.value);
+  localStorage.setItem("morse-speed", state.unit);
+  renderSpeed();
+  renderSettings();
 });
 $("#chatKeyer").addEventListener("pointerdown", event => {
   clearTimeout(state.chatLetterTimer);

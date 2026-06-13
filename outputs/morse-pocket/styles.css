@@ -227,6 +227,8 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 .settings-options small { margin-top: 5px; color: var(--muted); font-size: 8px; line-height: 1.4; }
 .settings-options button.active small { color: #aaa; }
 .language-options button { min-height: 74px; }
+.settings-speed strong { display: block; margin-top: 4px; font-size: 14px; }
+.settings-speed input { margin: 15px 0 2px; }
 .settings-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 18px; background: white; }
 .settings-switch strong, .settings-switch small { display: block; }
 .settings-switch small { margin-top: 5px; color: var(--muted); font-size: 9px; }

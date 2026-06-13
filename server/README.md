@@ -36,7 +36,7 @@ GOOGLE_CLIENT_ID=YOUR_WEB_CLIENT_ID.apps.googleusercontent.com
 
 Railway may display a different MongoDB service name. Use the variable reference picker instead of typing the URL by hand.
 
-MongoDB stores accounts and nicknames, login sessions, profile data, direct-message history, Space signals, and Secret Communication event logs. Secret Communication logs contain session participants, start/end events, and press/release timestamps; they do not contain decoded message text. Random Signal live matching remains in server memory because it represents active connections rather than saved history.
+MongoDB stores accounts and nicknames, login sessions, profile data, direct-message history, Space signals, and Secret Communication event logs. Secret Communication logs contain session participants, start/end events, press/release timestamps, the reconstructed Morse sequence, and its decoded text. Random Signal live matching remains in server memory because it represents active connections rather than saved history.
 
 When no MongoDB URL is configured, the server falls back to `server/data.json` for local development. If an existing JSON file is available when MongoDB is first connected, its data is imported automatically while the MongoDB accounts collection is empty.
 

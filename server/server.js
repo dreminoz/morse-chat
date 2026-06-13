@@ -16,6 +16,64 @@ const randomQueue = [];
 const randomPairs = new Map();
 const lastPartners = new Map();
 let store;
+const SECRET_MORSE = {
+  ".-": "A", "-...": "B", "-.-.": "C", "-..": "D", ".": "E", "..-.": "F", "--.": "G", "....": "H",
+  "..": "I", ".---": "J", "-.-": "K", ".-..": "L", "--": "M", "-.": "N", "---": "O", ".--.": "P",
+  "--.-": "Q", ".-.": "R", "...": "S", "-": "T", "..-": "U", "...-": "V", ".--": "W", "-..-": "X",
+  "-.--": "Y", "--..": "Z", "-----": "0", ".----": "1", "..---": "2", "...--": "3", "....-": "4",
+  ".....": "5", "-....": "6", "--...": "7", "---..": "8", "----.": "9"
+};
+
+function decodeSecretPresses(logs, sender) {
+  const events = logs.filter(item => item.from === sender && ["down", "up"].includes(item.action));
+  const marks = [];
+  let down = null;
+  for (const event of events) {
+    if (event.action === "down") down = event;
+    else if (down) {
+      const unit = Math.max(40, Number(down.unit) || 120);
+      marks.push({ mark: event.createdAt - down.createdAt < unit * 2 ? "." : "-", at: down.createdAt, end: event.createdAt, unit });
+      down = null;
+    }
+  }
+  let morse = "";
+  let text = "";
+  let letter = "";
+  marks.forEach((item, index) => {
+    letter += item.mark;
+    const next = marks[index + 1];
+    if (!next) {
+      morse += letter;
+      text += SECRET_MORSE[letter] || "�";
+      return;
+    }
+    const gap = next.at - item.end;
+    if (gap >= item.unit * 7) {
+      morse += `${letter} / `;
+      text += `${SECRET_MORSE[letter] || "�"} `;
+      letter = "";
+    } else if (gap >= item.unit * 3) {
+      morse += `${letter} `;
+      text += SECRET_MORSE[letter] || "�";
+      letter = "";
+    }
+  });
+  return { morse: morse.trim(), text: text.trim() };
+}
+
+async function finalizeSecretSession(sessionId) {
+  const logs = await store.secretSessionLogs(sessionId);
+  const senders = [...new Set(logs.filter(item => item.from).map(item => item.from))];
+  await Promise.all(senders.map(async from => {
+    const decoded = decodeSecretPresses(logs, from);
+    if (!decoded.morse) return;
+    const peer = logs.find(item => item.from === from)?.to || "";
+    await store.saveSecretDecode({
+      id: crypto.randomUUID(), sessionId, from, to: peer, action: "decoded",
+      morse: decoded.morse, text: decoded.text, createdAt: Date.now()
+    });
+  }));
+}
 
 async function verifyGoogleCredential(credential) {
   if (!GOOGLE_CLIENT_ID) throw new Error("google-client-id-not-configured");
@@ -227,7 +285,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { messages: await store.directInbox(user) });
   }
   if (req.method === "POST" && url.pathname === "/api/direct/secret") {
-    const { to, action, sessionId } = await readBody(req);
+    const { to, action, sessionId, unit } = await readBody(req);
     if (!to || !sessionId || !["enter", "down", "up", "exit"].includes(action)) {
       return json(res, 400, { error: "invalid-secret-signal" });
     }
@@ -237,10 +295,16 @@ const server = http.createServer(async (req, res) => {
       from: account.signalId,
       to,
       action,
+      unit: Math.min(500, Math.max(40, Number(unit) || 120)),
       createdAt: Date.now()
     };
     await store.addSecretLog(log);
     emit(to, "secret-signal", { from: account.signalId, action, sessionId });
+    if (action === "exit") {
+      setTimeout(() => finalizeSecretSession(sessionId).catch(error => {
+        console.error("Failed to decode Secret Communication log:", error);
+      }), 300);
+    }
     return json(res, 200, { ok: true });
   }
   if (req.method === "GET" && url.pathname === "/api/direct/secret/history") {
