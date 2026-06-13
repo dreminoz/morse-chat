@@ -1772,7 +1772,6 @@ function switchWorld(world) {
   document.querySelectorAll(".world-tab").forEach(button =>
     button.classList.toggle("active", button.dataset.world === world)
   );
-  document.querySelector(`.world-tab[data-world="${world}"]`)?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   if (world !== "hall") {
     stopMorse(false);
     if (state.training) endTraining();

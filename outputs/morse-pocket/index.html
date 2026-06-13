@@ -36,14 +36,18 @@
     </header>
 
     <nav class="world-tabs" aria-label="화면 선택">
-      <button class="world-tab" data-world="friends">대화</button>
-      <button class="world-tab active" data-world="hall">훈련장</button>
-      <button class="world-tab" data-world="space">우주</button>
-      <button class="world-tab" data-world="randomSignal">랜덤 시그널</button>
-      <button class="world-tab" data-world="dailyGroup">데일리 그룹챗</button>
-      <button class="world-tab" data-world="games">게임</button>
-      <button class="world-tab" data-world="shop">상점</button>
-      <button class="world-tab" data-world="profile">프로필</button>
+      <div class="world-tab-row primary-world-tabs">
+        <button class="world-tab" data-world="friends">대화</button>
+        <button class="world-tab active" data-world="hall">훈련장</button>
+        <button class="world-tab" data-world="space">우주</button>
+        <button class="world-tab" data-world="randomSignal">랜덤 시그널</button>
+        <button class="world-tab" data-world="profile">프로필</button>
+      </div>
+      <div class="world-tab-row secondary-world-tabs">
+        <button class="world-tab" data-world="dailyGroup">데일리 그룹챗</button>
+        <button class="world-tab" data-world="games">게임</button>
+        <button class="world-tab" data-world="shop">상점</button>
+      </div>
     </nav>
 
     <section id="friendsWorld" class="world-view" hidden>
