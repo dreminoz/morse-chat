@@ -23,7 +23,7 @@ const I18N_PAIRS = [
   ["오른쪽 스와이프: 글자 확정 · 왼쪽: 띄어쓰기", "Swipe right: confirm letter · Left: add space"],
   ["왼쪽 스와이프: 글자 확정 · 오른쪽: 띄어쓰기", "Swipe left: confirm letter · Right: add space"],
   ["쉬는 시간으로 글자·띄어쓰기 확정", "Confirm letters and spaces after a pause"],
-  ["좌우 스와이프로 직접 확정", "Confirm manually with left and right swipes"],
+  ["상하좌우 스와이프로 직접 입력", "Enter manually with four-way swipes"],
   ["말풍선을 누르면 모스 진동 재생", "Tap a bubble to play Morse vibration"],
   ["친구를 눌러 모스 메시지를 보내보세요.", "Tap a friend to send a Morse message."],
   ["사진을 ASCII 아트로 보내기", "Send photo as ASCII art"],
@@ -302,8 +302,8 @@ function isEmojiGrapheme(value) {
 }
 
 function chatInputText(text) {
-  return graphemes(text.toUpperCase())
-    .filter(value => isEmojiGrapheme(value) || [...value].every(char => char === " " || MORSE[char]))
+  return graphemes(text)
+    .filter(value => isEmojiGrapheme(value) || [...value].every(char => char === " " || char === "\n" || MORSE[char.toUpperCase()]))
     .join("");
 }
 
@@ -311,6 +311,7 @@ function morseCharacters(text) {
   return graphemes(text.toUpperCase())
     .filter(value => !isEmojiGrapheme(value))
     .flatMap(value => [...value])
+    .map(char => char === "\n" ? " " : char)
     .filter(char => char === " " || MORSE[char]);
 }
 
@@ -445,8 +446,10 @@ const state = {
   chatSendLongPressed: false,
   chatSendHoldTimer: null,
   hiddenViewLimit: localStorage.getItem("morse-hidden-view-limit") || "1",
-  chatKeyerMode: localStorage.getItem("morse-chat-keyer-mode") || "auto",
-  reverseChatSwipe: localStorage.getItem("morse-chat-swipe-reverse") === "true",
+  chatKeyerMode: localStorage.getItem("morse-chat-keyer-mode") || "manual",
+  reverseChatSwipe: localStorage.getItem("morse-chat-swipe-reverse") === null
+    ? true
+    : localStorage.getItem("morse-chat-swipe-reverse") === "true",
   chatKeyerStartX: 0,
   chatKeyerStartY: 0,
   asciiDraft: "",
@@ -750,7 +753,7 @@ function textToMorse(text) {
 
 function unsupportedChars(text) {
   return [...new Set(graphemes(text.toUpperCase()).filter(value =>
-    !isEmojiGrapheme(value) && [...value].some(char => char !== " " && !MORSE[char])
+    !isEmojiGrapheme(value) && [...value].some(char => char !== " " && char !== "\n" && !MORSE[char])
   ))];
 }
 
@@ -861,7 +864,7 @@ function renderRandomChatComposer() {
     : "현재 글자: 비어 있음";
   $("#randomChatKeyer").querySelector("small").textContent = state.chatKeyerMode === "auto"
     ? "3단위 휴식: 글자 확정 · 7단위 휴식: 띄어쓰기"
-    : `${state.reverseChatSwipe ? "오른쪽" : "왼쪽"} 스와이프: 글자 확정 · ${state.reverseChatSwipe ? "왼쪽" : "오른쪽"}: 띄어쓰기`;
+    : `${state.reverseChatSwipe ? "오른쪽" : "왼쪽"}: 확정 · ${state.reverseChatSwipe ? "왼쪽" : "오른쪽"}: 띄어쓰기 · 위: 대문자 · 아래: 엔터`;
   document.querySelectorAll("[data-random-limit]").forEach(button =>
     button.classList.toggle("active", button.dataset.randomLimit === state.randomHiddenLimit)
   );
@@ -876,7 +879,7 @@ function resetRandomChatInput() {
   renderRandomChatComposer();
 }
 
-function commitRandomChatLetter() {
+function commitRandomChatLetter(uppercase = false) {
   clearTimeout(state.randomChatLetterTimer);
   state.randomChatLetterTimer = null;
   if (!state.randomChatSignal) return false;
@@ -887,7 +890,7 @@ function commitRandomChatLetter() {
     renderRandomChatComposer();
     return false;
   }
-  state.randomChatText += decoded;
+  state.randomChatText += uppercase ? decoded : decoded.toLowerCase();
   state.randomChatSignal = "";
   renderRandomChatComposer();
   return true;
@@ -896,6 +899,12 @@ function commitRandomChatLetter() {
 function commitRandomChatSpace() {
   commitRandomChatLetter();
   if (state.randomChatText && !state.randomChatText.endsWith(" ")) state.randomChatText += " ";
+  renderRandomChatComposer();
+}
+
+function commitRandomChatNewline() {
+  commitRandomChatLetter();
+  if (state.randomChatText && !state.randomChatText.endsWith("\n")) state.randomChatText += "\n";
   renderRandomChatComposer();
 }
 
@@ -1013,10 +1022,10 @@ function renderSpace() {
     : "현재 글자: 비어 있음";
   $("#spaceSendKeyer").querySelector("small").textContent = state.chatKeyerMode === "auto"
     ? "3단위 휴식: 글자 확정 · 7단위 휴식: 띄어쓰기"
-    : `${state.reverseChatSwipe ? "오른쪽" : "왼쪽"} 스와이프: 글자 확정 · ${state.reverseChatSwipe ? "왼쪽" : "오른쪽"}: 띄어쓰기`;
+    : `${state.reverseChatSwipe ? "오른쪽" : "왼쪽"}: 확정 · ${state.reverseChatSwipe ? "왼쪽" : "오른쪽"}: 띄어쓰기 · 위: 대문자 · 아래: 엔터`;
 }
 
-function commitSpaceSendLetter() {
+function commitSpaceSendLetter(uppercase = false) {
   clearTimeout(state.spaceSendLetterTimer);
   state.spaceSendLetterTimer = null;
   if (!state.spaceSendSignal) return false;
@@ -1028,7 +1037,7 @@ function commitSpaceSendLetter() {
     return false;
   }
   if (state.spaceSendText.length >= 300) return false;
-  state.spaceSendText += decoded;
+  state.spaceSendText += uppercase ? decoded : decoded.toLowerCase();
   state.spaceSendSignal = "";
   renderSpace();
   return true;
@@ -1037,6 +1046,12 @@ function commitSpaceSendLetter() {
 function commitSpaceSendSpace() {
   commitSpaceSendLetter();
   if (state.spaceSendText && !state.spaceSendText.endsWith(" ")) state.spaceSendText += " ";
+  renderSpace();
+}
+
+function commitSpaceSendNewline() {
+  commitSpaceSendLetter();
+  if (state.spaceSendText && !state.spaceSendText.endsWith("\n")) state.spaceSendText += "\n";
   renderSpace();
 }
 
@@ -1286,7 +1301,7 @@ function renderChatComposer() {
   );
   $("#chatKeyer").querySelector("small").textContent = state.chatKeyerMode === "auto"
     ? "3단위 휴식: 글자 확정 · 7단위 휴식: 띄어쓰기"
-    : `${state.reverseChatSwipe ? "오른쪽" : "왼쪽"} 스와이프: 글자 확정 · ${state.reverseChatSwipe ? "왼쪽" : "오른쪽"}: 띄어쓰기`;
+    : `${state.reverseChatSwipe ? "오른쪽" : "왼쪽"}: 확정 · ${state.reverseChatSwipe ? "왼쪽" : "오른쪽"}: 띄어쓰기 · 위: 대문자 · 아래: 엔터`;
 }
 
 function renderSettings() {
@@ -1296,8 +1311,8 @@ function renderSettings() {
   $("#reverseChatSwipe").checked = state.reverseChatSwipe;
   $("#swipeReverseSetting").classList.toggle("disabled", state.chatKeyerMode !== "manual");
   $("#swipeDirectionHint").textContent = state.reverseChatSwipe
-    ? "오른쪽: 글자 확정 · 왼쪽: 띄어쓰기"
-    : "왼쪽: 글자 확정 · 오른쪽: 띄어쓰기";
+    ? "오른쪽: 글자 확정 · 왼쪽: 띄어쓰기 · 위: 대문자 · 아래: 엔터"
+    : "왼쪽: 글자 확정 · 오른쪽: 띄어쓰기 · 위: 대문자 · 아래: 엔터";
   document.querySelectorAll("[data-language]").forEach(button =>
     button.classList.toggle("active", button.dataset.language === state.language)
   );
@@ -1345,7 +1360,7 @@ function resetChatMorse() {
   renderChatComposer();
 }
 
-function commitChatLetter() {
+function commitChatLetter(uppercase = false) {
   clearTimeout(state.chatLetterTimer);
   state.chatLetterTimer = null;
   if (!state.chatSignal) return false;
@@ -1356,7 +1371,7 @@ function commitChatLetter() {
     renderChatComposer();
     return false;
   }
-  state.chatMorseText += decoded;
+  state.chatMorseText += uppercase ? decoded : decoded.toLowerCase();
   state.chatSignal = "";
   renderChatComposer();
   return true;
@@ -1383,6 +1398,29 @@ function commitChatSpace() {
   commitChatLetter();
   if (state.chatMorseText && !state.chatMorseText.endsWith(" ")) state.chatMorseText += " ";
   renderChatComposer();
+}
+
+function commitChatNewline() {
+  commitChatLetter();
+  if (state.chatMorseText && !state.chatMorseText.endsWith("\n")) state.chatMorseText += "\n";
+  renderChatComposer();
+}
+
+function handleManualComposerSwipe(deltaX, deltaY, commitLetter, commitSpace, commitNewline) {
+  if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < 45) return false;
+  if (Math.abs(deltaY) > Math.abs(deltaX) * 1.25) {
+    if (deltaY < 0) commitLetter(true);
+    else commitNewline();
+    return true;
+  }
+  if (Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
+    const right = deltaX > 0;
+    const confirmsLetter = state.reverseChatSwipe ? right : !right;
+    if (confirmsLetter) commitLetter(false);
+    else commitSpace();
+    return true;
+  }
+  return false;
 }
 
 function sendChatMessage(message, hidden = false) {
@@ -2079,7 +2117,7 @@ $("#chatMorseText").addEventListener("input", event => {
   clearTimeout(state.chatLetterTimer);
   clearTimeout(state.chatSpaceTimer);
   state.chatSignal = "";
-  const raw = event.target.value.toUpperCase();
+  const raw = event.target.value;
   const unsupported = unsupportedChars(raw);
   state.chatMorseText = chatInputText(raw);
   event.target.value = state.chatMorseText;
@@ -2327,13 +2365,8 @@ $("#chatKeyer").addEventListener("pointerup", event => {
   $("#chatKeyer").classList.remove("pressed");
   const deltaX = event.clientX - state.chatKeyerStartX;
   const deltaY = event.clientY - state.chatKeyerStartY;
-  if (state.chatKeyerMode === "manual" && Math.abs(deltaX) >= 45 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
-    const right = deltaX > 0;
-    const commitLetter = state.reverseChatSwipe ? right : !right;
-    if (commitLetter) commitChatLetter();
-    else commitChatSpace();
-    return;
-  }
+  if (state.chatKeyerMode === "manual"
+    && handleManualComposerSwipe(deltaX, deltaY, commitChatLetter, commitChatSpace, commitChatNewline)) return;
   const held = performance.now() - state.keyerPressStart;
   addChatSignal(held < state.unit * 2 ? "." : "-");
 });
@@ -2450,13 +2483,8 @@ $("#randomChatKeyer").addEventListener("pointerup", event => {
   $("#randomChatKeyer").classList.remove("pressed");
   const deltaX = event.clientX - state.randomChatKeyerStartX;
   const deltaY = event.clientY - state.randomChatKeyerStartY;
-  if (state.chatKeyerMode === "manual" && Math.abs(deltaX) >= 45 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
-    const right = deltaX > 0;
-    const commitLetter = state.reverseChatSwipe ? right : !right;
-    if (commitLetter) commitRandomChatLetter();
-    else commitRandomChatSpace();
-    return;
-  }
+  if (state.chatKeyerMode === "manual"
+    && handleManualComposerSwipe(deltaX, deltaY, commitRandomChatLetter, commitRandomChatSpace, commitRandomChatNewline)) return;
   const held = performance.now() - state.keyerPressStart;
   addRandomChatSignal(held < state.unit * 2 ? "." : "-");
 });
@@ -2486,13 +2514,8 @@ $("#spaceSendKeyer").addEventListener("pointerup", event => {
   $("#spaceSendKeyer").classList.remove("pressed");
   const deltaX = event.clientX - state.spaceSendKeyerStartX;
   const deltaY = event.clientY - state.spaceSendKeyerStartY;
-  if (state.chatKeyerMode === "manual" && Math.abs(deltaX) >= 45 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
-    const right = deltaX > 0;
-    const commitLetter = state.reverseChatSwipe ? right : !right;
-    if (commitLetter) commitSpaceSendLetter();
-    else commitSpaceSendSpace();
-    return;
-  }
+  if (state.chatKeyerMode === "manual"
+    && handleManualComposerSwipe(deltaX, deltaY, commitSpaceSendLetter, commitSpaceSendSpace, commitSpaceSendNewline)) return;
   const held = performance.now() - state.keyerPressStart;
   addSpaceSendSignal(held < state.unit * 2 ? "." : "-");
 });

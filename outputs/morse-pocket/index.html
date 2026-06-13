@@ -68,7 +68,7 @@
         <div id="chatMessages" class="chat-messages"></div>
         <div id="chatMorseComposer" class="chat-morse-composer">
           <div class="chat-morse-display">
-            <input id="chatMorseText" maxlength="100" placeholder="모스코드를 입력하세요" autocomplete="off">
+            <textarea id="chatMorseText" rows="1" maxlength="100" placeholder="모스코드를 입력하세요" autocomplete="off"></textarea>
             <small id="chatMorseSignal">현재 글자: 비어 있음</small>
           </div>
           <button id="chatKeyer" class="morse-keyer chat-keyer" type="button">
@@ -342,7 +342,7 @@
           <div id="randomChatMessages" class="random-chat-messages"></div>
           <div class="random-chat-composer">
             <div class="chat-morse-display">
-              <input id="randomChatInput" type="text" maxlength="300" autocomplete="off" placeholder="모스코드를 입력하세요">
+              <textarea id="randomChatInput" rows="1" maxlength="300" autocomplete="off" placeholder="모스코드를 입력하세요"></textarea>
               <small id="randomChatSignal">현재 글자: 비어 있음</small>
             </div>
             <button id="randomChatKeyer" class="morse-keyer chat-keyer" type="button">
@@ -485,16 +485,16 @@
           </button>
           <button type="button" data-chat-keyer-mode="manual">
             <strong>수동</strong>
-            <small>좌우 스와이프로 직접 확정</small>
+            <small>상하좌우 스와이프로 직접 입력</small>
           </button>
         </div>
       </div>
       <label id="swipeReverseSetting" class="settings-switch">
         <div>
           <strong>좌우 방향 반전</strong>
-          <small id="swipeDirectionHint">왼쪽: 글자 확정 · 오른쪽: 띄어쓰기</small>
+          <small id="swipeDirectionHint">오른쪽: 글자 확정 · 왼쪽: 띄어쓰기 · 위: 대문자 · 아래: 엔터</small>
         </div>
-        <input id="reverseChatSwipe" type="checkbox">
+        <input id="reverseChatSwipe" type="checkbox" checked>
       </label>
     </section>
   </div>
