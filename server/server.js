@@ -346,12 +346,29 @@ const server = http.createServer(async (req, res) => {
     };
     await store.addSecretLog(log);
     emit(to, "secret-signal", { from: account.signalId, action, sessionId });
+    let systemItem = null;
+    if (action === "enter" || action === "exit") {
+      systemItem = {
+        id: crypto.randomUUID(),
+        from: account.signalId,
+        to,
+        message: {
+          type: "system",
+          secretAction: action === "enter" ? "started" : "ended",
+          actor: account.signalId,
+          actorNickname: account.nickname
+        },
+        createdAt: Date.now()
+      };
+      await store.addDirect(systemItem);
+      emit(to, "direct-message", systemItem);
+    }
     if (action === "exit") {
       setTimeout(() => finalizeSecretSession(sessionId).catch(error => {
         console.error("Failed to decode Secret Communication log:", error);
       }), 300);
     }
-    return json(res, 200, { ok: true });
+    return json(res, 200, { ok: true, systemItem });
   }
   if (req.method === "GET" && url.pathname === "/api/direct/secret/history") {
     const friend = url.searchParams.get("friend");

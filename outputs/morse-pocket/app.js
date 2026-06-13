@@ -459,6 +459,8 @@ const state = {
   secretActive: false,
   secretPartner: "",
   secretSessionId: "",
+  pendingSecretPartner: "",
+  pendingSecretSessionId: "",
   secretExitArmed: false,
   secretPointerDown: false,
   secretExitTimer: null,
@@ -647,18 +649,21 @@ function connectServer() {
   stream.addEventListener("secret-signal", event => {
     const signal = JSON.parse(event.data);
     if (signal.action === "enter") {
-      if (state.friends.includes(signal.from) && (!state.secretActive || state.secretPartner === signal.from)) {
-        enterSecretComm(signal.from, false, signal.sessionId);
-      }
+      if (!state.friends.includes(signal.from)) return;
+      state.pendingSecretPartner = signal.from;
+      state.pendingSecretSessionId = signal.sessionId;
+      if (state.activeFriend === signal.from) renderChat();
+      showToast(state.language === "en" ? "Secret Communication invitation received." : "시크릿 대화 초대가 도착했습니다.");
       return;
-    }
-    if (signal.action === "down" && !state.secretActive && state.friends.includes(signal.from)) {
-      enterSecretComm(signal.from, false, signal.sessionId);
     }
     if (!state.secretActive || signal.from !== state.secretPartner) return;
     if (signal.action === "down") startSecretVibration();
     else if (signal.action === "up") stopSecretVibration();
-    else if (signal.action === "exit") closeSecretComm(false);
+    else if (signal.action === "exit") {
+      state.pendingSecretPartner = "";
+      state.pendingSecretSessionId = "";
+      closeSecretComm(false);
+    }
   });
   stream.addEventListener("random-connected", event => {
     markRandomConnected(JSON.parse(event.data).partner);
@@ -1391,6 +1396,11 @@ function saveChats() {
 }
 
 function chatMessageText(message) {
+  if (typeof message === "object" && message.type === "system") {
+    const actor = message.actorNickname || message.actor || "";
+    if (state.language === "en") return `${actor} ${message.secretAction === "started" ? "started" : "ended"} Secret Communication.`;
+    return `${actor}가 시크릿 대화를 ${message.secretAction === "started" ? "시작하였습니다" : "종료하였습니다"}.`;
+  }
   return typeof message === "string" ? message : message.text || "";
 }
 
@@ -1422,17 +1432,19 @@ function renderChat() {
   $("#chatAvatar").innerHTML = profile?.profileAscii
     ? `<span class="ascii-avatar" data-no-i18n>${escapeHtml(profile.profileAscii)}</span>`
     : escapeHtml(profile?.nickname || friend).charAt(0).toUpperCase();
+  $("#openSecretComm").classList.toggle("invited", state.pendingSecretPartner === friend);
   $("#chatMessages").innerHTML = messages.length
     ? messages.map((message, index) => {
       const text = chatMessageText(message);
       const hidden = typeof message === "object" && message.hidden;
       const ascii = typeof message === "object" && message.type === "ascii";
+      const system = typeof message === "object" && message.type === "system";
       const exhausted = hiddenSignalExhausted(message);
       return `
-      <div class="chat-message-row${message.mine ? " mine" : ""}">
-        <button type="button" class="chat-bubble${hidden ? " hidden-signal" : ""}${exhausted ? " exhausted" : ""}${ascii ? " ascii-message" : ""}" data-chat-message="${index}" aria-label="${hidden ? (exhausted ? "만료된 숨김 모스 신호" : "숨김 모스 신호 재생") : (ascii ? "ASCII 아트 사진" : "문자 메시지")}">
+      <div class="chat-message-row${message.mine ? " mine" : ""}${system ? " system" : ""}">
+        <button type="button" class="chat-bubble${hidden ? " hidden-signal" : ""}${exhausted ? " exhausted" : ""}${ascii ? " ascii-message" : ""}${system ? " system-message" : ""}" data-chat-message="${index}">
           ${hidden ? "" : (ascii ? `<pre data-no-i18n>${escapeHtml(text)}</pre>` : `<span data-no-i18n>${escapeHtml(text)}</span>`)}
-          ${hidden || ascii ? "" : `<small>${textToMorse(text).replaceAll(".", "·").replaceAll("-", "−")}</small>`}
+          ${hidden || ascii || system ? "" : `<small>${textToMorse(text).replaceAll(".", "·").replaceAll("-", "—")}</small>`}
         </button>
       </div>`;
     }).join("")
@@ -1854,9 +1866,16 @@ function showNicknameStatus(message, error = false) {
 
 function sendSecretSignal(action) {
   if (!state.secretPartner || !state.secretSessionId || !state.authToken) return;
-  api("/api/direct/secret", {
+  const partner = state.secretPartner;
+  return api("/api/direct/secret", {
     method: "POST",
-    body: JSON.stringify({ to: state.secretPartner, action, sessionId: state.secretSessionId, unit: state.unit })
+    body: JSON.stringify({ to: partner, action, sessionId: state.secretSessionId, unit: state.unit })
+  }).then(({ systemItem }) => {
+    if (!systemItem) return;
+    state.chats[partner] ||= [];
+    state.chats[partner].push(taggedChatMessage(systemItem.message, true));
+    saveChats();
+    if (state.activeFriend === partner) renderChat();
   }).catch(() => {});
 }
 
@@ -1885,6 +1904,7 @@ function enterSecretComm(partner, notify = true, sessionId = "") {
 
 function closeSecretComm(notify = true) {
   if (!state.secretActive) return;
+  const partner = state.secretPartner;
   if (state.secretPointerDown) sendSecretSignal("up");
   if (notify) sendSecretSignal("exit");
   stopSecretVibration();
@@ -1896,6 +1916,10 @@ function closeSecretComm(notify = true) {
   state.secretPointerDown = false;
   $("#exitSecretComm").classList.remove("armed");
   $("#secretComm").hidden = true;
+  state.pendingSecretPartner = "";
+  state.pendingSecretSessionId = "";
+  switchWorld("friends");
+  if (partner && state.friends.includes(partner)) openChat(partner);
 }
 
 function pulseSignal(mark) {
@@ -2387,7 +2411,11 @@ $("#friendList").addEventListener("click", event => {
 $("#closeChat").addEventListener("click", closeChat);
 $("#openChatProfile").addEventListener("click", () => state.activeFriend && openFriendProfile(state.activeFriend));
 $("#openChatProfileInfo").addEventListener("click", () => state.activeFriend && openFriendProfile(state.activeFriend));
-$("#openSecretComm").addEventListener("click", () => state.activeFriend && enterSecretComm(state.activeFriend));
+$("#openSecretComm").addEventListener("click", () => {
+  if (!state.activeFriend) return;
+  const invited = state.pendingSecretPartner === state.activeFriend && state.pendingSecretSessionId;
+  enterSecretComm(state.activeFriend, !invited, invited ? state.pendingSecretSessionId : "");
+});
 $("#secretCommSurface").addEventListener("pointerdown", event => {
   if (!state.secretActive || state.secretPointerDown) return;
   state.secretPointerDown = true;
@@ -2502,6 +2530,7 @@ $("#chatMessages").addEventListener("click", event => {
   const bubble = event.target.closest("[data-chat-message]");
   if (!bubble || !state.activeFriend) return;
   const message = state.chats[state.activeFriend][Number(bubble.dataset.chatMessage)];
+  if (typeof message === "object" && message.type === "system") return;
   if (typeof message !== "object" || !message.hidden) return;
   if (hiddenSignalExhausted(message)) {
     showToast("이 숨김 신호는 재생 횟수를 모두 사용했습니다.");
