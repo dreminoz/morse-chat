@@ -238,9 +238,15 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { request });
   }
   if (req.method === "GET" && url.pathname === "/api/friends/requests") {
+    const incoming = await store.incomingFriendRequests(account.signalId);
+    const outgoing = await store.outgoingFriendRequests(account.signalId);
+    const outgoingWithNicknames = await Promise.all(outgoing.map(async request => {
+      const target = await store.findAccountBySignalId(request.to);
+      return { ...request, toNickname: target?.nickname || request.toNickname || request.to };
+    }));
     return json(res, 200, {
-      incoming: await store.incomingFriendRequests(account.signalId),
-      outgoing: await store.outgoingFriendRequests(account.signalId)
+      incoming,
+      outgoing: outgoingWithNicknames
     });
   }
   if (req.method === "GET" && url.pathname === "/api/friends") {
