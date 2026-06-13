@@ -51,7 +51,7 @@
           <p>친구를 눌러 모스 메시지를 보내보세요.</p>
         </div>
         <form id="friendForm" class="composer friend-composer">
-          <input id="friendInput" maxlength="24" placeholder="친구의 시그널 ID" autocomplete="off">
+          <input id="friendInput" maxlength="24" placeholder="친구 닉네임" autocomplete="off">
           <button type="submit" aria-label="친구 추가">+</button>
         </form>
         <div id="friendList" class="friend-list"></div>
@@ -363,7 +363,10 @@
                     <button type="button" data-random-limit="unlimited">무제한</button>
                   </div>
                 </div>
-                <button id="sendRandomChat" class="primary-button" type="button">보내기</button>
+                <button id="sendRandomChat" class="primary-button swipe-send" type="button">
+                  <strong>보내기</strong>
+                  <small id="randomHiddenLimitHint">오른쪽 밀기: 숨김 신호 · 1회</small>
+                </button>
               </div>
             </div>
             <input id="randomPhotoInput" class="visually-hidden" type="file" accept="image/*">
@@ -391,7 +394,6 @@
         <div id="myProfileVisual" class="profile-visual"></div>
         <strong id="myProfileNickname" class="profile-nickname"></strong>
         <small id="myProfileSignalId" class="profile-signal-id" data-no-i18n></small>
-        <div id="myNicknameHistory" class="nickname-history" hidden></div>
         <label class="profile-description-field">
           <span>자기소개</span>
           <textarea id="myProfileDescription" maxlength="240" placeholder="자신을 소개해보세요"></textarea>
@@ -413,7 +415,6 @@
       <div id="friendProfileVisual" class="profile-visual"></div>
       <strong id="friendProfileNickname" class="profile-nickname"></strong>
       <small id="friendProfileSignalId" class="profile-signal-id" data-no-i18n></small>
-      <div id="friendNicknameHistory" class="nickname-history" hidden></div>
       <p id="friendProfileDescription" class="profile-description"></p>
       <button id="chatFromProfile" class="primary-button" type="button">대화하기</button>
     </section>

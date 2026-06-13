@@ -40,7 +40,6 @@ async function sessionAccount(req, url) {
 function publicAccount(account) {
   return {
     nickname: account.nickname,
-    nicknameHistory: account.nicknameHistory || [],
     signalId: account.signalId,
     description: account.description || "",
     profileAscii: account.profileAscii || ""
@@ -160,8 +159,11 @@ const server = http.createServer(async (req, res) => {
   const account = await sessionAccount(req, url);
   if (url.pathname.startsWith("/api/") && !account) return json(res, 401, { error: "auth-required" });
   if (req.method === "GET" && url.pathname === "/api/profile") {
+    const nickname = url.searchParams.get("nickname");
     const signalId = url.searchParams.get("signalId") || account.signalId;
-    const profile = await store.findAccountBySignalId(signalId);
+    const profile = nickname
+      ? await store.findAccountByNickname(nickname.trim())
+      : await store.findAccountBySignalId(signalId);
     return profile ? json(res, 200, { profile: publicAccount(profile) }) : json(res, 404, { error: "profile-not-found" });
   }
   if (req.method === "PATCH" && url.pathname === "/api/profile/me") {

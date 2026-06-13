@@ -21,6 +21,7 @@ class FileStore {
   }
   async findAccountByGoogleSub(googleSub) { return this.data.accounts.find(item => item.googleSub === googleSub) || null; }
   async findAccountBySignalId(signalId) { return this.data.accounts.find(item => item.signalId === signalId) || null; }
+  async findAccountByNickname(nickname) { return this.data.accounts.find(item => item.nickname.toLowerCase() === nickname.toLowerCase()) || null; }
   async nicknameTaken(nickname, excludeGoogleSub = "") {
     return this.data.accounts.some(item => item.googleSub !== excludeGoogleSub && item.nickname.toLowerCase() === nickname.toLowerCase());
   }
@@ -112,6 +113,7 @@ class MongoStore {
   }
   async findAccountByGoogleSub(googleSub) { return this.clean(await this.accounts.findOne({ googleSub })); }
   async findAccountBySignalId(signalId) { return this.clean(await this.accounts.findOne({ signalId })); }
+  async findAccountByNickname(nickname) { return this.clean(await this.accounts.findOne({ nicknameLower: nickname.toLowerCase() })); }
   async nicknameTaken(nickname, excludeGoogleSub = "") {
     return Boolean(await this.accounts.findOne({ nicknameLower: nickname.toLowerCase(), googleSub: { $ne: excludeGoogleSub } }, { projection: { _id: 1 } }));
   }

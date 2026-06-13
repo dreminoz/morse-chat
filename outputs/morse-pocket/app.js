@@ -77,13 +77,13 @@ const I18N_PAIRS = [
   ["시그널 발신", "Signal Transmit"],
   ["시그널 수신", "Signal Receive"],
   ["시그널 재생 횟수", "Signal play limit"],
-  ["친구의 시그널 ID를 입력하세요.", "Enter your friend's Signal ID."],
+  ["친구의 닉네임을 입력하세요.", "Enter your friend's nickname."],
   ["서버 연결에 실패했습니다.", "Failed to connect to the server."],
   ["서버에 연결되었습니다.", "Connected to server."],
   ["연결 확인 중", "Checking connection"],
   ["연결 안 됨", "Disconnected"],
   ["내 시그널 ID", "My Signal ID"],
-  ["친구의 시그널 ID", "Friend's Signal ID"],
+  ["친구 닉네임", "Friend nickname"],
   ["수신할 우주 시그널이 아직 없습니다.", "There are no Space signals to receive yet."],
   ["Google 계정으로 계속한 뒤, 최초 한 번만 닉네임을 설정합니다.", "Continue with Google, then choose a nickname once."],
   ["Google 계정을 먼저 선택하세요.", "Select a Google account first."],
@@ -506,6 +506,8 @@ const state = {
   randomChatKeyerStartX: 0,
   randomChatKeyerStartY: 0,
   randomHiddenLimit: localStorage.getItem("morse-random-hidden-limit") || "1",
+  randomSendStartX: 0,
+  randomSendSwiped: false,
   randomSendHoldTimer: null,
   randomSendLongPressed: false,
   spaceSignals: JSON.parse(localStorage.getItem("morse-space-signals") || "[]"),
@@ -863,6 +865,7 @@ function renderRandomChatComposer() {
   document.querySelectorAll("[data-random-limit]").forEach(button =>
     button.classList.toggle("active", button.dataset.randomLimit === state.randomHiddenLimit)
   );
+  $("#randomHiddenLimitHint").textContent = `${state.language === "en" ? "Swipe right: hidden signal" : "오른쪽 밀기: 숨김 신호"} · ${hiddenLimitLabel(state.randomHiddenLimit)}`;
 }
 
 function resetRandomChatInput() {
@@ -1179,15 +1182,6 @@ function profileAvatarHtml(profile, fallback = "?") {
     : escapeHtml(profile?.nickname || fallback).charAt(0).toUpperCase()}</span>`;
 }
 
-function renderNicknameHistory(target, profile) {
-  const history = [...(profile?.nicknameHistory || [])].reverse();
-  target.hidden = !history.length;
-  target.innerHTML = history.length
-    ? `<strong>${state.language === "en" ? "Previous nicknames" : "이전 닉네임"}</strong>
-      ${history.map(item => `<span data-no-i18n>${escapeHtml(item.nickname)} · ${new Date(item.changedAt).toLocaleDateString()}</span>`).join("")}`
-    : "";
-}
-
 async function loadFriendProfiles() {
   if (!state.authToken) return;
   await Promise.all(state.friends.map(async signalId => {
@@ -1206,7 +1200,6 @@ function renderMyProfile() {
   $("#myProfileVisual").innerHTML = profileVisualHtml(profile, state.account.signalId);
   $("#myProfileNickname").textContent = state.account.nickname;
   $("#myProfileSignalId").textContent = state.account.signalId;
-  renderNicknameHistory($("#myNicknameHistory"), state.account);
   $("#myProfileDescription").value = state.account.description || "";
   $("#removeProfilePhoto").disabled = !profile.profileAscii;
 }
@@ -1219,7 +1212,6 @@ async function openFriendProfile(signalId) {
     $("#friendProfileVisual").innerHTML = profileVisualHtml(profile, signalId);
     $("#friendProfileNickname").textContent = profile.nickname;
     $("#friendProfileSignalId").textContent = profile.signalId;
-    renderNicknameHistory($("#friendNicknameHistory"), profile);
     $("#friendProfileDescription").textContent = profile.description || "아직 자기소개가 없습니다.";
     $("#friendProfilePanel").hidden = false;
     renderFriends();
@@ -1966,15 +1958,31 @@ $("#phraseList").addEventListener("click", event => {
   }
 });
 
-$("#friendForm").addEventListener("submit", event => {
+$("#friendForm").addEventListener("submit", async event => {
   event.preventDefault();
   const input = $("#friendInput");
-  const name = input.value.trim().toUpperCase();
-  if (!name || state.friends.includes(name)) return;
-  state.friends.push(name);
-  localStorage.setItem("morse-friends", JSON.stringify(state.friends));
-  input.value = "";
-  renderFriends();
+  const nickname = input.value.trim();
+  if (!nickname) return;
+  try {
+    const { profile } = await api(`/api/profile?nickname=${encodeURIComponent(nickname)}`);
+    if (profile.signalId === state.userId) {
+      showToast(state.language === "en" ? "You cannot add yourself." : "자기 자신은 친구로 추가할 수 없습니다.");
+      return;
+    }
+    if (state.friends.includes(profile.signalId)) {
+      showToast(state.language === "en" ? "Already added as a friend." : "이미 추가된 친구입니다.");
+      return;
+    }
+    state.friends.push(profile.signalId);
+    state.profileCache[profile.signalId] = profile;
+    localStorage.setItem("morse-friends", JSON.stringify(state.friends));
+    input.value = "";
+    renderFriends();
+    showToast(state.language === "en" ? `${profile.nickname} added.` : `${profile.nickname}님을 친구로 추가했습니다.`);
+  } catch (error) {
+    if (error.status === 404) showToast(state.language === "en" ? "Nickname not found." : "없는 닉네임입니다.");
+    else showApiFailure(error, state.language === "en" ? "Failed to add friend." : "친구를 추가하지 못했습니다.");
+  }
 });
 $("#friendList").addEventListener("click", event => {
   const profile = event.target.closest("[data-profile-friend]");
@@ -2378,23 +2386,40 @@ $("#clearRandomChat").addEventListener("click", () => {
   renderRandomChatComposer();
 });
 $("#sendRandomChat").addEventListener("click", () => {
-  if (state.randomSendLongPressed) {
+  if (state.randomSendSwiped || state.randomSendLongPressed) {
+    state.randomSendSwiped = false;
     state.randomSendLongPressed = false;
     return;
   }
   commitRandomChatLetter();
   sendRandomChat(state.randomChatText);
 });
-$("#sendRandomChat").addEventListener("pointerdown", () => {
+$("#sendRandomChat").addEventListener("pointerdown", event => {
+  state.randomSendStartX = event.clientX;
+  state.randomSendSwiped = false;
   state.randomSendLongPressed = false;
   clearTimeout(state.randomSendHoldTimer);
   state.randomSendHoldTimer = setTimeout(() => {
     state.randomSendLongPressed = true;
+    $("#sendRandomChat").classList.remove("swiping");
     $("#randomHiddenPicker").hidden = false;
   }, 550);
+  $("#sendRandomChat").classList.add("swiping");
+  $("#sendRandomChat").setPointerCapture?.(event.pointerId);
 });
-$("#sendRandomChat").addEventListener("pointerup", () => clearTimeout(state.randomSendHoldTimer));
-$("#sendRandomChat").addEventListener("pointercancel", () => clearTimeout(state.randomSendHoldTimer));
+$("#sendRandomChat").addEventListener("pointerup", event => {
+  clearTimeout(state.randomSendHoldTimer);
+  $("#sendRandomChat").classList.remove("swiping");
+  if (state.randomSendLongPressed) return;
+  if (event.clientX - state.randomSendStartX < 70) return;
+  state.randomSendSwiped = true;
+  commitRandomChatLetter();
+  sendRandomChat(state.randomChatText, true);
+});
+$("#sendRandomChat").addEventListener("pointercancel", () => {
+  clearTimeout(state.randomSendHoldTimer);
+  $("#sendRandomChat").classList.remove("swiping");
+});
 $("#randomHiddenPicker").addEventListener("click", event => {
   const button = event.target.closest("[data-random-limit]");
   if (!button) return;
@@ -2402,8 +2427,8 @@ $("#randomHiddenPicker").addEventListener("click", event => {
   localStorage.setItem("morse-random-hidden-limit", state.randomHiddenLimit);
   $("#randomHiddenPicker").hidden = true;
   state.randomSendLongPressed = false;
-  commitRandomChatLetter();
-  sendRandomChat(state.randomChatText, true);
+  renderRandomChatComposer();
+  showToast(`숨김 신호를 ${hiddenLimitLabel(state.randomHiddenLimit)} 재생할 수 있습니다.`);
 });
 $("#randomPhotoInput").addEventListener("change", event => {
   const file = event.target.files?.[0];
