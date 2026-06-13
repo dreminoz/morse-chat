@@ -515,11 +515,11 @@ const state = {
   examTotal: LETTERS.length,
   examResults: [],
   quizRecords: JSON.parse(localStorage.getItem("morse-quiz-records") || "[]"),
-  quizKeyerMode: localStorage.getItem("morse-quiz-keyer-mode") || "auto",
+  quizKeyerMode: localStorage.getItem("morse-chat-keyer-mode") || "manual",
   writerSignal: "",
   writerText: "",
   writerMode: localStorage.getItem("morse-writer-mode") || "single",
-  writerKeyerMode: localStorage.getItem("morse-writer-keyer-mode") || "auto",
+  writerKeyerMode: localStorage.getItem("morse-chat-keyer-mode") || "manual",
   keyerPressStart: 0,
   keyerStartX: 0,
   keyerStartY: 0,
@@ -1710,6 +1710,9 @@ function renderSettings() {
   document.querySelectorAll("[data-chat-keyer-mode]").forEach(button =>
     button.classList.toggle("active", button.dataset.chatKeyerMode === state.chatKeyerMode)
   );
+  document.querySelectorAll(".keyer-mode-button").forEach(button =>
+    button.classList.toggle("active", button.dataset.keyerMode === state.chatKeyerMode)
+  );
   $("#reverseChatSwipe").checked = state.reverseChatSwipe;
   $("#swipeReverseSetting").classList.toggle("disabled", state.chatKeyerMode !== "manual");
   $("#swipeDirectionHint").textContent = state.reverseChatSwipe
@@ -2856,15 +2859,18 @@ $("#chatMessages").addEventListener("click", event => {
   if (!bubble || !state.activeFriend) return;
   const message = state.chats[state.activeFriend][Number(bubble.dataset.chatMessage)];
   if (typeof message === "object" && message.type === "system") return;
-  if (typeof message !== "object" || !message.hidden) return;
-  if (hiddenSignalExhausted(message)) {
-    showToast("이 숨김 신호는 재생 횟수를 모두 사용했습니다.");
-    return;
+  const hidden = typeof message === "object" && message.hidden;
+  if (hidden) {
+    if (hiddenSignalExhausted(message)) {
+      showToast(state.language === "en" ? "This hidden signal has no plays remaining." : "? ?? ??? ?? ??? ?? ??????.");
+      return;
+    }
+    message.views = Number(message.views || 0) + 1;
+    saveChats();
+    renderChat();
   }
-  message.views = Number(message.views || 0) + 1;
-  saveChats();
-  renderChat();
-  playMorse(chatMessageText(message), null, "");
+  const text = chatMessageText(message);
+  if (text && vibrationPattern(text).length) playMorse(text, null, hidden ? "" : text);
 });
 $("#chatMorseText").addEventListener("input", event => {
   clearTimeout(state.chatLetterTimer);
@@ -3162,11 +3168,19 @@ $("#autocompleteList").addEventListener("click", event => {
 });
 document.querySelectorAll("[data-chat-keyer-mode]").forEach(button => button.addEventListener("click", () => {
   state.chatKeyerMode = button.dataset.chatKeyerMode;
+  state.quizKeyerMode = state.chatKeyerMode;
+  state.writerKeyerMode = state.chatKeyerMode;
   localStorage.setItem("morse-chat-keyer-mode", state.chatKeyerMode);
+  localStorage.removeItem("morse-quiz-keyer-mode");
+  localStorage.removeItem("morse-writer-keyer-mode");
   clearTimeout(state.chatLetterTimer);
   clearTimeout(state.chatSpaceTimer);
+  clearKeyerTimers("quiz");
+  clearKeyerTimers("writer");
   renderSettings();
   renderChatComposer();
+  renderQuiz();
+  renderWriter();
   if (state.randomSignalState === "connected") renderRandomChatComposer();
 }));
 document.querySelectorAll("[data-language]").forEach(button => button.addEventListener("click", () => {
@@ -3587,20 +3601,21 @@ $("#toggleRecords").addEventListener("click", () => {
 });
 
 document.querySelectorAll(".keyer-mode-button").forEach(button => button.addEventListener("click", () => {
-  const target = button.dataset.keyerTarget;
   const mode = button.dataset.keyerMode;
-  clearKeyerTimers(target);
-  if (target === "quiz") {
-    state.quizKeyerMode = mode;
-    localStorage.setItem("morse-quiz-keyer-mode", mode);
-    renderQuiz();
-  } else {
-    state.writerKeyerMode = mode;
-    localStorage.setItem("morse-writer-keyer-mode", mode);
-    renderWriter();
-  }
-  document.querySelectorAll(`[data-keyer-target="${target}"]`).forEach(item =>
-    item.classList.toggle("active", item === button)
+  state.chatKeyerMode = mode;
+  state.quizKeyerMode = mode;
+  state.writerKeyerMode = mode;
+  localStorage.setItem("morse-chat-keyer-mode", mode);
+  localStorage.removeItem("morse-quiz-keyer-mode");
+  localStorage.removeItem("morse-writer-keyer-mode");
+  clearKeyerTimers("quiz");
+  clearKeyerTimers("writer");
+  renderSettings();
+  renderChatComposer();
+  renderQuiz();
+  renderWriter();
+  document.querySelectorAll(".keyer-mode-button").forEach(item =>
+    item.classList.toggle("active", item.dataset.keyerMode === mode)
   );
 }));
 setupKeyer("quiz", "#quizKeyer");
