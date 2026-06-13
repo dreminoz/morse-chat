@@ -1,4 +1,4 @@
-const CACHE = "morse-pocket-v81";
+const CACHE = "morse-pocket-v82";
 const FILES = ["./", "index.html", "styles.css", "app.js", "manifest.json", "icon.svg"];
 
 self.addEventListener("install", event => {
@@ -24,5 +24,32 @@ self.addEventListener("fetch", event => {
         return response;
       })
       .catch(() => caches.match(event.request))
+  );
+});
+
+self.addEventListener("push", event => {
+  let data = {};
+  try { data = event.data?.json() || {}; } catch {}
+  event.waitUntil(self.registration.showNotification(data.title || "MORSE CHAT", {
+    body: data.body || "",
+    icon: "icon.svg",
+    badge: "icon.svg",
+    tag: data.tag || undefined,
+    data: { url: data.url || "/" }
+  }));
+});
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const target = new URL(event.notification.data?.url || "/", self.location.origin).href;
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then(windows => {
+      const existing = windows.find(client => client.url.startsWith(self.location.origin));
+      if (existing) {
+        existing.navigate(target);
+        return existing.focus();
+      }
+      return clients.openWindow(target);
+    })
   );
 });

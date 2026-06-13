@@ -38,6 +38,16 @@ Railway may display a different MongoDB service name. Use the variable reference
 
 MongoDB stores accounts and nicknames, login sessions, profile data, direct-message history, Space signals, and Secret Communication event logs. Secret Communication logs contain session participants, start/end events, press/release timestamps, the reconstructed Morse sequence, and its decoded text. Random Signal live matching remains in server memory because it represents active connections rather than saved history.
 
+## Push notifications
+
+Set these Railway variables to enable notifications while the app is closed:
+
+- `VAPID_PUBLIC_KEY`
+- `VAPID_PRIVATE_KEY`
+- `VAPID_SUBJECT` (for example, `mailto:admin@example.com`)
+
+Push subscriptions and each user's Korean/English notification language are stored on their account. Notifications require the deployed HTTPS site and browser notification permission.
+
 When no MongoDB URL is configured, the server falls back to `server/data.json` for local development. If an existing JSON file is available when MongoDB is first connected, its data is imported automatically while the MongoDB accounts collection is empty.
 
 Open `/api/health` on the deployed domain to confirm the connection. A working MongoDB connection returns:

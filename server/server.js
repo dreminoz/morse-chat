@@ -3,10 +3,14 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { OAuth2Client } = require("google-auth-library");
+const webPush = require("web-push");
 const { createStore } = require("./storage");
 
 const PORT = Number(process.env.PORT) || 8787;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "";
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "";
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:admin@example.com";
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 const WEB_ROOT = path.resolve(__dirname, "..", "outputs", "morse-pocket");
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : __dirname;
@@ -16,6 +20,8 @@ const randomQueue = [];
 const randomPairs = new Map();
 const lastPartners = new Map();
 let store;
+const pushEnabled = Boolean(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
+if (pushEnabled) webPush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 const SECRET_MORSE = {
   ".-": "A", "-...": "B", "-.-.": "C", "-..": "D", ".": "E", "..-.": "F", "--.": "G", "....": "H",
   "..": "I", ".---": "J", "-.-": "K", ".-..": "L", "--": "M", "-.": "N", "---": "O", ".--.": "P",
@@ -120,6 +126,66 @@ function emit(userId, type, payload = {}) {
   streams.forEach(stream => stream.write(message));
 }
 
+function notificationText(kind, language, data = {}) {
+  const en = language === "en";
+  const hidden = Boolean(data.hidden);
+  const preview = hidden ? "Morse Only" : String(data.preview || "").trim().slice(0, 90);
+  const messages = {
+    direct: {
+      title: en ? `New message from ${data.sender || "a friend"}` : `${data.sender || "친구"}님의 새 메시지`,
+      body: preview || (en ? "A new message arrived." : "새 메시지가 도착했습니다.")
+    },
+    "random-connected": {
+      title: en ? "Random Signal connected" : "랜덤 시그널 연결",
+      body: en ? "A new signal has connected." : "새로운 시그널과 연결되었습니다."
+    },
+    random: {
+      title: en ? "Random Signal" : "랜덤 시그널",
+      body: preview || (en ? "A new message arrived." : "새 메시지가 도착했습니다.")
+    },
+    daily: {
+      title: en ? "Daily Group Chat" : "데일리 그룹챗",
+      body: en ? "A new anonymous message arrived." : "새 익명 메시지가 도착했습니다."
+    },
+    space: {
+      title: en ? "Space Signal received" : "우주 시그널 수신",
+      body: en ? "A new Space Signal arrived." : "새 우주 시그널이 도착했습니다."
+    }
+  };
+  return messages[kind] || { title: "MORSE CHAT", body: preview };
+}
+
+async function pushToUser(signalId, kind, data = {}) {
+  if (!pushEnabled) return;
+  const account = await store.findAccountBySignalId(signalId);
+  const subscriptions = account?.pushSubscriptions || [];
+  if (!subscriptions.length) return;
+  const text = notificationText(kind, account.notificationLanguage, data);
+  const payload = JSON.stringify({ ...text, url: data.url || "/" });
+  const active = [];
+  for (const subscription of subscriptions) {
+    try {
+      await webPush.sendNotification(subscription, payload);
+      active.push(subscription);
+    } catch (error) {
+      if (![404, 410].includes(error.statusCode)) {
+        active.push(subscription);
+        console.error("Push notification failed:", error.statusCode || error.message);
+      }
+    }
+  }
+  if (active.length !== subscriptions.length) {
+    account.pushSubscriptions = active;
+    await store.updateAccount(account);
+  }
+}
+
+function messagePushData(message) {
+  const hidden = Boolean(message?.hidden);
+  const preview = message?.type === "ascii" ? "ASCII Art" : message?.text || (typeof message === "string" ? message : "");
+  return { hidden, preview };
+}
+
 async function publicGroup(group, viewer) {
   const members = group.type === "daily"
     ? group.members.map((signalId, index) => ({ signalId: `ANON-${index + 1}`, nickname: signalId === viewer ? "나" : `익명 ${index + 1}` }))
@@ -155,6 +221,8 @@ function pairUsers(a, b) {
   randomPairs.set(b, a);
   emit(a, "random-connected", { partner: "RANDOM SIGNAL" });
   emit(b, "random-connected", { partner: "RANDOM SIGNAL" });
+  pushToUser(a, "random-connected", { url: "/#random" }).catch(console.error);
+  pushToUser(b, "random-connected", { url: "/#random" }).catch(console.error);
 }
 
 function leaveRandom(userId, allowLastSignal = true) {
@@ -213,6 +281,9 @@ const server = http.createServer(async (req, res) => {
     }
   }
   if (req.method === "GET" && url.pathname === "/api/auth/config") return json(res, 200, { googleClientId: GOOGLE_CLIENT_ID });
+  if (req.method === "GET" && url.pathname === "/api/push/config") {
+    return json(res, 200, { enabled: pushEnabled, publicKey: VAPID_PUBLIC_KEY });
+  }
   if (req.method === "POST" && url.pathname === "/api/auth/google") {
     try {
       const { credential, nickname } = await readBody(req);
@@ -246,6 +317,24 @@ const server = http.createServer(async (req, res) => {
 
   const account = await sessionAccount(req, url);
   if (url.pathname.startsWith("/api/") && !account) return json(res, 401, { error: "auth-required" });
+  if (req.method === "POST" && url.pathname === "/api/push/subscribe") {
+    const { subscription, language } = await readBody(req);
+    if (!subscription?.endpoint || !subscription?.keys) return json(res, 400, { error: "invalid-subscription" });
+    await store.removePushEndpointFromOtherAccounts(subscription.endpoint, account.googleSub);
+    account.pushSubscriptions = [
+      ...(account.pushSubscriptions || []).filter(item => item.endpoint !== subscription.endpoint),
+      subscription
+    ].slice(-5);
+    account.notificationLanguage = language === "en" ? "en" : "ko";
+    await store.updateAccount(account);
+    return json(res, 200, { ok: true });
+  }
+  if (req.method === "POST" && url.pathname === "/api/push/language") {
+    const { language } = await readBody(req);
+    account.notificationLanguage = language === "en" ? "en" : "ko";
+    await store.updateAccount(account);
+    return json(res, 200, { ok: true });
+  }
   if (req.method === "GET" && url.pathname === "/api/profile") {
     const nickname = url.searchParams.get("nickname");
     const signalId = url.searchParams.get("signalId") || account.signalId;
@@ -347,6 +436,8 @@ const server = http.createServer(async (req, res) => {
     const item = { id: crypto.randomUUID(), from, to, message, createdAt: Date.now() };
     await store.addDirect(item);
     emit(to, "direct-message", item);
+    const sender = account.nickname;
+    pushToUser(to, "direct", { sender, ...messagePushData(message), url: "/#friends" }).catch(console.error);
     return json(res, 200, item);
   }
   if (req.method === "GET" && url.pathname === "/api/groups") {
@@ -400,6 +491,10 @@ const server = http.createServer(async (req, res) => {
     const item = { id: crypto.randomUUID(), groupId, from: account.signalId, fromNickname: account.nickname, text: cleanText, createdAt: Date.now() };
     await store.addGroupMessage(item);
     group.members.forEach(member => emit(member, "group-message", publicGroupMessage(group, item, member)));
+    if (group.type === "daily") {
+      group.members.filter(member => member !== account.signalId)
+        .forEach(member => pushToUser(member, "daily", { url: "/#daily" }).catch(console.error));
+    }
     return json(res, 200, publicGroupMessage(group, item, account.signalId));
   }
   if (req.method === "GET" && url.pathname === "/api/daily-group") {
@@ -472,6 +567,8 @@ const server = http.createServer(async (req, res) => {
     if (!text) return json(res, 400, { error: "text required" });
     const signal = { id: crypto.randomUUID(), sender, text, type, day, createdAt: Date.now() };
     if (!await store.addSpace(signal)) return json(res, 409, { error: "daily-limit" });
+    (await store.allAccounts()).filter(item => item.signalId !== sender && !(item.blockedSpaceSenders || []).includes(sender))
+      .forEach(item => pushToUser(item.signalId, "space", { url: "/#space" }).catch(console.error));
     return json(res, 200, signal);
   }
   if (req.method === "GET" && url.pathname === "/api/space/random") {
@@ -520,6 +617,7 @@ const server = http.createServer(async (req, res) => {
     const partner = randomPairs.get(userId);
     if (!partner) return json(res, 409, { error: "not-connected" });
     emit(partner, "random-message", { message });
+    pushToUser(partner, "random", { ...messagePushData(message), url: "/#random" }).catch(console.error);
     return json(res, 200, { ok: true });
   }
   if (req.method === "POST" && url.pathname === "/api/random/last") {

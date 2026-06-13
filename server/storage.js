@@ -26,6 +26,7 @@ class FileStore {
   async findAccountByGoogleSub(googleSub) { return this.data.accounts.find(item => item.googleSub === googleSub) || null; }
   async findAccountBySignalId(signalId) { return this.data.accounts.find(item => item.signalId === signalId) || null; }
   async findAccountByNickname(nickname) { return this.data.accounts.find(item => item.nickname.toLowerCase() === nickname.toLowerCase()) || null; }
+  async allAccounts() { return this.data.accounts; }
   async nicknameTaken(nickname, excludeGoogleSub = "") {
     return this.data.accounts.some(item => item.googleSub !== excludeGoogleSub && item.nickname.toLowerCase() === nickname.toLowerCase());
   }
@@ -35,6 +36,14 @@ class FileStore {
     if (index >= 0) this.data.accounts[index] = account;
     this.save();
     return account;
+  }
+  async removePushEndpointFromOtherAccounts(endpoint, googleSub) {
+    this.data.accounts.forEach(account => {
+      if (account.googleSub !== googleSub) {
+        account.pushSubscriptions = (account.pushSubscriptions || []).filter(item => item.endpoint !== endpoint);
+      }
+    });
+    this.save();
   }
   async addFriendRequest(item) {
     const existing = this.data.friendRequests.find(request => request.from === item.from && request.to === item.to && request.status === "pending");
@@ -233,6 +242,7 @@ class MongoStore {
   async findAccountByGoogleSub(googleSub) { return this.clean(await this.accounts.findOne({ googleSub })); }
   async findAccountBySignalId(signalId) { return this.clean(await this.accounts.findOne({ signalId })); }
   async findAccountByNickname(nickname) { return this.clean(await this.accounts.findOne({ nicknameLower: nickname.toLowerCase() })); }
+  async allAccounts() { return this.accounts.find({}, { projection: { _id: 0, nicknameLower: 0 } }).toArray(); }
   async nicknameTaken(nickname, excludeGoogleSub = "") {
     return Boolean(await this.accounts.findOne({ nicknameLower: nickname.toLowerCase(), googleSub: { $ne: excludeGoogleSub } }, { projection: { _id: 1 } }));
   }
@@ -247,6 +257,12 @@ class MongoStore {
       { upsert: true }
     );
     return account;
+  }
+  async removePushEndpointFromOtherAccounts(endpoint, googleSub) {
+    await this.accounts.updateMany(
+      { googleSub: { $ne: googleSub }, "pushSubscriptions.endpoint": endpoint },
+      { $pull: { pushSubscriptions: { endpoint } } }
+    );
   }
   async addFriendRequest(item) {
     const existing = await this.friendRequests.findOne({ from: item.from, to: item.to, status: "pending" }, { projection: { _id: 0 } });

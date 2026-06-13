@@ -9,6 +9,10 @@ const MORSE = {
 
 const $ = (selector) => document.querySelector(selector);
 const I18N_PAIRS = [
+  ["알림 켜기", "Enable notifications"],
+  ["알림", "Notifications"],
+  ["알림을 켰습니다.", "Notifications enabled."],
+  ["브라우저 설정에서 알림을 허용해 주세요.", "Please allow notifications in your browser settings."],
   ["이 기기에서는 진동 재생을 지원하지 않습니다.", "This device does not support vibration playback."],
   ["이 숨김 신호는 재생 횟수를 모두 사용했습니다.", "This hidden signal has no plays remaining."],
   ["스와이프할 때까지 현재 항목 무한 반복", "Repeat the current item until you swipe"],
@@ -704,6 +708,39 @@ function connectServer() {
   });
 }
 
+function base64UrlToUint8Array(value) {
+  const padding = "=".repeat((4 - value.length % 4) % 4);
+  const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(atob(base64), character => character.charCodeAt(0));
+}
+
+async function setupPushNotifications() {
+  if (!state.authToken || !("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return false;
+  if (!location.protocol.startsWith("http")) return false;
+  try {
+    const config = await api("/api/push/config");
+    if (!config.enabled || !config.publicKey) return false;
+    const permission = Notification.permission === "default" ? await Notification.requestPermission() : Notification.permission;
+    if (permission !== "granted") return false;
+    const registration = await navigator.serviceWorker.register("service-worker.js");
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: base64UrlToUint8Array(config.publicKey)
+      });
+    }
+    await api("/api/push/subscribe", {
+      method: "POST",
+      body: JSON.stringify({ subscription: subscription.toJSON(), language: state.language })
+    });
+    return true;
+  } catch (error) {
+    console.warn("Push notifications are unavailable:", error);
+    return false;
+  }
+}
+
 function setAccount(token, account) {
   state.authToken = token;
   state.account = account;
@@ -714,9 +751,19 @@ function setAccount(token, account) {
   state.profileDraftAscii = account.profileAscii || "";
   $("#authPanel").hidden = true;
   connectServer();
+  setupPushNotifications();
   renderSettings();
-  switchWorld("friends");
+  switchWorld(notificationWorldFromHash() || "friends");
   loadFriendProfiles();
+}
+
+function notificationWorldFromHash() {
+  return {
+    "#friends": "friends",
+    "#random": "randomSignal",
+    "#daily": "dailyGroup",
+    "#space": "space"
+  }[location.hash] || "";
 }
 
 function applyAccountUpdate(account) {
@@ -1692,6 +1739,9 @@ function applyLanguage(language) {
   document.documentElement.lang = language;
   translateElement(document.body, language);
   document.title = "MORSE CHAT";
+  if (state.authToken) {
+    api("/api/push/language", { method: "POST", body: JSON.stringify({ language }) }).catch(() => {});
+  }
 }
 
 function resetChatMorse() {
@@ -2907,6 +2957,12 @@ $("#openSettings").addEventListener("click", () => {
   $("#settingsPanel").hidden = false;
 });
 $("#closeSettings").addEventListener("click", () => $("#settingsPanel").hidden = true);
+$("#enableNotifications").addEventListener("click", async () => {
+  const enabled = await setupPushNotifications();
+  showToast(enabled
+    ? (state.language === "en" ? "Notifications enabled." : "알림을 켰습니다.")
+    : (state.language === "en" ? "Please allow notifications in your browser settings." : "브라우저 설정에서 알림을 허용해 주세요."));
+});
 $("#openAuthSettings").addEventListener("click", openAuthPanel);
 $("#logoutAccount").addEventListener("click", logoutAccount);
 $("#saveNickname").addEventListener("click", async () => {
@@ -3563,6 +3619,10 @@ switchWorld(state.world);
 applyLanguage(state.language);
 installBackNavigation();
 initializeAuth();
+window.addEventListener("hashchange", () => {
+  const world = notificationWorldFromHash();
+  if (world) switchWorld(world);
+});
 
 const languageObserver = new MutationObserver(mutations => {
   mutations.forEach(mutation => {
