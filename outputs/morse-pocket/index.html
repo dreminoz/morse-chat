@@ -505,6 +505,16 @@
           <p class="autocomplete-note">표준 모스부호와 겹치지 않는 점·선 조합만 사용할 수 있습니다.</p>
           <form id="autocompleteForm" class="autocomplete-form">
             <input id="autocompleteCode" maxlength="10" placeholder="모스부호 예: ......" autocomplete="off">
+            <div id="autocompleteCodePreview" class="autocomplete-code-preview" data-no-i18n>비어 있음</div>
+            <button id="autocompleteKeyer" class="morse-keyer autocomplete-keyer" type="button">
+              <strong>PRESS &amp; HOLD</strong>
+              <span>짧게 누르면 · 점 / 길게 누르면 − 선</span>
+              <small>최대 10개 입력</small>
+            </button>
+            <div class="autocomplete-keyer-actions">
+              <button id="autocompleteBackspace" type="button">한 칸 지우기</button>
+              <button id="autocompleteClear" type="button">초기화</button>
+            </div>
             <textarea id="autocompleteText" maxlength="300" placeholder="입력할 단어 또는 문장"></textarea>
             <button type="submit">자동완성 추가</button>
           </form>

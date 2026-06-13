@@ -242,6 +242,10 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 .autocomplete-form input, .autocomplete-form textarea { width: 100%; padding: 11px; border: 1px solid var(--line); border-radius: 11px; color: var(--ink); background: white; font: inherit; }
 .autocomplete-form textarea { min-height: 70px; resize: vertical; }
 .autocomplete-form button { padding: 12px; border: 0; border-radius: 11px; color: white; background: var(--ink); font-weight: 850; }
+.autocomplete-code-preview { min-height: 44px; padding: 12px; border: 1px solid var(--line); border-radius: 11px; text-align: center; background: var(--paper); font: 18px Georgia, serif; letter-spacing: .1em; }
+.autocomplete-keyer { min-height: 100px; margin-top: 0; }
+.autocomplete-keyer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.autocomplete-keyer-actions button { color: var(--ink); border: 1px solid var(--line); background: white; }
 .autocomplete-list { display: grid; gap: 6px; margin-top: 10px; }
 .autocomplete-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 9px; border: 1px solid var(--line); border-radius: 11px; }
 .autocomplete-item code { font-weight: 850; letter-spacing: .08em; }

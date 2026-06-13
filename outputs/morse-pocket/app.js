@@ -453,6 +453,7 @@ const state = {
     ? true
     : localStorage.getItem("morse-chat-swipe-reverse") === "true",
   autocompletes: JSON.parse(localStorage.getItem("morse-autocompletes") || "[]"),
+  autocompleteKeyerPressStart: 0,
   chatKeyerStartX: 0,
   chatKeyerStartY: 0,
   asciiDraft: "",
@@ -1348,6 +1349,24 @@ function renderAutocompletes() {
         <button type="button" data-delete-autocomplete="${index}" aria-label="자동완성 삭제">×</button>
       </div>`).join("")
     : `<p class="autocomplete-note">${state.language === "en" ? "No autocomplete entries yet." : "아직 등록된 자동완성이 없습니다."}</p>`;
+}
+
+function renderAutocompleteCode() {
+  const code = normalizeAutocompleteCode($("#autocompleteCode").value);
+  $("#autocompleteCode").value = code;
+  $("#autocompleteCodePreview").textContent = code ? prettyMorse(code) : (state.language === "en" ? "Empty" : "비어 있음");
+}
+
+function addAutocompleteMark(mark) {
+  const input = $("#autocompleteCode");
+  const code = normalizeAutocompleteCode(input.value);
+  if (code.length >= 10) {
+    showToast(state.language === "en" ? "Autocomplete codes can contain up to 10 marks." : "자동완성 코드는 최대 10개까지 입력할 수 있습니다.");
+    return;
+  }
+  pulseSignal(mark);
+  input.value = code + mark;
+  renderAutocompleteCode();
 }
 
 function normalizeAutocompleteCode(value) {
@@ -2368,6 +2387,28 @@ $("#submitAuth").addEventListener("click", async () => {
 $("#toggleAutocompleteSettings").addEventListener("click", () => {
   $("#autocompleteSettingsPanel").hidden = !$("#autocompleteSettingsPanel").hidden;
   renderAutocompletes();
+  renderAutocompleteCode();
+});
+$("#autocompleteCode").addEventListener("input", renderAutocompleteCode);
+$("#autocompleteKeyer").addEventListener("pointerdown", event => {
+  state.autocompleteKeyerPressStart = performance.now();
+  $("#autocompleteKeyer").classList.add("pressed");
+  $("#autocompleteKeyer").setPointerCapture?.(event.pointerId);
+});
+$("#autocompleteKeyer").addEventListener("pointerup", () => {
+  $("#autocompleteKeyer").classList.remove("pressed");
+  const held = performance.now() - state.autocompleteKeyerPressStart;
+  addAutocompleteMark(held < state.unit * 2 ? "." : "-");
+});
+$("#autocompleteKeyer").addEventListener("pointercancel", () => $("#autocompleteKeyer").classList.remove("pressed"));
+$("#autocompleteBackspace").addEventListener("click", () => {
+  const input = $("#autocompleteCode");
+  input.value = normalizeAutocompleteCode(input.value).slice(0, -1);
+  renderAutocompleteCode();
+});
+$("#autocompleteClear").addEventListener("click", () => {
+  $("#autocompleteCode").value = "";
+  renderAutocompleteCode();
 });
 $("#autocompleteForm").addEventListener("submit", event => {
   event.preventDefault();
@@ -2394,6 +2435,7 @@ $("#autocompleteForm").addEventListener("submit", event => {
   state.autocompletes.push({ code, text });
   codeInput.value = "";
   textInput.value = "";
+  renderAutocompleteCode();
   saveAutocompletes();
   showToast(state.language === "en" ? "Autocomplete added." : "자동완성을 추가했습니다.");
 });
