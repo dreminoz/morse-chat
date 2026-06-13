@@ -1,3 +1,9 @@
+const MORSE_CHAT_SERVER = "https://morse-chat.up.railway.app";
+const savedServerUrl = localStorage.getItem("morse-server-url");
+if (!savedServerUrl || /localhost:8787|127\.0\.0\.1:8787/.test(savedServerUrl)) {
+  localStorage.setItem("morse-server-url", MORSE_CHAT_SERVER);
+}
+
 const MORSE = {
   A: ".-", B: "-...", C: "-.-.", D: "-..", E: ".", F: "..-.", G: "--.", H: "....",
   I: "..", J: ".---", K: "-.-", L: ".-..", M: "--", N: "-.", O: "---", P: ".--.",
@@ -549,7 +555,7 @@ const state = {
   spaceSendKeyerStartX: 0,
   spaceSendKeyerStartY: 0,
   userId: localStorage.getItem("morse-user-id") || createSignalId(),
-  serverUrl: localStorage.getItem("morse-server-url") || (location.protocol.startsWith("http") ? location.origin : "http://localhost:8787"),
+  serverUrl: location.protocol.startsWith("http") ? location.origin : (localStorage.getItem("morse-server-url") || MORSE_CHAT_SERVER),
   serverConnected: false,
   eventSource: null,
   receivedDirectIds: new Set(JSON.parse(localStorage.getItem("morse-received-direct-ids") || "[]")),
@@ -849,14 +855,27 @@ window.handleAndroidGoogleCredential = async credential => {
       $("#authNickname").focus();
       return;
     }
-    showToast(error.body?.error || (state.language === "en" ? "Google sign-in failed." : "Google 로그인에 실패했습니다."));
+    const serverFailed = !error.body && (!error.status || error.status >= 500);
+    showToast(serverFailed
+      ? (state.language === "en" ? `Server connection failed: ${state.serverUrl}` : `서버 연결 실패: ${state.serverUrl}`)
+      : (error.body?.error || (state.language === "en" ? "Google sign-in failed." : "Google 로그인에 실패했습니다.")));
   }
 };
 
 window.handleAndroidGoogleError = statusCode => {
-  showToast(statusCode === 10
-    ? (state.language === "en" ? "Google Android OAuth setup is required." : "Google Android OAuth 설정이 필요합니다.")
-    : (state.language === "en" ? "Google sign-in failed." : "Google 로그인에 실패했습니다."));
+  const labels = {
+    7: "NETWORK_ERROR",
+    10: "DEVELOPER_ERROR",
+    12500: "SIGN_IN_FAILED",
+    12501: "SIGN_IN_CANCELLED",
+    12502: "SIGN_IN_CURRENTLY_IN_PROGRESS"
+  };
+  const detail = labels[statusCode] || `ERROR_${statusCode}`;
+  showToast(state.language === "en" ? `Google sign-in failed: ${detail}` : `Google 로그인 실패: ${detail}`);
+};
+
+window.handleAndroidGoogleException = detail => {
+  showToast(state.language === "en" ? `Could not open Google sign-in: ${detail}` : `Google 로그인 열기 실패: ${detail}`);
 };
 
 async function initializeAuth() {
