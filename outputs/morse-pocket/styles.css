@@ -21,6 +21,7 @@ button { cursor: pointer; }
 .auth-card h2 { margin: 4px 0 8px; font-size: 36px; }
 .auth-card > p:not(.eyebrow) { color: var(--muted); font-size: 11px; line-height: 1.6; }
 .google-sign-in { min-height: 44px; margin: 18px 0; }
+.android-google-sign-in { width: 100%; margin: 18px 0; padding: 14px; border: 1px solid var(--line); border-radius: 13px; color: var(--ink); background: white; font-weight: 800; }
 .auth-card label { display: grid; gap: 5px; margin-top: 10px; color: var(--muted); font-size: 9px; font-weight: 850; }
 .auth-card input { padding: 13px; border: 1px solid var(--line); border-radius: 12px; outline: none; background: white; }
 .auth-card .primary-button { margin-top: 12px; }
@@ -274,6 +275,7 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 .settings-options strong, .settings-options small { display: block; }
 .settings-options small { margin-top: 5px; color: var(--muted); font-size: 8px; line-height: 1.4; }
 .settings-options button.active small { color: #aaa; }
+.settings-action-button { width: 100%; padding: 14px; border: 1px solid var(--line); border-radius: 13px; color: var(--ink); background: white; font-weight: 800; }
 .language-options button { min-height: 74px; }
 .settings-speed strong { display: block; margin-top: 4px; font-size: 14px; }
 .settings-speed input { margin: 15px 0 2px; }

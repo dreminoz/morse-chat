@@ -549,7 +549,7 @@ const state = {
   spaceSendKeyerStartX: 0,
   spaceSendKeyerStartY: 0,
   userId: localStorage.getItem("morse-user-id") || createSignalId(),
-  serverUrl: location.protocol.startsWith("http") ? location.origin : "http://localhost:8787",
+  serverUrl: localStorage.getItem("morse-server-url") || (location.protocol.startsWith("http") ? location.origin : "http://localhost:8787"),
   serverConnected: false,
   eventSource: null,
   receivedDirectIds: new Set(JSON.parse(localStorage.getItem("morse-received-direct-ids") || "[]")),
@@ -796,7 +796,14 @@ function openAuthPanel() {
 }
 
 function renderGoogleButton() {
+  if (window.AndroidAuth) {
+    $("#androidGoogleSignIn").hidden = false;
+    $("#googleSignInButton").hidden = true;
+    return;
+  }
   if (!state.googleClientId || !globalThis.google?.accounts?.id) return;
+  $("#androidGoogleSignIn").hidden = true;
+  $("#googleSignInButton").hidden = false;
   google.accounts.id.initialize({
     client_id: state.googleClientId,
     callback: async response => {
@@ -823,7 +830,37 @@ function renderGoogleButton() {
   google.accounts.id.renderButton($("#googleSignInButton"), { theme: "outline", size: "large", width: 330 });
 }
 
+window.handleAndroidGoogleCredential = async credential => {
+  state.googleCredential = credential;
+  $("#authStatus").textContent = state.language === "en" ? "Checking your Google account." : "Google 계정을 확인하고 있습니다.";
+  try {
+    const result = await api("/api/auth/google", {
+      method: "POST",
+      body: JSON.stringify({ credential })
+    });
+    setAccount(result.token, result.account);
+    showToast(state.language === "en" ? "Signed in." : "로그인되었습니다.");
+  } catch (error) {
+    if (error.body?.error === "nickname-required") {
+      $("#authFields").hidden = false;
+      $("#authStatus").textContent = state.language === "en"
+        ? "First sign-in. Choose a nickname to use."
+        : "처음 로그인입니다. 사용할 닉네임을 설정하세요.";
+      $("#authNickname").focus();
+      return;
+    }
+    showToast(error.body?.error || (state.language === "en" ? "Google sign-in failed." : "Google 로그인에 실패했습니다."));
+  }
+};
+
+window.handleAndroidGoogleError = statusCode => {
+  showToast(statusCode === 10
+    ? (state.language === "en" ? "Google Android OAuth setup is required." : "Google Android OAuth 설정이 필요합니다.")
+    : (state.language === "en" ? "Google sign-in failed." : "Google 로그인에 실패했습니다."));
+};
+
 async function initializeAuth() {
+  if (window.AndroidAuth) renderGoogleButton();
   try {
     const config = await fetch(`${state.serverUrl}/api/auth/config`).then(response => response.json());
     state.googleClientId = config.googleClientId || "";
@@ -2958,11 +2995,17 @@ $("#openSettings").addEventListener("click", () => {
 });
 $("#closeSettings").addEventListener("click", () => $("#settingsPanel").hidden = true);
 $("#enableNotifications").addEventListener("click", async () => {
+  if (window.AndroidAuth) {
+    window.AndroidAuth.requestNotifications();
+    showToast(state.language === "en" ? "Notifications enabled." : "알림을 켰습니다.");
+    return;
+  }
   const enabled = await setupPushNotifications();
   showToast(enabled
     ? (state.language === "en" ? "Notifications enabled." : "알림을 켰습니다.")
     : (state.language === "en" ? "Please allow notifications in your browser settings." : "브라우저 설정에서 알림을 허용해 주세요."));
 });
+$("#androidGoogleSignIn").addEventListener("click", () => window.AndroidAuth?.signIn());
 $("#openAuthSettings").addEventListener("click", openAuthPanel);
 $("#logoutAccount").addEventListener("click", logoutAccount);
 $("#saveNickname").addEventListener("click", async () => {
