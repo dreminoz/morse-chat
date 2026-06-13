@@ -232,6 +232,12 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 .settings-switch.disabled { opacity: .35; pointer-events: none; }
 .nickname-settings input { width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: white; }
 .nickname-settings button { width: 100%; margin-top: 8px; padding: 12px; border: 0; border-radius: 11px; color: white; background: var(--ink); font-weight: 850; }
+.nickname-change-status { margin: 10px 2px 0; color: var(--ink); font-size: 11px; font-weight: 800; }
+.nickname-change-status.error { color: #b3261e; }
+.nickname-history { width: 100%; margin-top: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.nickname-history strong, .nickname-history span { display: block; }
+.nickname-history strong { margin-bottom: 6px; font-size: 10px; }
+.nickname-history span { color: var(--muted); font-size: 10px; line-height: 1.7; }
 
 .profile-world { padding-bottom: 20px; }
 .profile-card { position: relative; width: min(100%, 480px); margin: 0 auto; padding: 22px; border: 1px solid var(--line); border-radius: 22px; background: white; box-shadow: 0 16px 34px rgba(0,0,0,.08); }
@@ -383,7 +389,7 @@ input[type="range"] { width: 100%; accent-color: var(--lime); margin: 20px 0 2px
 .player-dot.active { animation: beat .35s infinite alternate; }
 @keyframes beat { to { transform: scale(1.6); opacity: .35; } }
 .player button { padding: 9px 12px; border: 0; border-radius: 10px; color: white; background: rgba(255,255,255,.12); font-size: 11px; }
-.toast { position: fixed; z-index: 10; left: 50%; top: max(18px, env(safe-area-inset-top)); transform: translate(-50%, -20px); padding: 10px 15px; border-radius: 12px; color: white; background: #101816; font-size: 12px; opacity: 0; pointer-events: none; transition: .2s; }
+.toast { position: fixed; z-index: 100; left: 50%; top: max(18px, env(safe-area-inset-top)); transform: translate(-50%, -20px); padding: 10px 15px; border-radius: 12px; color: white; background: #101816; font-size: 12px; opacity: 0; pointer-events: none; transition: .2s; }
 .toast.show { transform: translate(-50%, 0); opacity: 1; }
 
 @media (min-width: 700px) {

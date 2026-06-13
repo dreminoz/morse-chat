@@ -1179,6 +1179,15 @@ function profileAvatarHtml(profile, fallback = "?") {
     : escapeHtml(profile?.nickname || fallback).charAt(0).toUpperCase()}</span>`;
 }
 
+function renderNicknameHistory(target, profile) {
+  const history = [...(profile?.nicknameHistory || [])].reverse();
+  target.hidden = !history.length;
+  target.innerHTML = history.length
+    ? `<strong>${state.language === "en" ? "Previous nicknames" : "이전 닉네임"}</strong>
+      ${history.map(item => `<span data-no-i18n>${escapeHtml(item.nickname)} · ${new Date(item.changedAt).toLocaleDateString()}</span>`).join("")}`
+    : "";
+}
+
 async function loadFriendProfiles() {
   if (!state.authToken) return;
   await Promise.all(state.friends.map(async signalId => {
@@ -1197,6 +1206,7 @@ function renderMyProfile() {
   $("#myProfileVisual").innerHTML = profileVisualHtml(profile, state.account.signalId);
   $("#myProfileNickname").textContent = state.account.nickname;
   $("#myProfileSignalId").textContent = state.account.signalId;
+  renderNicknameHistory($("#myNicknameHistory"), state.account);
   $("#myProfileDescription").value = state.account.description || "";
   $("#removeProfilePhoto").disabled = !profile.profileAscii;
 }
@@ -1209,6 +1219,7 @@ async function openFriendProfile(signalId) {
     $("#friendProfileVisual").innerHTML = profileVisualHtml(profile, signalId);
     $("#friendProfileNickname").textContent = profile.nickname;
     $("#friendProfileSignalId").textContent = profile.signalId;
+    renderNicknameHistory($("#friendNicknameHistory"), profile);
     $("#friendProfileDescription").textContent = profile.description || "아직 자기소개가 없습니다.";
     $("#friendProfilePanel").hidden = false;
     renderFriends();
@@ -1527,6 +1538,13 @@ function showToast(message) {
   $("#toast").classList.add("show");
   clearTimeout(showToast.timer);
   showToast.timer = setTimeout(() => $("#toast").classList.remove("show"), 2200);
+}
+
+function showNicknameStatus(message, error = false) {
+  const status = $("#nicknameChangeStatus");
+  status.textContent = message;
+  status.classList.toggle("error", error);
+  status.hidden = false;
 }
 
 function pulseSignal(mark) {
@@ -2177,6 +2195,7 @@ $("#sendAscii").addEventListener("click", () => {
 });
 $("#openSettings").addEventListener("click", () => {
   renderSettings();
+  $("#nicknameChangeStatus").hidden = true;
   $("#settingsPanel").hidden = false;
 });
 $("#closeSettings").addEventListener("click", () => $("#settingsPanel").hidden = true);
@@ -2191,10 +2210,16 @@ $("#saveNickname").addEventListener("click", async () => {
       body: JSON.stringify({ nickname })
     });
     applyAccountUpdate(account);
+    showNicknameStatus(state.language === "en" ? "Nickname changed." : "닉네임을 변경했습니다.");
     showToast("닉네임을 변경했습니다.");
   } catch (error) {
-    if (error.status === 409) showToast("이미 사용 중인 닉네임입니다.");
-    else showApiFailure(error, "닉네임을 변경하지 못했습니다.");
+    if (error.status === 409) {
+      showNicknameStatus(state.language === "en" ? "That nickname is already in use." : "이미 사용 중인 닉네임입니다.", true);
+      showToast("이미 사용 중인 닉네임입니다.");
+    } else {
+      showNicknameStatus(state.language === "en" ? "Failed to change nickname." : "닉네임을 변경하지 못했습니다.", true);
+      showApiFailure(error, "닉네임을 변경하지 못했습니다.");
+    }
   }
 });
 $("#profilePhotoInput").addEventListener("change", event => {

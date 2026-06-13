@@ -40,6 +40,7 @@ async function sessionAccount(req, url) {
 function publicAccount(account) {
   return {
     nickname: account.nickname,
+    nicknameHistory: account.nicknameHistory || [],
     signalId: account.signalId,
     description: account.description || "",
     profileAscii: account.profileAscii || ""
@@ -140,6 +141,7 @@ const server = http.createServer(async (req, res) => {
         googleSub: google.sub,
         email: google.email,
         nickname: nickname.trim(),
+        nicknameHistory: [],
         signalId: `SIGNAL-${crypto.randomBytes(4).toString("hex").toUpperCase()}`,
         createdAt: Date.now()
       };
@@ -171,7 +173,13 @@ const server = http.createServer(async (req, res) => {
     }
     if (typeof description === "string" && description.length > 240) return json(res, 400, { error: "description-too-long" });
     if (typeof profileAscii === "string" && profileAscii.length > 30000) return json(res, 400, { error: "profile-image-too-large" });
-    account.nickname = nextNickname;
+    if (nextNickname !== account.nickname) {
+      account.nicknameHistory = [
+        ...(account.nicknameHistory || []),
+        { nickname: account.nickname, changedAt: Date.now() }
+      ].slice(-20);
+      account.nickname = nextNickname;
+    }
     if (typeof description === "string") account.description = description.trim();
     if (typeof profileAscii === "string") account.profileAscii = profileAscii;
     await store.updateAccount(account);

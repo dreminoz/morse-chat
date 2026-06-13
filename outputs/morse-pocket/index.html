@@ -391,6 +391,7 @@
         <div id="myProfileVisual" class="profile-visual"></div>
         <strong id="myProfileNickname" class="profile-nickname"></strong>
         <small id="myProfileSignalId" class="profile-signal-id" data-no-i18n></small>
+        <div id="myNicknameHistory" class="nickname-history" hidden></div>
         <label class="profile-description-field">
           <span>자기소개</span>
           <textarea id="myProfileDescription" maxlength="240" placeholder="자신을 소개해보세요"></textarea>
@@ -412,6 +413,7 @@
       <div id="friendProfileVisual" class="profile-visual"></div>
       <strong id="friendProfileNickname" class="profile-nickname"></strong>
       <small id="friendProfileSignalId" class="profile-signal-id" data-no-i18n></small>
+      <div id="friendNicknameHistory" class="nickname-history" hidden></div>
       <p id="friendProfileDescription" class="profile-description"></p>
       <button id="chatFromProfile" class="primary-button" type="button">대화하기</button>
     </section>
@@ -457,6 +459,7 @@
       <div id="nicknameSettings" class="settings-section nickname-settings" hidden>
         <p class="label">닉네임 변경</p>
         <input id="settingsNickname" maxlength="24" autocomplete="nickname">
+        <p id="nicknameChangeStatus" class="nickname-change-status" role="status" hidden></p>
         <button id="saveNickname" type="button">닉네임 저장</button>
       </div>
       <div class="settings-section">
