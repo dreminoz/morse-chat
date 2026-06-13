@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { MongoClient } = require("mongodb");
 
-const emptyData = () => ({ direct: [], space: [], accounts: [], sessions: [] });
+const emptyData = () => ({ direct: [], space: [], secretLogs: [], accounts: [], sessions: [] });
 
 class FileStore {
   constructor(filePath) {
@@ -50,6 +50,16 @@ class FileStore {
     return this.data.direct.filter(item => (item.from === user && item.to === friend) || (item.from === friend && item.to === user)).slice(-200);
   }
   async directInbox(user) { return this.data.direct.filter(item => item.to === user).slice(-500); }
+  async addSecretLog(item) {
+    this.data.secretLogs.push(item);
+    this.data.secretLogs = this.data.secretLogs.slice(-10000);
+    this.save();
+  }
+  async secretHistory(user, friend) {
+    return this.data.secretLogs.filter(item =>
+      (item.from === user && item.to === friend) || (item.from === friend && item.to === user)
+    ).slice(-1000);
+  }
   async addSpace(signal) {
     if (this.data.space.some(item => item.sender === signal.sender && item.day === signal.day)) return false;
     this.data.space.push(signal);
@@ -76,6 +86,7 @@ class MongoStore {
     this.accounts = this.db.collection("accounts");
     this.sessions = this.db.collection("sessions");
     this.direct = this.db.collection("direct_messages");
+    this.secretLogs = this.db.collection("secret_communication_logs");
     this.space = this.db.collection("space_signals");
     await Promise.all([
       this.accounts.createIndex({ googleSub: 1 }, { unique: true }),
@@ -85,6 +96,8 @@ class MongoStore {
       this.sessions.createIndex({ googleSub: 1 }, { unique: true }),
       this.direct.createIndex({ from: 1, to: 1, createdAt: -1 }),
       this.direct.createIndex({ to: 1, createdAt: -1 }),
+      this.secretLogs.createIndex({ sessionId: 1, createdAt: 1 }),
+      this.secretLogs.createIndex({ from: 1, to: 1, createdAt: -1 }),
       this.space.createIndex({ sender: 1, day: 1 }, { unique: true }),
       this.space.createIndex({ createdAt: -1 })
     ]);
@@ -99,6 +112,7 @@ class MongoStore {
     if (accounts.length) await this.accounts.insertMany(accounts, { ordered: false }).catch(() => {});
     if (legacy.sessions.length) await this.sessions.insertMany(legacy.sessions, { ordered: false }).catch(() => {});
     if (legacy.direct.length) await this.direct.insertMany(legacy.direct, { ordered: false }).catch(() => {});
+    if (legacy.secretLogs.length) await this.secretLogs.insertMany(legacy.secretLogs, { ordered: false }).catch(() => {});
     if (legacy.space.length) await this.space.insertMany(legacy.space, { ordered: false }).catch(() => {});
   }
 
@@ -143,6 +157,13 @@ class MongoStore {
   }
   async directInbox(user) {
     return this.direct.find({ to: user }, { projection: { _id: 0 } }).sort({ createdAt: -1 }).limit(500).toArray().then(items => items.reverse());
+  }
+  async addSecretLog(item) { await this.secretLogs.insertOne(item); }
+  async secretHistory(user, friend) {
+    return this.secretLogs.find(
+      { $or: [{ from: user, to: friend }, { from: friend, to: user }] },
+      { projection: { _id: 0 } }
+    ).sort({ createdAt: -1 }).limit(1000).toArray().then(items => items.reverse());
   }
   async addSpace(signal) {
     try { await this.space.insertOne(signal); return true; }

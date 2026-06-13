@@ -64,6 +64,7 @@
             <strong id="chatFriendName"></strong>
             <small>말풍선을 누르면 모스 진동 재생</small>
           </button>
+          <button id="openSecretComm" class="secret-comm-open" type="button" aria-label="실시간 비밀 통신">●</button>
         </header>
         <div id="chatMessages" class="chat-messages"></div>
         <div id="chatMorseComposer" class="chat-morse-composer">
@@ -522,6 +523,11 @@
         </div>
       </div>
     </section>
+  </div>
+
+  <div id="secretComm" class="secret-comm" hidden>
+    <button id="secretCommSurface" class="secret-comm-surface" type="button" aria-label="누르는 동안 상대에게 진동 전달"></button>
+    <button id="exitSecretComm" class="secret-comm-exit" type="button" aria-label="비밀 통신 나가기">×</button>
   </div>
 
   <div id="toast" class="toast" role="status"></div>

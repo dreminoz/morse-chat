@@ -226,6 +226,28 @@ const server = http.createServer(async (req, res) => {
     const user = account.signalId;
     return json(res, 200, { messages: await store.directInbox(user) });
   }
+  if (req.method === "POST" && url.pathname === "/api/direct/secret") {
+    const { to, action, sessionId } = await readBody(req);
+    if (!to || !sessionId || !["enter", "down", "up", "exit"].includes(action)) {
+      return json(res, 400, { error: "invalid-secret-signal" });
+    }
+    const log = {
+      id: crypto.randomUUID(),
+      sessionId,
+      from: account.signalId,
+      to,
+      action,
+      createdAt: Date.now()
+    };
+    await store.addSecretLog(log);
+    emit(to, "secret-signal", { from: account.signalId, action, sessionId });
+    return json(res, 200, { ok: true });
+  }
+  if (req.method === "GET" && url.pathname === "/api/direct/secret/history") {
+    const friend = url.searchParams.get("friend");
+    if (!friend) return json(res, 400, { error: "friend required" });
+    return json(res, 200, { logs: await store.secretHistory(account.signalId, friend) });
+  }
 
   if (req.method === "POST" && url.pathname === "/api/space/send") {
     const { text, day = localDay() } = await readBody(req);

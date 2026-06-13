@@ -454,6 +454,12 @@ const state = {
     : localStorage.getItem("morse-chat-swipe-reverse") === "true",
   autocompletes: JSON.parse(localStorage.getItem("morse-autocompletes") || "[]"),
   autocompleteKeyerPressStart: 0,
+  secretActive: false,
+  secretPartner: "",
+  secretSessionId: "",
+  secretExitArmed: false,
+  secretPointerDown: false,
+  secretExitTimer: null,
   chatKeyerStartX: 0,
   chatKeyerStartY: 0,
   asciiDraft: "",
@@ -607,6 +613,22 @@ function connectServer() {
     renderSettings();
   };
   stream.addEventListener("direct-message", event => receiveDirectMessage(JSON.parse(event.data)));
+  stream.addEventListener("secret-signal", event => {
+    const signal = JSON.parse(event.data);
+    if (signal.action === "enter") {
+      if (state.friends.includes(signal.from) && (!state.secretActive || state.secretPartner === signal.from)) {
+        enterSecretComm(signal.from, false, signal.sessionId);
+      }
+      return;
+    }
+    if (signal.action === "down" && !state.secretActive && state.friends.includes(signal.from)) {
+      enterSecretComm(signal.from, false, signal.sessionId);
+    }
+    if (!state.secretActive || signal.from !== state.secretPartner) return;
+    if (signal.action === "down") startSecretVibration();
+    else if (signal.action === "up") stopSecretVibration();
+    else if (signal.action === "exit") closeSecretComm(false);
+  });
   stream.addEventListener("random-connected", event => {
     state.randomSignalState = "connected";
     state.randomPartner = JSON.parse(event.data).partner;
@@ -1632,6 +1654,52 @@ function showNicknameStatus(message, error = false) {
   status.hidden = false;
 }
 
+function sendSecretSignal(action) {
+  if (!state.secretPartner || !state.secretSessionId || !state.authToken) return;
+  api("/api/direct/secret", {
+    method: "POST",
+    body: JSON.stringify({ to: state.secretPartner, action, sessionId: state.secretSessionId })
+  }).catch(() => {});
+}
+
+function startSecretVibration() {
+  if (window.AndroidVibration) window.AndroidVibration.vibrate("60000");
+  else navigator.vibrate?.(60000);
+}
+
+function stopSecretVibration() {
+  if (window.AndroidVibration) window.AndroidVibration.vibrate("0");
+  else navigator.vibrate?.(0);
+}
+
+function enterSecretComm(partner, notify = true, sessionId = "") {
+  if (!partner) return;
+  state.secretActive = true;
+  state.secretPartner = partner;
+  state.secretSessionId = sessionId || globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+  state.secretExitArmed = false;
+  state.secretPointerDown = false;
+  clearTimeout(state.secretExitTimer);
+  $("#exitSecretComm").classList.remove("armed");
+  $("#secretComm").hidden = false;
+  if (notify) sendSecretSignal("enter");
+}
+
+function closeSecretComm(notify = true) {
+  if (!state.secretActive) return;
+  if (state.secretPointerDown) sendSecretSignal("up");
+  if (notify) sendSecretSignal("exit");
+  stopSecretVibration();
+  clearTimeout(state.secretExitTimer);
+  state.secretActive = false;
+  state.secretPartner = "";
+  state.secretSessionId = "";
+  state.secretExitArmed = false;
+  state.secretPointerDown = false;
+  $("#exitSecretComm").classList.remove("armed");
+  $("#secretComm").hidden = true;
+}
+
 function pulseSignal(mark) {
   const duration = state.unit * (mark === "." ? 1 : 3);
   if (window.AndroidVibration) window.AndroidVibration.vibrate(String(duration));
@@ -2088,6 +2156,39 @@ $("#friendList").addEventListener("click", event => {
 $("#closeChat").addEventListener("click", closeChat);
 $("#openChatProfile").addEventListener("click", () => state.activeFriend && openFriendProfile(state.activeFriend));
 $("#openChatProfileInfo").addEventListener("click", () => state.activeFriend && openFriendProfile(state.activeFriend));
+$("#openSecretComm").addEventListener("click", () => state.activeFriend && enterSecretComm(state.activeFriend));
+$("#secretCommSurface").addEventListener("pointerdown", event => {
+  if (!state.secretActive || state.secretPointerDown) return;
+  state.secretPointerDown = true;
+  $("#secretCommSurface").classList.add("pressed");
+  $("#secretCommSurface").setPointerCapture?.(event.pointerId);
+  sendSecretSignal("down");
+});
+function releaseSecretCommSignal() {
+  if (!state.secretPointerDown) return;
+  state.secretPointerDown = false;
+  $("#secretCommSurface").classList.remove("pressed");
+  sendSecretSignal("up");
+}
+$("#secretCommSurface").addEventListener("pointerup", releaseSecretCommSignal);
+$("#secretCommSurface").addEventListener("pointercancel", releaseSecretCommSignal);
+$("#secretCommSurface").addEventListener("lostpointercapture", releaseSecretCommSignal);
+$("#exitSecretComm").addEventListener("click", () => {
+  if (state.secretExitArmed) {
+    closeSecretComm();
+    return;
+  }
+  state.secretExitArmed = true;
+  $("#exitSecretComm").classList.add("armed");
+  clearTimeout(state.secretExitTimer);
+  state.secretExitTimer = setTimeout(() => {
+    state.secretExitArmed = false;
+    $("#exitSecretComm").classList.remove("armed");
+  }, 3000);
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && state.secretActive) releaseSecretCommSignal();
+});
 $("#closeFriendProfile").addEventListener("click", () => $("#friendProfilePanel").hidden = true);
 $("#chatFromProfile").addEventListener("click", () => {
   const signalId = state.viewingProfileSignalId;

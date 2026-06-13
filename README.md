@@ -22,4 +22,4 @@ Devices on the same Wi-Fi can use the computer's local IP address. Internet-wide
 
 Google registration is required for Conversations, Space, and Random Signal. Training remains available without an account.
 
-For Railway deployment, add a MongoDB service and reference its `MONGO_URL` variable from the MORSE CHAT app service. MongoDB stores users, nicknames, profiles, direct-message history, login sessions, and Space signals.
+For Railway deployment, add a MongoDB service and reference its `MONGO_URL` variable from the MORSE CHAT app service. MongoDB stores users, nicknames, profiles, direct-message history, login sessions, Space signals, and Secret Communication event logs.
