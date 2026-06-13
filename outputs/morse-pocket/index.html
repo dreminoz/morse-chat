@@ -496,6 +496,21 @@
         </div>
         <input id="reverseChatSwipe" type="checkbox" checked>
       </label>
+      <div class="settings-section autocomplete-settings">
+        <button id="toggleAutocompleteSettings" class="settings-subtab" type="button">
+          <strong>자동완성</strong>
+          <small>특정 모스부호를 단어·문장으로 입력</small>
+        </button>
+        <div id="autocompleteSettingsPanel" hidden>
+          <p class="autocomplete-note">표준 모스부호와 겹치지 않는 점·선 조합만 사용할 수 있습니다.</p>
+          <form id="autocompleteForm" class="autocomplete-form">
+            <input id="autocompleteCode" maxlength="10" placeholder="모스부호 예: ......" autocomplete="off">
+            <textarea id="autocompleteText" maxlength="300" placeholder="입력할 단어 또는 문장"></textarea>
+            <button type="submit">자동완성 추가</button>
+          </form>
+          <div id="autocompleteList" class="autocomplete-list"></div>
+        </div>
+      </div>
     </section>
   </div>
 

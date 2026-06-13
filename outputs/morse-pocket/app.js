@@ -286,6 +286,8 @@ function translateElement(root, language) {
 }
 
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const NUMBERS = "0123456789".split("");
+const INPUT_CHARACTERS = [...LETTERS, ...NUMBERS];
 const GRAPHEME_SEGMENTER = globalThis.Intl?.Segmenter
   ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
   : null;
@@ -450,6 +452,7 @@ const state = {
   reverseChatSwipe: localStorage.getItem("morse-chat-swipe-reverse") === null
     ? true
     : localStorage.getItem("morse-chat-swipe-reverse") === "true",
+  autocompletes: JSON.parse(localStorage.getItem("morse-autocompletes") || "[]"),
   chatKeyerStartX: 0,
   chatKeyerStartY: 0,
   asciiDraft: "",
@@ -879,18 +882,30 @@ function resetRandomChatInput() {
   renderRandomChatComposer();
 }
 
+function autocompleteText(signal) {
+  return state.autocompletes.find(item => item.code === signal)?.text || "";
+}
+
+function decodedInput(signal, uppercase = false) {
+  const autocomplete = autocompleteText(signal);
+  if (autocomplete) return autocomplete;
+  const decoded = REVERSE_MORSE[signal];
+  if (!decoded || !INPUT_CHARACTERS.includes(decoded)) return "";
+  return LETTERS.includes(decoded) && !uppercase ? decoded.toLowerCase() : decoded;
+}
+
 function commitRandomChatLetter(uppercase = false) {
   clearTimeout(state.randomChatLetterTimer);
   state.randomChatLetterTimer = null;
   if (!state.randomChatSignal) return false;
-  const decoded = REVERSE_MORSE[state.randomChatSignal];
-  if (!decoded || !LETTERS.includes(decoded)) {
+  const decoded = decodedInput(state.randomChatSignal, uppercase);
+  if (!decoded) {
     showToast("해당 모스 조합의 알파벳이 없습니다.");
     state.randomChatSignal = "";
     renderRandomChatComposer();
     return false;
   }
-  state.randomChatText += uppercase ? decoded : decoded.toLowerCase();
+  state.randomChatText += decoded;
   state.randomChatSignal = "";
   renderRandomChatComposer();
   return true;
@@ -911,7 +926,7 @@ function commitRandomChatNewline() {
 function addRandomChatSignal(mark) {
   clearTimeout(state.randomChatLetterTimer);
   clearTimeout(state.randomChatSpaceTimer);
-  if (state.randomChatSignal.length >= 6) return;
+  if (state.randomChatSignal.length >= 10) return;
   pulseSignal(mark);
   state.randomChatSignal += mark;
   renderRandomChatComposer();
@@ -1029,15 +1044,15 @@ function commitSpaceSendLetter(uppercase = false) {
   clearTimeout(state.spaceSendLetterTimer);
   state.spaceSendLetterTimer = null;
   if (!state.spaceSendSignal) return false;
-  const decoded = REVERSE_MORSE[state.spaceSendSignal];
-  if (!decoded || !LETTERS.includes(decoded)) {
+  const decoded = decodedInput(state.spaceSendSignal, uppercase);
+  if (!decoded) {
     showToast("해당 모스 조합의 알파벳이 없습니다.");
     state.spaceSendSignal = "";
     renderSpace();
     return false;
   }
   if (state.spaceSendText.length >= 300) return false;
-  state.spaceSendText += uppercase ? decoded : decoded.toLowerCase();
+  state.spaceSendText += decoded;
   state.spaceSendSignal = "";
   renderSpace();
   return true;
@@ -1058,7 +1073,7 @@ function commitSpaceSendNewline() {
 function addSpaceSendSignal(mark) {
   clearTimeout(state.spaceSendLetterTimer);
   clearTimeout(state.spaceSendSpaceTimer);
-  if (state.spaceSendSignal.length >= 6) return;
+  if (state.spaceSendSignal.length >= 10) return;
   pulseSignal(mark);
   state.spaceSendSignal += mark;
   renderSpace();
@@ -1321,6 +1336,27 @@ function renderSettings() {
   $("#logoutAccount").hidden = !state.account;
   $("#nicknameSettings").hidden = !state.account;
   if (state.account) $("#settingsNickname").value = state.account.nickname;
+  renderAutocompletes();
+}
+
+function renderAutocompletes() {
+  $("#autocompleteList").innerHTML = state.autocompletes.length
+    ? state.autocompletes.map((item, index) => `
+      <div class="autocomplete-item">
+        <code data-no-i18n>${escapeHtml(prettyMorse(item.code))}</code>
+        <span data-no-i18n>${escapeHtml(item.text)}</span>
+        <button type="button" data-delete-autocomplete="${index}" aria-label="자동완성 삭제">×</button>
+      </div>`).join("")
+    : `<p class="autocomplete-note">${state.language === "en" ? "No autocomplete entries yet." : "아직 등록된 자동완성이 없습니다."}</p>`;
+}
+
+function normalizeAutocompleteCode(value) {
+  return value.replaceAll("·", ".").replaceAll("−", "-").replace(/\s/g, "");
+}
+
+function saveAutocompletes() {
+  localStorage.setItem("morse-autocompletes", JSON.stringify(state.autocompletes));
+  renderAutocompletes();
 }
 
 function refreshLocalizedViews() {
@@ -1364,14 +1400,14 @@ function commitChatLetter(uppercase = false) {
   clearTimeout(state.chatLetterTimer);
   state.chatLetterTimer = null;
   if (!state.chatSignal) return false;
-  const decoded = REVERSE_MORSE[state.chatSignal];
-  if (!decoded || !LETTERS.includes(decoded)) {
+  const decoded = decodedInput(state.chatSignal, uppercase);
+  if (!decoded) {
     showToast("해당 모스 조합의 알파벳이 없습니다.");
     state.chatSignal = "";
     renderChatComposer();
     return false;
   }
-  state.chatMorseText += uppercase ? decoded : decoded.toLowerCase();
+  state.chatMorseText += decoded;
   state.chatSignal = "";
   renderChatComposer();
   return true;
@@ -1380,7 +1416,7 @@ function commitChatLetter(uppercase = false) {
 function addChatSignal(mark) {
   clearTimeout(state.chatLetterTimer);
   clearTimeout(state.chatSpaceTimer);
-  if (state.chatSignal.length >= 6) return;
+  if (state.chatSignal.length >= 10) return;
   pulseSignal(mark);
   state.chatSignal += mark;
   renderChatComposer();
@@ -1608,7 +1644,7 @@ function addKeyerSignal(target, mark) {
       }, state.unit * 3);
     }
   } else {
-    if (state.writerSignal.length >= 6) return;
+    if (state.writerSignal.length >= 10) return;
     state.writerSignal += mark;
     renderWriter();
     if (state.writerKeyerMode === "auto") {
@@ -1857,8 +1893,8 @@ function commitWriterLetter() {
   clearTimeout(state.writerLetterTimer);
   state.writerLetterTimer = null;
   if (!state.writerSignal) return false;
-  const decoded = REVERSE_MORSE[state.writerSignal];
-  if (!decoded || !LETTERS.includes(decoded)) {
+  const decoded = decodedInput(state.writerSignal, true);
+  if (!decoded) {
     showToast("해당 모스 조합의 알파벳이 없습니다.");
     return false;
   }
@@ -2328,6 +2364,45 @@ $("#submitAuth").addEventListener("click", async () => {
   } catch (error) {
     showToast(error.body?.error || "닉네임 설정에 실패했습니다.");
   }
+});
+$("#toggleAutocompleteSettings").addEventListener("click", () => {
+  $("#autocompleteSettingsPanel").hidden = !$("#autocompleteSettingsPanel").hidden;
+  renderAutocompletes();
+});
+$("#autocompleteForm").addEventListener("submit", event => {
+  event.preventDefault();
+  const codeInput = $("#autocompleteCode");
+  const textInput = $("#autocompleteText");
+  const code = normalizeAutocompleteCode(codeInput.value);
+  const text = textInput.value.trim();
+  if (!code || !/^[.-]+$/.test(code)) {
+    showToast(state.language === "en" ? "Use dots and dashes only." : "점과 선으로만 모스부호를 입력하세요.");
+    return;
+  }
+  if (!text) {
+    showToast(state.language === "en" ? "Enter a word or sentence." : "자동완성할 단어 또는 문장을 입력하세요.");
+    return;
+  }
+  if (Object.values(MORSE).includes(code)) {
+    showToast(state.language === "en" ? "This code overlaps with standard Morse." : "기존 모스부호와 겹치는 코드입니다.");
+    return;
+  }
+  if (state.autocompletes.some(item => item.code === code)) {
+    showToast(state.language === "en" ? "This autocomplete code already exists." : "이미 등록된 자동완성 코드입니다.");
+    return;
+  }
+  state.autocompletes.push({ code, text });
+  codeInput.value = "";
+  textInput.value = "";
+  saveAutocompletes();
+  showToast(state.language === "en" ? "Autocomplete added." : "자동완성을 추가했습니다.");
+});
+$("#autocompleteList").addEventListener("click", event => {
+  const button = event.target.closest("[data-delete-autocomplete]");
+  if (!button) return;
+  state.autocompletes.splice(Number(button.dataset.deleteAutocomplete), 1);
+  saveAutocompletes();
+  showToast(state.language === "en" ? "Autocomplete deleted." : "자동완성을 삭제했습니다.");
 });
 document.querySelectorAll("[data-chat-keyer-mode]").forEach(button => button.addEventListener("click", () => {
   state.chatKeyerMode = button.dataset.chatKeyerMode;

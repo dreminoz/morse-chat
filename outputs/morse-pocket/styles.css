@@ -235,6 +235,18 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 .nickname-settings button { width: 100%; margin-top: 8px; padding: 12px; border: 0; border-radius: 11px; color: white; background: var(--ink); font-weight: 850; }
 .nickname-change-status { margin: 10px 2px 0; color: var(--ink); font-size: 11px; font-weight: 800; }
 .nickname-change-status.error { color: #b3261e; }
+.settings-subtab { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 2px 0; border: 0; color: var(--ink); text-align: left; background: transparent; }
+.settings-subtab small { color: var(--muted); font-size: 9px; }
+.autocomplete-note { margin: 14px 0 8px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.autocomplete-form { display: grid; gap: 7px; }
+.autocomplete-form input, .autocomplete-form textarea { width: 100%; padding: 11px; border: 1px solid var(--line); border-radius: 11px; color: var(--ink); background: white; font: inherit; }
+.autocomplete-form textarea { min-height: 70px; resize: vertical; }
+.autocomplete-form button { padding: 12px; border: 0; border-radius: 11px; color: white; background: var(--ink); font-weight: 850; }
+.autocomplete-list { display: grid; gap: 6px; margin-top: 10px; }
+.autocomplete-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 9px; border: 1px solid var(--line); border-radius: 11px; }
+.autocomplete-item code { font-weight: 850; letter-spacing: .08em; }
+.autocomplete-item span { overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.autocomplete-item button { width: 28px; height: 28px; border: 0; border-radius: 8px; color: white; background: var(--ink); }
 
 .profile-world { padding-bottom: 20px; }
 .profile-card { position: relative; width: min(100%, 480px); margin: 0 auto; padding: 22px; border: 1px solid var(--line); border-radius: 22px; background: white; box-shadow: 0 16px 34px rgba(0,0,0,.08); }
