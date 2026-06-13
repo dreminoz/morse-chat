@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { MongoClient } = require("mongodb");
 
-const emptyData = () => ({ direct: [], space: [], secretLogs: [], accounts: [], sessions: [] });
+const emptyData = () => ({ direct: [], space: [], spaceReports: [], friendRequests: [], secretLogs: [], accounts: [], sessions: [] });
 
 class FileStore {
   constructor(filePath) {
@@ -31,6 +31,17 @@ class FileStore {
     if (index >= 0) this.data.accounts[index] = account;
     this.save();
     return account;
+  }
+  async addFriendRequest(item) {
+    const existing = this.data.friendRequests.find(request => request.from === item.from && request.to === item.to && request.status === "pending");
+    if (existing) return existing;
+    this.data.friendRequests.push(item); this.save(); return item;
+  }
+  async incomingFriendRequests(user) { return this.data.friendRequests.filter(item => item.to === user && item.status === "pending"); }
+  async respondFriendRequest(id, user, status) {
+    const item = this.data.friendRequests.find(request => request.id === id && request.to === user && request.status === "pending");
+    if (!item) return null;
+    item.status = status; item.respondedAt = Date.now(); this.save(); return item;
   }
   async createSession(session) {
     this.data.sessions = this.data.sessions.filter(item => item.googleSub !== session.googleSub);
@@ -77,9 +88,12 @@ class FileStore {
     return true;
   }
   async randomSpace(exclude) {
-    const choices = this.data.space.filter(item => item.sender !== exclude);
+    const account = await this.findAccountBySignalId(exclude);
+    const blocked = account?.blockedSpaceSenders || [];
+    const choices = this.data.space.filter(item => item.sender !== exclude && !blocked.includes(item.sender));
     return choices.length ? choices[Math.floor(Math.random() * choices.length)] : null;
   }
+  async reportSpace(item) { this.data.spaceReports.push(item); this.save(); }
 }
 
 class MongoStore {
@@ -95,6 +109,8 @@ class MongoStore {
     this.accounts = this.db.collection("accounts");
     this.sessions = this.db.collection("sessions");
     this.direct = this.db.collection("direct_messages");
+    this.friendRequests = this.db.collection("friend_requests");
+    this.spaceReports = this.db.collection("space_reports");
     this.secretLogs = this.db.collection("secret_communication_logs");
     this.space = this.db.collection("space_signals");
     await Promise.all([
@@ -105,6 +121,9 @@ class MongoStore {
       this.sessions.createIndex({ googleSub: 1 }, { unique: true }),
       this.direct.createIndex({ from: 1, to: 1, createdAt: -1 }),
       this.direct.createIndex({ to: 1, createdAt: -1 }),
+      this.friendRequests.createIndex({ to: 1, status: 1, createdAt: -1 }),
+      this.friendRequests.createIndex({ from: 1, to: 1, status: 1 }),
+      this.spaceReports.createIndex({ signalId: 1, reporter: 1 }, { unique: true }),
       this.secretLogs.createIndex({ sessionId: 1, createdAt: 1 }),
       this.secretLogs.createIndex({ from: 1, to: 1, createdAt: -1 }),
       this.secretLogs.createIndex(
@@ -125,6 +144,8 @@ class MongoStore {
     if (accounts.length) await this.accounts.insertMany(accounts, { ordered: false }).catch(() => {});
     if (legacy.sessions.length) await this.sessions.insertMany(legacy.sessions, { ordered: false }).catch(() => {});
     if (legacy.direct.length) await this.direct.insertMany(legacy.direct, { ordered: false }).catch(() => {});
+    if (legacy.friendRequests.length) await this.friendRequests.insertMany(legacy.friendRequests, { ordered: false }).catch(() => {});
+    if (legacy.spaceReports.length) await this.spaceReports.insertMany(legacy.spaceReports, { ordered: false }).catch(() => {});
     if (legacy.secretLogs.length) await this.secretLogs.insertMany(legacy.secretLogs, { ordered: false }).catch(() => {});
     if (legacy.space.length) await this.space.insertMany(legacy.space, { ordered: false }).catch(() => {});
   }
@@ -155,6 +176,21 @@ class MongoStore {
       { upsert: true }
     );
     return account;
+  }
+  async addFriendRequest(item) {
+    const existing = await this.friendRequests.findOne({ from: item.from, to: item.to, status: "pending" }, { projection: { _id: 0 } });
+    if (existing) return existing;
+    await this.friendRequests.insertOne(item); return item;
+  }
+  async incomingFriendRequests(user) {
+    return this.friendRequests.find({ to: user, status: "pending" }, { projection: { _id: 0 } }).sort({ createdAt: -1 }).toArray();
+  }
+  async respondFriendRequest(id, user, status) {
+    return this.clean(await this.friendRequests.findOneAndUpdate(
+      { id, to: user, status: "pending" },
+      { $set: { status, respondedAt: Date.now() } },
+      { returnDocument: "after" }
+    ));
   }
   async createSession(session) {
     await this.sessions.replaceOne({ googleSub: session.googleSub }, session, { upsert: true });
@@ -193,8 +229,13 @@ class MongoStore {
     catch (error) { if (error.code === 11000) return false; throw error; }
   }
   async randomSpace(exclude) {
-    const [signal] = await this.space.aggregate([{ $match: { sender: { $ne: exclude } } }, { $sample: { size: 1 } }, { $project: { _id: 0 } }]).toArray();
+    const account = await this.findAccountBySignalId(exclude);
+    const [signal] = await this.space.aggregate([{ $match: { sender: { $ne: exclude, $nin: account?.blockedSpaceSenders || [] } } }, { $sample: { size: 1 } }, { $project: { _id: 0 } }]).toArray();
     return signal || null;
+  }
+  async reportSpace(item) {
+    try { await this.spaceReports.insertOne(item); }
+    catch (error) { if (error.code !== 11000) throw error; }
   }
 }
 

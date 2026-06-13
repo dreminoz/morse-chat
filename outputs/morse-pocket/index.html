@@ -54,6 +54,7 @@
           <input id="friendInput" maxlength="24" placeholder="친구 닉네임" autocomplete="off">
           <button type="submit" aria-label="친구 추가">+</button>
         </form>
+        <div id="friendRequests" class="friend-requests"></div>
         <div id="friendList" class="friend-list"></div>
       </div>
       <section id="chatRoom" class="chat-room" hidden>
@@ -295,6 +296,8 @@
             <small>3단위 휴식: 글자 확정 · 7단위 휴식: 띄어쓰기</small>
           </button>
           <button id="submitSpaceSignal" type="submit">오늘의 시그널 발신</button>
+          <label class="space-photo-button" for="spacePhotoInput">ASCII 사진 발신</label>
+          <input id="spacePhotoInput" class="visually-hidden" type="file" accept="image/*">
         </form>
       </section>
       <section id="spaceReceive" class="space-panel" hidden>
@@ -310,7 +313,11 @@
           <p class="label">RECEIVED FROM SPACE</p>
           <strong data-no-i18n></strong>
           <small id="spaceDecodeStatus">모스 진동에 맞춰 해석 중</small>
-          <button type="button">다시 해석하기</button>
+          <div class="space-received-actions">
+            <button id="redecodeSpaceSignal" type="button">다시 해석하기</button>
+            <button id="reportSpaceSignal" type="button">신고</button>
+            <button id="blockSpaceSender" type="button">차단</button>
+          </div>
         </article>
       </section>
     </section>

@@ -224,6 +224,29 @@ const server = http.createServer(async (req, res) => {
       : await store.findAccountBySignalId(signalId);
     return profile ? json(res, 200, { profile: publicAccount(profile) }) : json(res, 404, { error: "profile-not-found" });
   }
+  if (req.method === "POST" && url.pathname === "/api/friends/request") {
+    const { nickname } = await readBody(req);
+    const target = nickname ? await store.findAccountByNickname(nickname.trim()) : null;
+    if (!target) return json(res, 404, { error: "profile-not-found" });
+    if (target.signalId === account.signalId) return json(res, 409, { error: "cannot-add-self" });
+    const request = await store.addFriendRequest({
+      id: crypto.randomUUID(), from: account.signalId, fromNickname: account.nickname,
+      to: target.signalId, status: "pending", createdAt: Date.now()
+    });
+    emit(target.signalId, "friend-request", request);
+    return json(res, 200, { request });
+  }
+  if (req.method === "GET" && url.pathname === "/api/friends/requests") {
+    return json(res, 200, { requests: await store.incomingFriendRequests(account.signalId) });
+  }
+  if (req.method === "POST" && url.pathname === "/api/friends/respond") {
+    const { id, status } = await readBody(req);
+    if (!["accepted", "rejected"].includes(status)) return json(res, 400, { error: "invalid-status" });
+    const request = await store.respondFriendRequest(id, account.signalId, status);
+    if (!request) return json(res, 404, { error: "request-not-found" });
+    emit(request.from, "friend-response", { ...request, responderNickname: account.nickname });
+    return json(res, 200, { request });
+  }
   if (req.method === "PATCH" && url.pathname === "/api/profile/me") {
     const { nickname, description, profileAscii } = await readBody(req);
     const nextNickname = typeof nickname === "string" ? nickname.trim() : account.nickname;
@@ -314,10 +337,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === "POST" && url.pathname === "/api/space/send") {
-    const { text, day = localDay() } = await readBody(req);
+    const { text, type = "text", day = localDay() } = await readBody(req);
     const sender = account.signalId;
     if (!text) return json(res, 400, { error: "text required" });
-    const signal = { id: crypto.randomUUID(), sender, text, day, createdAt: Date.now() };
+    const signal = { id: crypto.randomUUID(), sender, text, type, day, createdAt: Date.now() };
     if (!await store.addSpace(signal)) return json(res, 409, { error: "daily-limit" });
     return json(res, 200, signal);
   }
@@ -325,6 +348,19 @@ const server = http.createServer(async (req, res) => {
     const exclude = account.signalId;
     const signal = await store.randomSpace(exclude);
     return signal ? json(res, 200, signal) : json(res, 404, { error: "no-signals" });
+  }
+  if (req.method === "POST" && url.pathname === "/api/space/report") {
+    const { signalId, sender, reason = "user-report" } = await readBody(req);
+    if (!signalId || !sender) return json(res, 400, { error: "signal required" });
+    await store.reportSpace({ id: crypto.randomUUID(), signalId, sender, reporter: account.signalId, reason, createdAt: Date.now() });
+    return json(res, 200, { ok: true });
+  }
+  if (req.method === "POST" && url.pathname === "/api/space/block") {
+    const { sender } = await readBody(req);
+    if (!sender || sender === account.signalId) return json(res, 400, { error: "invalid-sender" });
+    account.blockedSpaceSenders = [...new Set([...(account.blockedSpaceSenders || []), sender])];
+    await store.updateAccount(account);
+    return json(res, 200, { ok: true });
   }
 
   if (req.method === "POST" && url.pathname === "/api/random/join") {
@@ -338,6 +374,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (!randomQueue.includes(userId)) randomQueue.push(userId);
     return json(res, 200, { status: "searching" });
+  }
+  if (req.method === "GET" && url.pathname === "/api/random/status") {
+    const userId = account.signalId;
+    return json(res, 200, { status: randomPairs.has(userId) ? "connected" : randomQueue.includes(userId) ? "searching" : "idle" });
   }
   if (req.method === "POST" && url.pathname === "/api/random/leave") {
     const userId = account.signalId;

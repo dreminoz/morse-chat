@@ -434,6 +434,7 @@ const SENTENCES = [
 const state = {
   phrases: JSON.parse(localStorage.getItem("morse-phrases") || "[]"),
   friends: JSON.parse(localStorage.getItem("morse-friends") || "[]"),
+  friendRequests: [],
   chats: JSON.parse(localStorage.getItem("morse-chats") || "{}"),
   activeFriend: null,
   chatSignal: "",
@@ -526,6 +527,7 @@ const state = {
   spaceSignals: JSON.parse(localStorage.getItem("morse-space-signals") || "[]"),
   spaceReceivedText: "",
   spaceReceivedMorse: "",
+  spaceReceivedSignal: null,
   spaceDecodeTimers: [],
   spaceReceiving: false,
   spaceSendText: "",
@@ -607,12 +609,30 @@ function connectServer() {
     state.serverConnected = true;
     renderSettings();
     syncDirectInbox();
+    loadFriendRequests();
   });
   stream.onerror = () => {
     state.serverConnected = false;
     renderSettings();
   };
   stream.addEventListener("direct-message", event => receiveDirectMessage(JSON.parse(event.data)));
+  stream.addEventListener("friend-request", event => {
+    const request = JSON.parse(event.data);
+    if (!state.friendRequests.some(item => item.id === request.id)) state.friendRequests.unshift(request);
+    renderFriendRequests();
+    showToast(state.language === "en" ? "New friend request." : "새 친구 요청이 왔습니다.");
+  });
+  stream.addEventListener("friend-response", event => {
+    const request = JSON.parse(event.data);
+    if (request.status === "accepted" && !state.friends.includes(request.to)) {
+      state.friends.push(request.to);
+      localStorage.setItem("morse-friends", JSON.stringify(state.friends));
+      loadFriendProfiles();
+    }
+    showToast(request.status === "accepted"
+      ? (state.language === "en" ? "Friend request accepted." : "친구 요청이 수락되었습니다.")
+      : (state.language === "en" ? "Friend request rejected." : "친구 요청이 거절되었습니다."));
+  });
   stream.addEventListener("secret-signal", event => {
     const signal = JSON.parse(event.data);
     if (signal.action === "enter") {
@@ -630,11 +650,7 @@ function connectServer() {
     else if (signal.action === "exit") closeSecretComm(false);
   });
   stream.addEventListener("random-connected", event => {
-    state.randomSignalState = "connected";
-    state.randomPartner = JSON.parse(event.data).partner;
-    state.randomMessages = [];
-    resetRandomChatInput();
-    renderRandomSignal();
+    markRandomConnected(JSON.parse(event.data).partner);
     showToast("시그널이 연결되었습니다.");
   });
   stream.addEventListener("random-message", event => {
@@ -755,12 +771,8 @@ function receiveDirectMessage(item, silent = false) {
     localStorage.setItem("morse-received-direct-ids", JSON.stringify([...state.receivedDirectIds].slice(-1000)));
   }
   const friend = item.from;
-  if (!state.friends.includes(friend)) {
-    state.friends.push(friend);
-    localStorage.setItem("morse-friends", JSON.stringify(state.friends));
-  }
   state.chats[friend] ||= [];
-  state.chats[friend].push(item.message);
+  state.chats[friend].push(taggedChatMessage(item.message, false));
   saveChats();
   renderFriends();
   if (state.activeFriend === friend) renderChat();
@@ -771,6 +783,10 @@ function syncDirectInbox() {
   api(`/api/direct/inbox?user=${encodeURIComponent(state.userId)}`)
     .then(({ messages }) => messages.forEach(item => receiveDirectMessage(item, true)))
     .catch(() => {});
+}
+
+function taggedChatMessage(message, mine) {
+  return typeof message === "object" ? { ...message, mine } : { text: message, mine };
 }
 
 function textToMorse(text) {
@@ -967,11 +983,35 @@ function connectRandomSignal() {
   api("/api/random/join", {
     method: "POST",
     body: JSON.stringify({ userId: state.userId })
+  }).then(result => {
+    if (result.status === "connected") markRandomConnected();
+    else pollRandomStatus();
   }).catch(error => {
     state.randomSignalState = "idle";
     renderRandomSignal();
     showApiFailure(error);
   });
+}
+
+function markRandomConnected(partner = "RANDOM SIGNAL") {
+  clearTimeout(state.randomSignalTimer);
+  state.randomSignalState = "connected";
+  state.randomPartner = partner;
+  state.randomMessages = [];
+  resetRandomChatInput();
+  renderRandomSignal();
+  showToast(state.language === "en" ? "Signal connected." : "시그널이 연결되었습니다.");
+}
+
+function pollRandomStatus() {
+  clearTimeout(state.randomSignalTimer);
+  if (state.randomSignalState !== "searching") return;
+  state.randomSignalTimer = setTimeout(() => {
+    api("/api/random/status").then(result => {
+      if (result.status === "connected") markRandomConnected();
+      else pollRandomStatus();
+    }).catch(() => pollRandomStatus());
+  }, 1200);
 }
 
 function stopRandomSignal(message) {
@@ -1130,6 +1170,11 @@ function morseCharacterDuration(char) {
 
 function decodeSpaceSignal() {
   if (!state.spaceReceivedText) return;
+  if (state.spaceReceivedSignal?.type === "ascii") {
+    $("#spaceReceivedSignal strong").innerHTML = `<pre data-no-i18n>${escapeHtml(state.spaceReceivedText)}</pre>`;
+    $("#spaceDecodeStatus").textContent = state.language === "en" ? "ASCII art signal" : "ASCII 아트 시그널";
+    return;
+  }
   clearSpaceDecode();
   stopMorse(false);
   const output = $("#spaceReceivedSignal strong");
@@ -1221,6 +1266,24 @@ function renderFriends() {
         </button>
       </article>`).join("")
     : '<article class="record-item"><strong>아직 친구가 없습니다.</strong><span>이름을 입력해 친구를 추가하세요.</span></article>';
+}
+
+function renderFriendRequests() {
+  $("#friendRequests").innerHTML = state.friendRequests.map(request => `
+    <article class="friend-request">
+      <strong data-no-i18n>${escapeHtml(request.fromNickname || request.from)}</strong>
+      <button type="button" data-friend-request="${escapeHtml(request.id)}" data-friend-status="accepted">${state.language === "en" ? "Accept" : "수락"}</button>
+      <button type="button" data-friend-request="${escapeHtml(request.id)}" data-friend-status="rejected">${state.language === "en" ? "Reject" : "거절"}</button>
+    </article>
+  `).join("");
+}
+
+function loadFriendRequests() {
+  if (!state.authToken) return;
+  api("/api/friends/requests").then(({ requests }) => {
+    state.friendRequests = requests;
+    renderFriendRequests();
+  }).catch(() => {});
 }
 
 function profileVisualHtml(profile, fallback = "?") {
@@ -1317,7 +1380,7 @@ function renderChat() {
       const ascii = typeof message === "object" && message.type === "ascii";
       const exhausted = hiddenSignalExhausted(message);
       return `
-      <div class="chat-message-row">
+      <div class="chat-message-row${message.mine ? " mine" : ""}">
         <button type="button" class="chat-bubble${hidden ? " hidden-signal" : ""}${exhausted ? " exhausted" : ""}${ascii ? " ascii-message" : ""}" data-chat-message="${index}" aria-label="${hidden ? (exhausted ? "만료된 숨김 모스 신호" : "숨김 모스 신호 재생") : (ascii ? "ASCII 아트 사진" : "문자 메시지")}">
           ${hidden ? "" : (ascii ? `<pre data-no-i18n>${escapeHtml(text)}</pre>` : `<span data-no-i18n>${escapeHtml(text)}</span>`)}
           ${hidden || ascii ? "" : `<small>${textToMorse(text).replaceAll(".", "·").replaceAll("-", "−")}</small>`}
@@ -1502,17 +1565,27 @@ function handleManualComposerSwipe(deltaX, deltaY, commitLetter, commitSpace, co
   return false;
 }
 
+function handleAutoVerticalSwipe(deltaX, deltaY, commitLetter, commitNewline) {
+  if (Math.abs(deltaY) < 45 || Math.abs(deltaY) <= Math.abs(deltaX) * 1.25) return false;
+  if (deltaY < 0) commitLetter(true);
+  else commitNewline();
+  return true;
+}
+
 function sendChatMessage(message, hidden = false) {
   if (!message || !state.activeFriend) return;
   const outgoing = hidden
     ? { text: message, hidden: true, limit: state.hiddenViewLimit, views: 0 }
     : message;
-  state.chats[state.activeFriend].push(outgoing);
+  const localMessage = taggedChatMessage(outgoing, true);
+  const wireMessage = { ...localMessage };
+  delete wireMessage.mine;
+  state.chats[state.activeFriend].push(localMessage);
   saveChats();
   renderChat();
   api("/api/direct/send", {
     method: "POST",
-    body: JSON.stringify({ from: state.userId, to: state.activeFriend, message: outgoing })
+    body: JSON.stringify({ from: state.userId, to: state.activeFriend, message: wireMessage })
   }).catch(() => showToast("서버 연결에 실패했습니다."));
 }
 
@@ -1590,7 +1663,7 @@ function openChat(friend) {
   renderChatComposer();
   api(`/api/direct/history?user=${encodeURIComponent(state.userId)}&friend=${encodeURIComponent(friend)}`)
     .then(({ messages }) => {
-      state.chats[friend] = messages.map(item => item.message);
+      state.chats[friend] = messages.map(item => taggedChatMessage(item.message, item.from === state.userId));
       saveChats();
       renderChat();
     })
@@ -2127,6 +2200,13 @@ $("#friendForm").addEventListener("submit", async event => {
   const nickname = input.value.trim();
   if (!nickname) return;
   try {
+    await api("/api/friends/request", {
+      method: "POST",
+      body: JSON.stringify({ nickname })
+    });
+    input.value = "";
+    showToast(state.language === "en" ? "Friend request sent." : "친구 요청을 보냈습니다.");
+    return;
     const { profile } = await api(`/api/profile?nickname=${encodeURIComponent(nickname)}`);
     if (profile.signalId === state.userId) {
       showToast(state.language === "en" ? "You cannot add yourself." : "자기 자신은 친구로 추가할 수 없습니다.");
@@ -2145,6 +2225,28 @@ $("#friendForm").addEventListener("submit", async event => {
   } catch (error) {
     if (error.status === 404) showToast(state.language === "en" ? "Nickname not found." : "없는 닉네임입니다.");
     else showApiFailure(error, state.language === "en" ? "Failed to add friend." : "친구를 추가하지 못했습니다.");
+  }
+});
+$("#friendRequests").addEventListener("click", async event => {
+  const button = event.target.closest("[data-friend-request]");
+  if (!button) return;
+  const request = state.friendRequests.find(item => item.id === button.dataset.friendRequest);
+  if (!request) return;
+  try {
+    await api("/api/friends/respond", {
+      method: "POST",
+      body: JSON.stringify({ id: request.id, status: button.dataset.friendStatus })
+    });
+    if (button.dataset.friendStatus === "accepted" && !state.friends.includes(request.from)) {
+      state.friends.push(request.from);
+      localStorage.setItem("morse-friends", JSON.stringify(state.friends));
+      loadFriendProfiles();
+    }
+    state.friendRequests = state.friendRequests.filter(item => item.id !== request.id);
+    renderFriendRequests();
+    renderFriends();
+  } catch (error) {
+    showApiFailure(error, state.language === "en" ? "Failed to respond." : "친구 요청 처리에 실패했습니다.");
   }
 });
 $("#friendList").addEventListener("click", event => {
@@ -2392,12 +2494,27 @@ $("#sendAscii").addEventListener("click", () => {
       method: "POST",
       body: JSON.stringify({ userId: state.userId, message: { ...outgoing, mine: false } })
     }).catch(() => showToast("서버 연결에 실패했습니다."));
+  } else if (state.asciiTarget === "space") {
+    api("/api/space/send", {
+      method: "POST",
+      body: JSON.stringify({ text: state.asciiDraft, type: "ascii", day: todayKey() })
+    }).then(() => {
+      localStorage.setItem("morse-space-last-sent", todayKey());
+      playSpaceTransmitAnimation();
+      renderSpace();
+    }).catch(error => {
+      if (error.status === 409) showToast(state.language === "en" ? "Today's signal was already sent." : "오늘은 이미 시그널을 발신했습니다.");
+      else showApiFailure(error);
+    });
   } else return;
   state.asciiDraft = "";
   $("#asciiPreview").hidden = true;
   showToast("사진을 ASCII 아트로 보냈습니다.");
 });
 $("#openSettings").addEventListener("click", () => {
+  $("#authPanel").hidden = true;
+  $("#friendProfilePanel").hidden = true;
+  $("#asciiPreview").hidden = true;
   renderSettings();
   $("#nicknameChangeStatus").hidden = true;
   $("#settingsPanel").hidden = false;
@@ -2591,6 +2708,8 @@ $("#chatKeyer").addEventListener("pointerup", event => {
   $("#chatKeyer").classList.remove("pressed");
   const deltaX = event.clientX - state.chatKeyerStartX;
   const deltaY = event.clientY - state.chatKeyerStartY;
+  if (state.chatKeyerMode === "auto"
+    && handleAutoVerticalSwipe(deltaX, deltaY, commitChatLetter, commitChatNewline)) return;
   if (state.chatKeyerMode === "manual"
     && handleManualComposerSwipe(deltaX, deltaY, commitChatLetter, commitChatSpace, commitChatNewline)) return;
   const held = performance.now() - state.keyerPressStart;
@@ -2696,6 +2815,13 @@ $("#randomPhotoInput").addEventListener("change", event => {
   state.asciiTarget = "random";
   prepareAsciiPhoto(file);
 });
+$("#spacePhotoInput").addEventListener("change", event => {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+  state.asciiTarget = "space";
+  prepareAsciiPhoto(file);
+});
 $("#randomChatKeyer").addEventListener("pointerdown", event => {
   clearTimeout(state.randomChatLetterTimer);
   clearTimeout(state.randomChatSpaceTimer);
@@ -2709,6 +2835,8 @@ $("#randomChatKeyer").addEventListener("pointerup", event => {
   $("#randomChatKeyer").classList.remove("pressed");
   const deltaX = event.clientX - state.randomChatKeyerStartX;
   const deltaY = event.clientY - state.randomChatKeyerStartY;
+  if (state.chatKeyerMode === "auto"
+    && handleAutoVerticalSwipe(deltaX, deltaY, commitRandomChatLetter, commitRandomChatNewline)) return;
   if (state.chatKeyerMode === "manual"
     && handleManualComposerSwipe(deltaX, deltaY, commitRandomChatLetter, commitRandomChatSpace, commitRandomChatNewline)) return;
   const held = performance.now() - state.keyerPressStart;
@@ -2740,6 +2868,8 @@ $("#spaceSendKeyer").addEventListener("pointerup", event => {
   $("#spaceSendKeyer").classList.remove("pressed");
   const deltaX = event.clientX - state.spaceSendKeyerStartX;
   const deltaY = event.clientY - state.spaceSendKeyerStartY;
+  if (state.chatKeyerMode === "auto"
+    && handleAutoVerticalSwipe(deltaX, deltaY, commitSpaceSendLetter, commitSpaceSendNewline)) return;
   if (state.chatKeyerMode === "manual"
     && handleManualComposerSwipe(deltaX, deltaY, commitSpaceSendLetter, commitSpaceSendSpace, commitSpaceSendNewline)) return;
   const held = performance.now() - state.keyerPressStart;
@@ -2781,11 +2911,18 @@ $("#receiveSpaceSignal").addEventListener("click", () => {
     $("#spaceReceiveStatus").textContent = "레이더가 우주 시그널을 탐색하고 있습니다.";
   }, 10000);
   api(`/api/space/random?exclude=${encodeURIComponent(state.userId)}`).then(signal => {
+    state.spaceReceivedSignal = signal;
     state.spaceReceivedText = signal.text;
-    state.spaceReceivedMorse = signal.text;
+    state.spaceReceivedMorse = signal.type === "ascii" ? "" : signal.text;
     $("#spaceReceivedSignal").hidden = false;
     $("#spaceReceiveStatus").textContent = "우주 시그널을 수신했습니다.";
-    decodeSpaceSignal();
+    if (signal.type === "ascii") {
+      clearSpaceDecode();
+      $("#spaceReceivedSignal strong").innerHTML = `<pre data-no-i18n>${escapeHtml(signal.text)}</pre>`;
+      $("#spaceDecodeStatus").textContent = state.language === "en" ? "ASCII art signal" : "ASCII 아트 시그널";
+    } else {
+      decodeSpaceSignal();
+    }
     state.spaceReceiving = false;
     $("#spaceRadar").classList.remove("scanning");
     $("#receiveSpaceSignal").disabled = false;
@@ -2798,8 +2935,27 @@ $("#receiveSpaceSignal").addEventListener("click", () => {
     else showApiFailure(error);
   });
 });
-$("#spaceReceivedSignal button").addEventListener("click", () => {
-  decodeSpaceSignal();
+$("#redecodeSpaceSignal").addEventListener("click", decodeSpaceSignal);
+$("#reportSpaceSignal").addEventListener("click", () => {
+  const signal = state.spaceReceivedSignal;
+  if (!signal) return;
+  api("/api/space/report", {
+    method: "POST",
+    body: JSON.stringify({ signalId: signal.id, sender: signal.sender })
+  }).then(() => showToast(state.language === "en" ? "Signal reported." : "우주 신호를 신고했습니다."))
+    .catch(error => showApiFailure(error, state.language === "en" ? "Report failed." : "신고하지 못했습니다."));
+});
+$("#blockSpaceSender").addEventListener("click", () => {
+  const signal = state.spaceReceivedSignal;
+  if (!signal) return;
+  api("/api/space/block", {
+    method: "POST",
+    body: JSON.stringify({ sender: signal.sender })
+  }).then(() => {
+    state.spaceReceivedSignal = null;
+    $("#spaceReceivedSignal").hidden = true;
+    showToast(state.language === "en" ? "Sender blocked." : "발신자를 차단했습니다.");
+  }).catch(error => showApiFailure(error, state.language === "en" ? "Block failed." : "차단하지 못했습니다."));
 });
 $("#speed").addEventListener("input", event => {
   state.unit = Number(event.target.value);
