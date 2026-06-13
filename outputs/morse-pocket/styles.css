@@ -42,10 +42,15 @@ header { display: flex; justify-content: space-between; align-items: flex-start;
 h1 { margin: 0; font-family: Arial Black, Inter, sans-serif; font-size: clamp(42px, 12vw, 58px); line-height: .84; letter-spacing: -.09em; font-weight: 950; }
 h1 span { color: var(--ink); -webkit-text-stroke: 1.5px var(--ink); -webkit-text-fill-color: transparent; }
 .round-button { width: 50px; height: 50px; border: 1px solid var(--ink); border-radius: 14px; color: white; background: var(--ink); font-size: 19px; letter-spacing: 2px; }
-.world-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 4px; margin-bottom: 18px; border: 1px solid var(--line); border-radius: 14px; background: #e5e5e2; }
-.world-tab { min-width: 0; padding: 11px 3px; border: 0; border-radius: 10px; color: var(--muted); background: transparent; font-size: 10px; font-weight: 850; }
+.world-tabs { display: flex; gap: 4px; padding: 4px; margin-bottom: 18px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; border: 1px solid var(--line); border-radius: 14px; background: #e5e5e2; }
+.world-tabs::-webkit-scrollbar { display: none; }
+.world-tab { min-width: 76px; flex: 1 0 auto; padding: 11px 8px; border: 0; border-radius: 10px; color: var(--muted); background: transparent; font-size: 10px; font-weight: 850; white-space: nowrap; }
 .world-tab.active { color: white; background: var(--ink); }
 .world-view[hidden] { display: none; }
+.placeholder-world { padding: 4px 0 20px; }
+.placeholder-card { min-height: 360px; padding: 28px; border: 1px solid var(--line); border-radius: 22px; background: white; }
+.placeholder-card h2 { margin: 8px 0 10px; font-size: 38px; letter-spacing: -.06em; }
+.placeholder-card p:last-child { color: var(--muted); font-size: 12px; }
 body.chat-open { overflow: hidden; }
 body.chat-open .app-shell { height: 100dvh; min-height: 0; padding-bottom: 0; overflow: hidden; }
 body.chat-open .app-shell > header, body.chat-open .world-tabs { display: none; }

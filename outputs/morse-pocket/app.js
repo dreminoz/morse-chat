@@ -1741,7 +1741,7 @@ function closeChat() {
 }
 
 function switchWorld(world) {
-  if (!["friends", "hall", "space", "randomSignal", "profile"].includes(world)) world = "hall";
+  if (!["friends", "hall", "space", "randomSignal", "dailyGroup", "games", "shop", "profile"].includes(world)) world = "hall";
   if (world !== "space") clearSpaceDecode();
   if (world !== "hall" && !state.account) {
     openAuthPanel();
@@ -1753,10 +1753,14 @@ function switchWorld(world) {
   $("#trainingHall").hidden = world !== "hall";
   $("#spaceWorld").hidden = world !== "space";
   $("#randomSignalWorld").hidden = world !== "randomSignal";
+  $("#dailyGroupWorld").hidden = world !== "dailyGroup";
+  $("#gamesWorld").hidden = world !== "games";
+  $("#shopWorld").hidden = world !== "shop";
   $("#profileWorld").hidden = world !== "profile";
   document.querySelectorAll(".world-tab").forEach(button =>
     button.classList.toggle("active", button.dataset.world === world)
   );
+  document.querySelector(`.world-tab[data-world="${world}"]`)?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   if (world !== "hall") {
     stopMorse(false);
     if (state.training) endTraining();
