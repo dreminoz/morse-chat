@@ -1442,7 +1442,7 @@ function renderAutocompletes() {
 
 function renderAutocompleteCode() {
   const code = normalizeAutocompleteCode($("#autocompleteCode").value);
-  $("#autocompleteCode").value = code;
+  $("#autocompleteCode").value = code.replaceAll("-", "\u2014");
 }
 
 function addAutocompleteMark(mark) {
@@ -1458,6 +1458,11 @@ function addAutocompleteMark(mark) {
 }
 
 function normalizeAutocompleteCode(value) {
+  return value
+    .replace(/[\u00b7\u2022]/g, ".")
+    .replace(/[\u2013\u2014\u2212]/g, "-")
+    .replace(/\s/g, "")
+    .replace(/[^.-]/g, "");
   return value.replaceAll("·", ".").replaceAll("−", "-").replace(/\s/g, "");
 }
 
