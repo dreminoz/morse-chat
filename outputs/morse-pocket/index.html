@@ -54,7 +54,12 @@
           <input id="friendInput" maxlength="24" placeholder="친구 닉네임" autocomplete="off">
           <button type="submit" aria-label="친구 추가">+</button>
         </form>
-        <div id="friendRequests" class="friend-requests"></div>
+        <section id="friendRequestSection" class="friend-request-section">
+          <p class="label">받은 친구 요청</p>
+          <div id="friendRequests" class="friend-requests"></div>
+          <p class="label">보낸 친구 요청</p>
+          <div id="sentFriendRequests" class="friend-requests"></div>
+        </section>
         <div id="friendList" class="friend-list"></div>
       </div>
       <section id="chatRoom" class="chat-room" hidden>
@@ -425,6 +430,7 @@
       <small id="friendProfileSignalId" class="profile-signal-id" data-no-i18n></small>
       <p id="friendProfileDescription" class="profile-description"></p>
       <button id="chatFromProfile" class="primary-button" type="button">대화하기</button>
+      <button id="removeFriend" class="danger-button" type="button">친구 끊기</button>
     </section>
   </div>
 

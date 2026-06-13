@@ -57,10 +57,14 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 .friends-hero p:last-child { margin: 0; color: #aaa; font-size: 12px; }
 .friend-composer { margin: 13px 0; }
 .friend-requests { display: grid; gap: 7px; margin-bottom: 10px; }
+.friend-request-section { margin: 12px 0; }
+.friend-request-section > .label { margin-top: 10px; }
 .friend-request { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 13px; background: white; }
 .friend-request strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .friend-request button { padding: 8px 10px; border: 0; border-radius: 9px; color: white; background: var(--ink); font-size: 9px; font-weight: 850; }
 .friend-request button:last-child { color: var(--ink); background: #e5e5e2; }
+.friend-request.sent { grid-template-columns: minmax(0, 1fr) auto; }
+.friend-request-status { color: var(--muted); font-size: 9px; font-weight: 850; }
 .friend-list { display: grid; gap: 8px; }
 .friend-card { display: flex; align-items: center; width: 100%; gap: 11px; padding: 13px; border: 1px solid var(--line); border-radius: 15px; color: var(--ink); text-align: left; background: white; }
 .friend-card:active { transform: scale(.985); background: #e9e9e6; }
@@ -288,6 +292,7 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 .profile-overlay { position: fixed; z-index: 60; inset: 0; padding: max(22px, env(safe-area-inset-top)) 18px 18px; overflow: auto; background: rgba(0,0,0,.72); }
 .friend-profile-card { margin-top: 5vh; }
 .profile-close { position: absolute; top: 12px; right: 12px; width: 38px; height: 38px; border: 1px solid var(--line); border-radius: 11px; background: white; font-size: 22px; }
+.danger-button { width: 100%; margin-top: 8px; padding: 13px; border: 1px solid #b3261e; border-radius: 13px; color: #b3261e; background: white; font-weight: 850; }
 .profile-description { min-height: 70px; margin: 20px 0; padding: 14px; border-radius: 13px; color: var(--ink); background: var(--paper); line-height: 1.6; white-space: pre-wrap; }
 
 .speed-card { padding: 20px; border-radius: 18px; color: white; background: var(--ink); box-shadow: 0 14px 28px rgba(0,0,0,.14); }

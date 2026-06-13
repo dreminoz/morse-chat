@@ -435,6 +435,7 @@ const state = {
   phrases: JSON.parse(localStorage.getItem("morse-phrases") || "[]"),
   friends: JSON.parse(localStorage.getItem("morse-friends") || "[]"),
   friendRequests: [],
+  sentFriendRequests: [],
   chats: JSON.parse(localStorage.getItem("morse-chats") || "{}"),
   activeFriend: null,
   chatSignal: "",
@@ -611,6 +612,7 @@ function connectServer() {
     state.serverConnected = true;
     renderSettings();
     syncDirectInbox();
+    loadFriends();
     loadFriendRequests();
   });
   stream.onerror = () => {
@@ -634,6 +636,13 @@ function connectServer() {
     showToast(request.status === "accepted"
       ? (state.language === "en" ? "Friend request accepted." : "친구 요청이 수락되었습니다.")
       : (state.language === "en" ? "Friend request rejected." : "친구 요청이 거절되었습니다."));
+    loadFriends();
+    loadFriendRequests();
+  });
+  stream.addEventListener("friend-removed", event => {
+    const { friend } = JSON.parse(event.data);
+    removeLocalFriend(friend);
+    showToast(state.language === "en" ? "A friend removed you." : "친구 관계가 해제되었습니다.");
   });
   stream.addEventListener("secret-signal", event => {
     const signal = JSON.parse(event.data);
@@ -1278,14 +1287,39 @@ function renderFriendRequests() {
       <button type="button" data-friend-request="${escapeHtml(request.id)}" data-friend-status="rejected">${state.language === "en" ? "Reject" : "거절"}</button>
     </article>
   `).join("");
+  $("#sentFriendRequests").innerHTML = state.sentFriendRequests.map(request => `
+    <article class="friend-request sent">
+      <strong data-no-i18n>${escapeHtml(request.toNickname || request.to)}</strong>
+      <span class="friend-request-status">${state.language === "en" ? "Waiting" : "수락 대기 중"}</span>
+    </article>
+  `).join("");
+  $("#friendRequestSection").hidden = !state.friendRequests.length && !state.sentFriendRequests.length;
 }
 
 function loadFriendRequests() {
   if (!state.authToken) return;
-  api("/api/friends/requests").then(({ requests }) => {
-    state.friendRequests = requests;
+  api("/api/friends/requests").then(({ incoming = [], outgoing = [] }) => {
+    state.friendRequests = incoming;
+    state.sentFriendRequests = outgoing;
     renderFriendRequests();
   }).catch(() => {});
+}
+
+function loadFriends() {
+  if (!state.authToken) return;
+  api("/api/friends").then(({ friends }) => {
+    state.friends = friends;
+    localStorage.setItem("morse-friends", JSON.stringify(state.friends));
+    loadFriendProfiles();
+  }).catch(() => {});
+}
+
+function removeLocalFriend(friend) {
+  state.friends = state.friends.filter(item => item !== friend);
+  localStorage.setItem("morse-friends", JSON.stringify(state.friends));
+  if (state.activeFriend === friend) closeChat();
+  if (state.viewingProfileSignalId === friend) $("#friendProfilePanel").hidden = true;
+  renderFriends();
 }
 
 function profileVisualHtml(profile, fallback = "?") {
@@ -1331,6 +1365,8 @@ async function openFriendProfile(signalId) {
     $("#friendProfileNickname").textContent = profile.nickname;
     $("#friendProfileSignalId").textContent = profile.signalId;
     $("#friendProfileDescription").textContent = profile.description || "아직 자기소개가 없습니다.";
+    $("#chatFromProfile").hidden = !state.friends.includes(signalId);
+    $("#removeFriend").hidden = !state.friends.includes(signalId);
     $("#friendProfilePanel").hidden = false;
     renderFriends();
     if (state.activeFriend === signalId) renderChat();
@@ -1580,6 +1616,10 @@ function handleAutoVerticalSwipe(deltaX, deltaY, commitLetter, commitNewline) {
 
 function sendChatMessage(message, hidden = false) {
   if (!message || !state.activeFriend) return;
+  if (!state.friends.includes(state.activeFriend)) {
+    showToast(state.language === "en" ? "You must be friends to send messages." : "다시 친구가 되어야 메시지를 보낼 수 있습니다.");
+    return;
+  }
   const outgoing = hidden
     ? { text: message, hidden: true, limit: state.hiddenViewLimit, views: 0 }
     : message;
@@ -1717,7 +1757,10 @@ function switchWorld(world) {
   }
   if (world === "space") renderSpace();
   if (world === "randomSignal") renderRandomSignal();
-  if (world === "friends") loadFriendProfiles();
+  if (world === "friends") {
+    loadFriends();
+    loadFriendRequests();
+  }
   if (world === "profile") renderMyProfile();
 }
 
@@ -2267,6 +2310,7 @@ $("#friendForm").addEventListener("submit", async event => {
     });
     input.value = "";
     showToast(state.language === "en" ? "Friend request sent." : "친구 요청을 보냈습니다.");
+    loadFriendRequests();
     return;
     const { profile } = await api(`/api/profile?nickname=${encodeURIComponent(nickname)}`);
     if (profile.signalId === state.userId) {
@@ -2359,12 +2403,24 @@ $("#chatFromProfile").addEventListener("click", () => {
   const signalId = state.viewingProfileSignalId;
   $("#friendProfilePanel").hidden = true;
   if (!signalId) return;
-  if (!state.friends.includes(signalId)) {
-    state.friends.push(signalId);
-    localStorage.setItem("morse-friends", JSON.stringify(state.friends));
-  }
+  if (!state.friends.includes(signalId)) return;
   switchWorld("friends");
   openChat(signalId);
+});
+$("#removeFriend").addEventListener("click", async () => {
+  const friend = state.viewingProfileSignalId;
+  if (!friend || !state.friends.includes(friend)) return;
+  if (!confirm(state.language === "en" ? "Remove this friend?" : "이 친구와 친구 관계를 끊을까요?")) return;
+  try {
+    await api("/api/friends/remove", {
+      method: "POST",
+      body: JSON.stringify({ friend })
+    });
+    removeLocalFriend(friend);
+    showToast(state.language === "en" ? "Friend removed." : "친구 관계를 끊었습니다.");
+  } catch (error) {
+    showApiFailure(error, state.language === "en" ? "Failed to remove friend." : "친구 관계를 끊지 못했습니다.");
+  }
 });
 
 function cancelChatMessageHold() {
@@ -3210,6 +3266,7 @@ renderAutoSettings();
 renderSpeed();
 renderPhrases();
 renderFriends();
+renderFriendRequests();
 nextTrainingItem(false);
 renderQuiz();
 renderQuizRecords();

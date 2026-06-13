@@ -229,23 +229,38 @@ const server = http.createServer(async (req, res) => {
     const target = nickname ? await store.findAccountByNickname(nickname.trim()) : null;
     if (!target) return json(res, 404, { error: "profile-not-found" });
     if (target.signalId === account.signalId) return json(res, 409, { error: "cannot-add-self" });
+    if (await store.areFriends(account.signalId, target.signalId)) return json(res, 409, { error: "already-friends" });
     const request = await store.addFriendRequest({
       id: crypto.randomUUID(), from: account.signalId, fromNickname: account.nickname,
-      to: target.signalId, status: "pending", createdAt: Date.now()
+      to: target.signalId, toNickname: target.nickname, status: "pending", createdAt: Date.now()
     });
     emit(target.signalId, "friend-request", request);
     return json(res, 200, { request });
   }
   if (req.method === "GET" && url.pathname === "/api/friends/requests") {
-    return json(res, 200, { requests: await store.incomingFriendRequests(account.signalId) });
+    return json(res, 200, {
+      incoming: await store.incomingFriendRequests(account.signalId),
+      outgoing: await store.outgoingFriendRequests(account.signalId)
+    });
+  }
+  if (req.method === "GET" && url.pathname === "/api/friends") {
+    return json(res, 200, { friends: await store.friendIds(account.signalId) });
   }
   if (req.method === "POST" && url.pathname === "/api/friends/respond") {
     const { id, status } = await readBody(req);
     if (!["accepted", "rejected"].includes(status)) return json(res, 400, { error: "invalid-status" });
     const request = await store.respondFriendRequest(id, account.signalId, status);
     if (!request) return json(res, 404, { error: "request-not-found" });
+    if (status === "accepted") await store.addFriendship(request.from, request.to);
     emit(request.from, "friend-response", { ...request, responderNickname: account.nickname });
     return json(res, 200, { request });
+  }
+  if (req.method === "POST" && url.pathname === "/api/friends/remove") {
+    const { friend } = await readBody(req);
+    if (!friend) return json(res, 400, { error: "friend-required" });
+    await store.removeFriendship(account.signalId, friend);
+    emit(friend, "friend-removed", { friend: account.signalId });
+    return json(res, 200, { ok: true });
   }
   if (req.method === "PATCH" && url.pathname === "/api/profile/me") {
     const { nickname, description, profileAscii } = await readBody(req);
@@ -292,6 +307,7 @@ const server = http.createServer(async (req, res) => {
     const { to, message } = await readBody(req);
     const from = account.signalId;
     if (!to || !message) return json(res, 400, { error: "to and message required" });
+    if (!await store.areFriends(from, to)) return json(res, 403, { error: "friends-only" });
     const item = { id: crypto.randomUUID(), from, to, message, createdAt: Date.now() };
     await store.addDirect(item);
     emit(to, "direct-message", item);
@@ -312,6 +328,7 @@ const server = http.createServer(async (req, res) => {
     if (!to || !sessionId || !["enter", "down", "up", "exit"].includes(action)) {
       return json(res, 400, { error: "invalid-secret-signal" });
     }
+    if (!await store.areFriends(account.signalId, to)) return json(res, 403, { error: "friends-only" });
     const log = {
       id: crypto.randomUUID(),
       sessionId,

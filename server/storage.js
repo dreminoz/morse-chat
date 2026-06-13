@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { MongoClient } = require("mongodb");
 
-const emptyData = () => ({ direct: [], space: [], spaceReports: [], friendRequests: [], secretLogs: [], accounts: [], sessions: [] });
+const emptyData = () => ({ direct: [], space: [], spaceReports: [], friendRequests: [], friendships: [], secretLogs: [], accounts: [], sessions: [] });
 
 class FileStore {
   constructor(filePath) {
@@ -13,7 +13,11 @@ class FileStore {
     } catch {}
   }
 
-  async init() {}
+  async init() {
+    for (const request of this.data.friendRequests.filter(item => item.status === "accepted")) {
+      await this.addFriendship(request.from, request.to);
+    }
+  }
   async health() { return { type: "file", connected: true }; }
   save() {
     fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
@@ -38,11 +42,27 @@ class FileStore {
     this.data.friendRequests.push(item); this.save(); return item;
   }
   async incomingFriendRequests(user) { return this.data.friendRequests.filter(item => item.to === user && item.status === "pending"); }
+  async outgoingFriendRequests(user) { return this.data.friendRequests.filter(item => item.from === user && item.status === "pending"); }
   async respondFriendRequest(id, user, status) {
     const item = this.data.friendRequests.find(request => request.id === id && request.to === user && request.status === "pending");
     if (!item) return null;
     item.status = status; item.respondedAt = Date.now(); this.save(); return item;
   }
+  async addFriendship(a, b) {
+    if (!this.data.friendships.some(item => (item.a === a && item.b === b) || (item.a === b && item.b === a))) {
+      this.data.friendships.push({ a, b, createdAt: Date.now() });
+      this.save();
+    }
+  }
+  async removeFriendship(a, b) {
+    this.data.friendships = this.data.friendships.filter(item => !((item.a === a && item.b === b) || (item.a === b && item.b === a)));
+    this.data.friendRequests.forEach(item => {
+      if (item.status === "accepted" && ((item.from === a && item.to === b) || (item.from === b && item.to === a))) item.status = "removed";
+    });
+    this.save();
+  }
+  async friendIds(user) { return this.data.friendships.filter(item => item.a === user || item.b === user).map(item => item.a === user ? item.b : item.a); }
+  async areFriends(a, b) { return this.data.friendships.some(item => (item.a === a && item.b === b) || (item.a === b && item.b === a)); }
   async createSession(session) {
     this.data.sessions = this.data.sessions.filter(item => item.googleSub !== session.googleSub);
     this.data.sessions.push(session);
@@ -110,6 +130,7 @@ class MongoStore {
     this.sessions = this.db.collection("sessions");
     this.direct = this.db.collection("direct_messages");
     this.friendRequests = this.db.collection("friend_requests");
+    this.friendships = this.db.collection("friendships");
     this.spaceReports = this.db.collection("space_reports");
     this.secretLogs = this.db.collection("secret_communication_logs");
     this.space = this.db.collection("space_signals");
@@ -123,6 +144,8 @@ class MongoStore {
       this.direct.createIndex({ to: 1, createdAt: -1 }),
       this.friendRequests.createIndex({ to: 1, status: 1, createdAt: -1 }),
       this.friendRequests.createIndex({ from: 1, to: 1, status: 1 }),
+      this.friendships.createIndex({ members: 1 }),
+      this.friendships.createIndex({ key: 1 }, { unique: true }),
       this.spaceReports.createIndex({ signalId: 1, reporter: 1 }, { unique: true }),
       this.secretLogs.createIndex({ sessionId: 1, createdAt: 1 }),
       this.secretLogs.createIndex({ from: 1, to: 1, createdAt: -1 }),
@@ -134,6 +157,8 @@ class MongoStore {
       this.space.createIndex({ createdAt: -1 })
     ]);
     await this.migrateLegacyFile();
+    const accepted = await this.friendRequests.find({ status: "accepted" }, { projection: { from: 1, to: 1 } }).toArray();
+    await Promise.all(accepted.map(request => this.addFriendship(request.from, request.to)));
   }
 
   async migrateLegacyFile() {
@@ -145,6 +170,7 @@ class MongoStore {
     if (legacy.sessions.length) await this.sessions.insertMany(legacy.sessions, { ordered: false }).catch(() => {});
     if (legacy.direct.length) await this.direct.insertMany(legacy.direct, { ordered: false }).catch(() => {});
     if (legacy.friendRequests.length) await this.friendRequests.insertMany(legacy.friendRequests, { ordered: false }).catch(() => {});
+    if (legacy.friendships.length) await this.friendships.insertMany(legacy.friendships, { ordered: false }).catch(() => {});
     if (legacy.spaceReports.length) await this.spaceReports.insertMany(legacy.spaceReports, { ordered: false }).catch(() => {});
     if (legacy.secretLogs.length) await this.secretLogs.insertMany(legacy.secretLogs, { ordered: false }).catch(() => {});
     if (legacy.space.length) await this.space.insertMany(legacy.space, { ordered: false }).catch(() => {});
@@ -185,6 +211,9 @@ class MongoStore {
   async incomingFriendRequests(user) {
     return this.friendRequests.find({ to: user, status: "pending" }, { projection: { _id: 0 } }).sort({ createdAt: -1 }).toArray();
   }
+  async outgoingFriendRequests(user) {
+    return this.friendRequests.find({ from: user, status: "pending" }, { projection: { _id: 0 } }).sort({ createdAt: -1 }).toArray();
+  }
   async respondFriendRequest(id, user, status) {
     return this.clean(await this.friendRequests.findOneAndUpdate(
       { id, to: user, status: "pending" },
@@ -192,6 +221,26 @@ class MongoStore {
       { returnDocument: "after" }
     ));
   }
+  friendshipKey(a, b) { return [a, b].sort().join(":"); }
+  async addFriendship(a, b) {
+    await this.friendships.updateOne(
+      { key: this.friendshipKey(a, b) },
+      { $setOnInsert: { key: this.friendshipKey(a, b), members: [a, b], createdAt: Date.now() } },
+      { upsert: true }
+    );
+  }
+  async removeFriendship(a, b) {
+    await this.friendships.deleteOne({ key: this.friendshipKey(a, b) });
+    await this.friendRequests.updateMany(
+      { status: "accepted", $or: [{ from: a, to: b }, { from: b, to: a }] },
+      { $set: { status: "removed", removedAt: Date.now() } }
+    );
+  }
+  async friendIds(user) {
+    return this.friendships.find({ members: user }, { projection: { _id: 0, members: 1 } }).toArray()
+      .then(items => items.map(item => item.members.find(member => member !== user)));
+  }
+  async areFriends(a, b) { return Boolean(await this.friendships.findOne({ key: this.friendshipKey(a, b) }, { projection: { _id: 1 } })); }
   async createSession(session) {
     await this.sessions.replaceOne({ googleSub: session.googleSub }, session, { upsert: true });
   }
