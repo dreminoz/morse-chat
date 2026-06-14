@@ -1,4 +1,4 @@
-const CACHE = "morse-pocket-v94";
+const CACHE = "morse-pocket-v95";
 const FILES = ["./", "index.html", "styles.css", "app.js", "manifest.json", "icon.svg"];
 
 self.addEventListener("install", event => {

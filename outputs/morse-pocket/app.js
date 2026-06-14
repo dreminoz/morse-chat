@@ -2571,6 +2571,15 @@ function openShopPreview(categoryId) {
   $("#shopPreviewPanel").hidden = false;
 }
 
+function openOwnedItemPreview(itemId) {
+  const item = shopItem(itemId);
+  if (!item) return;
+  $("#shopPreviewTitle").textContent = item.name;
+  $("#shopPreviewDescription").textContent = state.language === "en" ? "Preview of an item you own." : "보유 중인 아이템 미리보기입니다.";
+  $("#shopPreviewItems").innerHTML = `<article class="shop-preview-item owned single-item">${shopPreviewVisual(item)}<strong>${item.name}</strong><small>${state.language === "en" ? "Owned" : "보유 중"}</small></article>`;
+  $("#shopPreviewPanel").hidden = false;
+}
+
 function renderShop() {
   const ko = state.language !== "en";
   const categoryNames = ko
@@ -2604,6 +2613,19 @@ function renderShop() {
     const equipped = state.shopEquipped?.[item.slot] === item.id;
     return `<article class="shop-inventory-item"><span>${item.icon}</span><div><strong>${item.name}</strong><small>${categoryNames[item.category] || item.category}</small></div><button type="button" ${equipped ? `data-shop-unequip="${item.slot}"` : `data-shop-equip="${item.id}"`}>${equipped ? (ko ? "장착 해제" : "Unequip") : (ko ? "장착" : "Equip")}</button></article>`;
   }).join("") : `<p class="shop-empty">${ko ? "아직 아이템이 없습니다. 랜덤 뽑기를 해보세요." : "No items yet. Try a random draw."}</p>`;
+  if (state.shopInventoryCategory === "profile" && categoryOwned.length) renderProfileInventorySections(categoryOwned, ko);
+}
+
+function renderProfileInventorySections(items, ko) {
+  const renderItems = list => list.map(item => {
+    const equipped = state.shopEquipped?.[item.slot] === item.id;
+    return `<article class="shop-inventory-item" data-owned-preview="${item.id}"><span>${item.icon}</span><div><strong>${item.name}</strong><small>${item.slot === "profileBorder" ? (ko ? "테두리" : "Border") : (ko ? "배경" : "Background")}</small></div><button type="button" ${equipped ? `data-shop-unequip="${item.slot}"` : `data-shop-equip="${item.id}"`}>${equipped ? (ko ? "장착 해제" : "Unequip") : (ko ? "장착" : "Equip")}</button></article>`;
+  }).join("");
+  const borders = items.filter(item => item.slot === "profileBorder");
+  const backgrounds = items.filter(item => item.slot === "profileBackground");
+  $("#shopInventory").innerHTML = `
+    <section class="shop-profile-slot"><div class="shop-profile-slot-heading"><strong>${ko ? "프로필 테두리" : "Profile Borders"}</strong><small>${ko ? "배경과 함께 장착할 수 있습니다." : "Can be equipped with a background."}</small></div>${borders.length ? renderItems(borders) : `<p class="shop-empty">${ko ? "보유한 테두리가 없습니다." : "No borders owned."}</p>`}</section>
+    <section class="shop-profile-slot"><div class="shop-profile-slot-heading"><strong>${ko ? "프로필 배경" : "Profile Backgrounds"}</strong><small>${ko ? "테두리와 함께 장착할 수 있습니다." : "Can be equipped with a border."}</small></div>${backgrounds.length ? renderItems(backgrounds) : `<p class="shop-empty">${ko ? "보유한 배경이 없습니다." : "No backgrounds owned."}</p>`}</section>`;
 }
 
 function loadShop() {
@@ -4553,6 +4575,18 @@ $("#shopWorld").addEventListener("click", event => {
   const categoryPreview = event.target.closest("[data-shop-preview]");
   if (categoryPreview && !event.target.closest("[data-shop-draw]")) {
     openShopPreview(categoryPreview.dataset.shopPreview);
+    return;
+  }
+  const ownedPreview = event.target.closest("[data-owned-preview]");
+  if (ownedPreview && !event.target.closest("[data-shop-equip], [data-shop-unequip]")) {
+    openOwnedItemPreview(ownedPreview.dataset.ownedPreview);
+    return;
+  }
+  const genericOwnedPreview = event.target.closest(".shop-inventory-item");
+  if (genericOwnedPreview && !event.target.closest("[data-shop-equip], [data-shop-unequip]")) {
+    const name = genericOwnedPreview.querySelector("strong")?.textContent;
+    const item = SHOP_ITEMS.find(candidate => candidate.name === name);
+    if (item) openOwnedItemPreview(item.id);
     return;
   }
   const unequip = event.target.closest("[data-shop-unequip]");
