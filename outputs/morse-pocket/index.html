@@ -124,15 +124,20 @@
         </header>
         <div id="groupMessages" class="chat-messages"></div>
         <form id="groupMessageForm" class="chat-morse-composer group-chat-composer">
-          <div class="group-extra-actions">
-            <label class="photo-send-button" for="groupMessagePhotoInput"><span>ASCII 사진</span></label>
-            <select id="groupHiddenLimit"><option value="1">진동 전용 1회</option><option value="3">진동 전용 3회</option><option value="5">진동 전용 5회</option><option value="unlimited">진동 전용 무제한</option></select>
-            <button id="sendGroupHidden" type="button">진동 전용 보내기</button>
+          <div class="chat-morse-display"><textarea id="groupMessageInput" rows="1" maxlength="1000" placeholder="모스코드를 입력하세요"></textarea><small id="groupMessageSignal">현재 글자: 비어 있음</small></div>
+          <button id="groupMessageKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>짧게 누르면 · 점 / 길게 누르면 – 선</span><small></small></button>
+          <div class="chat-morse-actions">
+            <button id="clearGroupMessage" class="light-button" type="button">지우기</button>
+            <label class="photo-send-button" for="groupMessagePhotoInput"><span>사진</span></label>
+            <div class="send-control">
+              <div id="groupHiddenViewPicker" class="hidden-view-picker" hidden>
+                <span>숨김 신호 재생 횟수</span>
+                <div><button type="button" data-group-hidden-limit="1">1</button><button type="button" data-group-hidden-limit="3">3</button><button type="button" data-group-hidden-limit="5">5</button><button type="button" data-group-hidden-limit="unlimited">무제한</button></div>
+              </div>
+              <button id="sendGroupMessage" class="primary-button swipe-send" type="submit"><strong>보내기</strong><small id="groupHiddenLimitHint">오른쪽 밀기 · 숨김 신호 · 1회</small></button>
+            </div>
           </div>
           <input id="groupMessagePhotoInput" class="visually-hidden" type="file" accept="image/*">
-          <div class="chat-morse-display"><textarea id="groupMessageInput" rows="1" maxlength="1000" placeholder="모스코드를 입력하세요"></textarea><small id="groupMessageSignal">현재 글자: 비어 있음</small></div>
-          <button id="groupMessageKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>짧게 누르면 · 점 / 길게 누르면 − 선</span><small></small></button>
-          <div class="group-chat-actions"><button id="clearGroupMessage" class="light-button" type="button">지우기</button><button type="submit">보내기</button></div>
         </form>
       </section>
     </section>
@@ -452,15 +457,20 @@
       <header class="daily-group-header"><strong id="dailyGroupStatus">멤버를 불러오는 중입니다.</strong><button id="leaveDailyGroup" type="button">나가기</button></header>
       <div id="dailyGroupMessages" class="chat-messages daily-group-messages"></div>
       <form id="dailyGroupForm" class="chat-morse-composer group-chat-composer">
-        <div class="group-extra-actions">
-          <label class="photo-send-button" for="dailyGroupPhotoInput"><span>ASCII 사진</span></label>
-          <select id="dailyGroupHiddenLimit"><option value="1">진동 전용 1회</option><option value="3">진동 전용 3회</option><option value="5">진동 전용 5회</option><option value="unlimited">진동 전용 무제한</option></select>
-          <button id="sendDailyGroupHidden" type="button">진동 전용 보내기</button>
+        <div class="chat-morse-display"><textarea id="dailyGroupInput" rows="1" maxlength="1000" placeholder="모스코드를 입력하세요"></textarea><small id="dailyGroupSignal">현재 글자: 비어 있음</small></div>
+        <button id="dailyGroupKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>짧게 누르면 · 점 / 길게 누르면 – 선</span><small></small></button>
+        <div class="chat-morse-actions">
+          <button id="clearDailyGroupMessage" class="light-button" type="button">지우기</button>
+          <label class="photo-send-button" for="dailyGroupPhotoInput"><span>사진</span></label>
+          <div class="send-control">
+            <div id="dailyGroupHiddenViewPicker" class="hidden-view-picker" hidden>
+              <span>숨김 신호 재생 횟수</span>
+              <div><button type="button" data-daily-hidden-limit="1">1</button><button type="button" data-daily-hidden-limit="3">3</button><button type="button" data-daily-hidden-limit="5">5</button><button type="button" data-daily-hidden-limit="unlimited">무제한</button></div>
+            </div>
+            <button id="sendDailyGroupMessage" class="primary-button swipe-send" type="submit"><strong>보내기</strong><small id="dailyGroupHiddenLimitHint">오른쪽 밀기 · 숨김 신호 · 1회</small></button>
+          </div>
         </div>
         <input id="dailyGroupPhotoInput" class="visually-hidden" type="file" accept="image/*">
-        <div class="chat-morse-display"><textarea id="dailyGroupInput" rows="1" maxlength="1000" placeholder="모스코드를 입력하세요"></textarea><small id="dailyGroupSignal">현재 글자: 비어 있음</small></div>
-        <button id="dailyGroupKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>짧게 누르면 · 점 / 길게 누르면 − 선</span><small></small></button>
-        <div class="group-chat-actions"><button id="clearDailyGroupMessage" class="light-button" type="button">지우기</button><button type="submit">보내기</button></div>
       </form>
     </section>
 
@@ -501,8 +511,12 @@
           <div id="diaryCalendar" class="diary-calendar"></div>
           <strong id="diarySelectedDate" class="diary-selected-date"></strong>
         </section>
-        <div id="diaryEntries" class="diary-entries"></div>
+        <section class="diary-saved-section">
+          <div class="section-heading"><strong>선택한 날짜의 일기</strong><small>저장된 내용</small></div>
+          <div id="diaryEntries" class="diary-entries"></div>
+        </section>
         <div class="diary-composer">
+          <div class="section-heading"><strong>작성 중인 일기</strong><small>일기 저장을 눌러야 서버에 저장됩니다</small></div>
           <div id="diaryDraftSegments" class="diary-draft-segments"></div>
           <div class="chat-morse-display">
             <textarea id="diaryText" rows="4" maxlength="5000" placeholder="일기를 입력하세요"></textarea>
@@ -513,7 +527,7 @@
             <button id="appendDiaryText" type="button">보내기</button>
             <button id="appendDiaryVibration" type="button">진동 전용</button>
             <button id="clearDiaryText" type="button">지우기</button>
-            <button id="saveDiaryEntry" class="primary-button swipe-send" type="button"><strong>일기 저장</strong><small>오른쪽 밀기: 진동 전용으로 저장</small></button>
+            <button id="saveDiaryEntry" class="primary-button" type="button">일기 저장</button>
           </div>
         </div>
       </section>
@@ -726,6 +740,12 @@
           </form>
           <div id="autocompleteList" class="autocomplete-list"></div>
         </div>
+      </div>
+      <div class="settings-section suggestion-settings">
+        <p class="label">건의하기</p>
+        <textarea id="suggestionText" maxlength="2000" placeholder="추가했으면 하는 기능이나 불편한 점을 적어주세요"></textarea>
+        <button id="submitSuggestion" type="button">건의사항 보내기</button>
+        <p id="suggestionStatus" class="nickname-change-status" role="status" hidden></p>
       </div>
     </section>
   </div>

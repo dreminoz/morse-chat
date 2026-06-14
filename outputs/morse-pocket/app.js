@@ -256,6 +256,13 @@ const I18N_PAIRS = [
   ["사진 변환 결과", "Photo conversion result"],
   ["알파벳 모스부호", "Alphabet Morse code"],
   ["알파벳·숫자 모스부호", "Alphabet and number Morse code"],
+  ["건의하기", "Send suggestion"],
+  ["추가했으면 하는 기능이나 불편한 점을 적어주세요", "Tell us about a feature request or inconvenience"],
+  ["건의사항 보내기", "Send suggestion"],
+  ["작성 중인 일기", "Diary draft"],
+  ["선택한 날짜의 일기", "Entries for selected date"],
+  ["저장된 내용", "Saved entries"],
+  ["일기 저장을 눌러야 서버에 저장됩니다", "Press Save Diary to store it on the server"],
   ["모스부호순", "Morse order"],
   ["알파벳순", "Alphabetical"],
   ["문장 훈련", "Sentence training"],
@@ -511,8 +518,6 @@ const state = {
   diarySpaceTimer: null,
   diaryKeyerStartX: 0,
   diaryKeyerStartY: 0,
-  diarySaveStartX: 0,
-  diarySaveSwiped: false,
   diarySelectedDate: new Date().toLocaleDateString("en-CA"),
   diaryCalendarMonth: new Date().toLocaleDateString("en-CA").slice(0, 7),
   diaryDirty: false,
@@ -1306,6 +1311,11 @@ function sendLastSignal(text) {
     body: JSON.stringify({ userId: state.userId, message: { text: cleanText } })
   }).catch(() => showToast("서버 연결에 실패했습니다."));
   stopRandomSignal("라스트 시그널을 보냈습니다.");
+  showPostRandomSignalAd();
+}
+
+function showPostRandomSignalAd() {
+  window.AndroidAds?.showRandomSignalInterstitial?.();
 }
 
 function sendRandomChat(text, hidden = false) {
@@ -1657,6 +1667,8 @@ function groupComposerKeys(daily) {
 function renderGroupComposer(daily) {
   const keys = groupComposerKeys(daily);
   $(keys.input).value = state[keys.text];
+  const hint = $(daily ? "#dailyGroupHiddenLimitHint" : "#groupHiddenLimitHint");
+  if (hint) hint.textContent = `${state.language === "en" ? "Swipe right · Morse Only" : "오른쪽 밀기 · 숨김 신호"} · ${hiddenLimitLabel()}`;
   $(keys.status).textContent = state[keys.signal] ? `현재 글자: ${prettyMorse(state[keys.signal])}` : "현재 글자: 비어 있음";
   $(keys.keyer).querySelector("small").textContent = state.chatKeyerMode === "auto"
     ? "3단위 휴식: 글자 확정 · 7단위 휴식: 띄어쓰기"
@@ -2333,7 +2345,7 @@ function renderDiary() {
   $("#diarySignal").textContent = state.diarySignal ? `현재 글자: ${prettyMorse(state.diarySignal)}` : "현재 글자: 비어 있음";
   renderDiaryCalendar();
   $("#diaryDraftSegments").innerHTML = state.diaryDraftSegments.length ? state.diaryDraftSegments.map((segment, index) =>
-    `<button type="button" data-remove-diary-segment="${index}" class="${segment.type === "vibration" ? "vibration-only" : ""}">${segment.type === "vibration" ? "진동" : "문자"} · ${escapeHtml(segment.text)}</button>`
+    `<button type="button" data-remove-diary-segment="${index}" class="${segment.type === "vibration" ? "vibration-only" : ""}"><strong>${segment.type === "vibration" ? "진동 전용" : "문자"}</strong><br>${escapeHtml(segment.text)}</button>`
   ).join("") : '<small>보내기 또는 진동 전용을 눌러 일기 조각을 추가하세요.</small>';
   const entries = diaryEntriesForDate();
   if (!entries.length) {
@@ -2556,20 +2568,20 @@ function shopCategoryLabels() {
 
 function shopPreviewVisual(item) {
   if (item.category === "morseSound") return `<button type="button" class="shop-sound-preview" data-preview-sound="${item.id}"><span>${item.icon}</span><small>${state.language === "en" ? "Tap to preview sound" : "눌러서 소리 미리 듣기"}</small></button>`;
-  if (item.category === "profile") return `<div class="shop-profile-preview cosmetic-${item.id}"><span>M</span></div>`;
-  return `<div class="shop-theme-preview theme-${item.id}"><i></i><i></i><b></b></div>`;
+  if (item.category === "profile") return `<div class="shop-profile-preview cosmetic-${item.id}"><span>M</span><i></i><b></b></div>`;
+  return `<div class="shop-theme-preview theme-${item.id}"><header><i></i><b></b></header><main><i></i><i></i><i></i></main><footer></footer></div>`;
 }
 
 function openShopPreview(categoryId) {
   const category = SHOP_CATEGORIES.find(item => item.id === categoryId);
   const labels = shopCategoryLabels();
   $("#shopPreviewTitle").textContent = labels[categoryId] || category?.name || "";
-  $("#shopPreviewDescription").textContent = state.language === "en" ? "These items can appear from this random draw." : "이 랜덤 뽑기에서 나올 수 있는 아이템 목록입니다.";
+  $("#shopPreviewDescription").textContent = state.language === "en" ? "These items can appear from this random draw. Tap an owned item to equip it." : "이 랜덤 뽑기에서 나올 수 있는 아이템입니다. 보유한 아이템을 누르면 장착됩니다.";
   $("#shopPreviewItems").innerHTML = SHOP_ITEMS.filter(item => item.category === categoryId).map(item => `
-    <article class="shop-preview-item ${state.shopInventory.includes(item.id) ? "owned" : ""}">
+    <article class="shop-preview-item ${state.shopInventory.includes(item.id) ? "owned" : ""}" data-shop-preview-item="${item.id}">
       ${shopPreviewVisual(item)}
       <strong>${item.name}</strong>
-      <small>${state.shopInventory.includes(item.id) ? (state.language === "en" ? "Owned" : "보유 중") : (state.language === "en" ? "Not owned" : "미보유")}</small>
+      <small>${state.shopInventory.includes(item.id) ? (state.language === "en" ? "Owned · tap to equip" : "보유 중 · 눌러서 장착") : (state.language === "en" ? "Not owned" : "미보유")}</small>
     </article>`).join("");
   $("#shopPreviewPanel").hidden = false;
 }
@@ -2578,9 +2590,32 @@ function openOwnedItemPreview(itemId) {
   const item = shopItem(itemId);
   if (!item) return;
   $("#shopPreviewTitle").textContent = item.name;
-  $("#shopPreviewDescription").textContent = state.language === "en" ? "Preview of an item you own." : "보유 중인 아이템 미리보기입니다.";
-  $("#shopPreviewItems").innerHTML = `<article class="shop-preview-item owned single-item">${shopPreviewVisual(item)}<strong>${item.name}</strong><small>${state.language === "en" ? "Owned" : "보유 중"}</small></article>`;
+  $("#shopPreviewDescription").textContent = state.language === "en" ? "Preview of an item you own. Tap to equip or unequip." : "보유 중인 아이템입니다. 누르면 장착하거나 해제합니다.";
+  const equipped = state.shopEquipped?.[item.slot] === item.id;
+  $("#shopPreviewItems").innerHTML = `<article class="shop-preview-item owned single-item" data-shop-preview-item="${item.id}">${shopPreviewVisual(item)}<strong>${item.name}</strong><small>${equipped ? (state.language === "en" ? "Equipped · tap to unequip" : "장착 중 · 눌러서 해제") : (state.language === "en" ? "Owned · tap to equip" : "보유 중 · 눌러서 장착")}</small></article>`;
   $("#shopPreviewPanel").hidden = false;
+}
+
+function equipShopItem(itemId) {
+  return api("/api/shop/equip", { method: "POST", body: JSON.stringify({ itemId }) }).then(result => {
+    state.shopInventory = result.inventory || [];
+    state.shopEquipped = result.equipped || {};
+    applyAccountUpdate(result.account);
+    renderShop();
+    showToast(state.language === "en" ? "Item equipped." : "아이템을 장착했습니다.");
+    return result;
+  });
+}
+
+function unequipShopSlot(slot) {
+  return api("/api/shop/unequip", { method: "POST", body: JSON.stringify({ slot }) }).then(result => {
+    state.shopInventory = result.inventory || [];
+    state.shopEquipped = result.equipped || {};
+    applyAccountUpdate(result.account);
+    renderShop();
+    showToast(state.language === "en" ? "Item unequipped." : "아이템 장착을 해제했습니다.");
+    return result;
+  });
 }
 
 function renderShop() {
@@ -3371,23 +3406,70 @@ $("#createGroupForm").addEventListener("submit", event => {
   }).catch(error => showApiFailure(error, "그룹챗을 만들지 못했습니다."));
 });
 $("#closeGroupChat").addEventListener("click", closeGroupChat);
-$("#groupMessageForm").addEventListener("submit", event => {
-  event.preventDefault();
-  commitGroupLetter(false);
-  sendGroupMessage(state.activeGroup, state.groupText);
-  state.groupText = "";
-  state.groupSignal = "";
-  renderGroupComposer(false);
-});
-$("#sendGroupHidden").addEventListener("click", () => {
-  commitGroupLetter(false);
-  const text = state.groupText.trim();
-  if (!text) return;
-  sendGroupMessage(state.activeGroup, text, false, { hidden: true, limit: $("#groupHiddenLimit").value });
-  state.groupText = "";
-  state.groupSignal = "";
-  renderGroupComposer(false);
-});
+function bindUnifiedGroupSend({ daily, form, button, picker, limitAttribute, hint }) {
+  let startX = 0;
+  let swiped = false;
+  let longPressed = false;
+  let holdTimer = null;
+  const send = hidden => {
+    commitGroupLetter(daily);
+    const text = (daily ? state.dailyGroupText : state.groupText).trim();
+    const group = daily ? state.dailyGroup : state.activeGroup;
+    if (!text || !group) return;
+    sendGroupMessage(group, text, daily, hidden ? { hidden: true, limit: state.hiddenViewLimit } : {});
+    if (daily) {
+      state.dailyGroupText = "";
+      state.dailyGroupSignal = "";
+    } else {
+      state.groupText = "";
+      state.groupSignal = "";
+    }
+    renderGroupComposer(daily);
+  };
+  $(form).addEventListener("submit", event => {
+    event.preventDefault();
+    if (swiped || longPressed) {
+      swiped = false;
+      longPressed = false;
+      return;
+    }
+    send(false);
+  });
+  $(button).addEventListener("pointerdown", event => {
+    startX = event.clientX;
+    swiped = false;
+    longPressed = false;
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(() => {
+      longPressed = true;
+      $(button).classList.remove("swiping");
+      $(picker).hidden = false;
+    }, 550);
+    $(button).classList.add("swiping");
+    $(button).setPointerCapture?.(event.pointerId);
+  });
+  $(button).addEventListener("pointerup", event => {
+    clearTimeout(holdTimer);
+    $(button).classList.remove("swiping");
+    if (longPressed || event.clientX - startX < 70) return;
+    swiped = true;
+    send(true);
+  });
+  $(button).addEventListener("pointercancel", () => {
+    clearTimeout(holdTimer);
+    $(button).classList.remove("swiping");
+  });
+  $(picker).addEventListener("click", event => {
+    const option = event.target.closest(`[${limitAttribute}]`);
+    if (!option) return;
+    state.hiddenViewLimit = option.getAttribute(limitAttribute);
+    localStorage.setItem("morse-hidden-view-limit", state.hiddenViewLimit);
+    $(picker).hidden = true;
+    $(hint).textContent = `${state.language === "en" ? "Swipe right · Morse Only" : "오른쪽 밀기 · 숨김 신호"} · ${hiddenLimitLabel()}`;
+  });
+}
+bindUnifiedGroupSend({ daily: false, form: "#groupMessageForm", button: "#sendGroupMessage", picker: "#groupHiddenViewPicker", limitAttribute: "data-group-hidden-limit", hint: "#groupHiddenLimitHint" });
+bindUnifiedGroupSend({ daily: true, form: "#dailyGroupForm", button: "#sendDailyGroupMessage", picker: "#dailyGroupHiddenViewPicker", limitAttribute: "data-daily-hidden-limit", hint: "#dailyGroupHiddenLimitHint" });
 $("#groupMessagePhotoInput").addEventListener("change", event => {
   const file = event.target.files?.[0];
   event.target.value = "";
@@ -3522,26 +3604,31 @@ $("#dailyGroupInput").addEventListener("input", event => {
   renderGroupComposer(true);
   renderGame();
 });
-$("#clearGroupMessage").addEventListener("click", () => clearGroupComposerCharacter(false));
-$("#clearDailyGroupMessage").addEventListener("click", () => clearGroupComposerCharacter(true));
-$("#dailyGroupForm").addEventListener("submit", event => {
-  event.preventDefault();
-  commitGroupLetter(true);
-  sendGroupMessage(state.dailyGroup, state.dailyGroupText, true);
-  state.dailyGroupText = "";
-  state.dailyGroupSignal = "";
-  renderGroupComposer(true);
-  renderGame();
-});
-$("#sendDailyGroupHidden").addEventListener("click", () => {
-  commitGroupLetter(true);
-  const text = state.dailyGroupText.trim();
-  if (!text) return;
-  sendGroupMessage(state.dailyGroup, text, true, { hidden: true, limit: $("#dailyGroupHiddenLimit").value });
-  state.dailyGroupText = "";
-  state.dailyGroupSignal = "";
-  renderGroupComposer(true);
-});
+function bindGroupDelete(button, daily) {
+  let held = false;
+  let timer = null;
+  let interval = null;
+  $(button).addEventListener("pointerdown", event => {
+    held = false;
+    $(button).setPointerCapture?.(event.pointerId);
+    timer = setTimeout(() => {
+      held = true;
+      clearGroupComposerCharacter(daily);
+      interval = setInterval(() => clearGroupComposerCharacter(daily), 110);
+    }, 420);
+  });
+  $(button).addEventListener("pointerup", () => {
+    clearTimeout(timer);
+    clearInterval(interval);
+    if (!held) clearGroupComposerCharacter(daily);
+  });
+  $(button).addEventListener("pointercancel", () => {
+    clearTimeout(timer);
+    clearInterval(interval);
+  });
+}
+bindGroupDelete("#clearGroupMessage", false);
+bindGroupDelete("#clearDailyGroupMessage", true);
 $("#dailyGroupPhotoInput").addEventListener("change", event => {
   const file = event.target.files?.[0];
   event.target.value = "";
@@ -3659,6 +3746,23 @@ $("#clearDiaryText").addEventListener("click", () => {
 });
 $("#saveDiaryEntry").addEventListener("click", () => {
   storeDiaryEntry();
+});
+$("#submitSuggestion").addEventListener("click", async () => {
+  const text = $("#suggestionText").value.trim();
+  if (!state.authToken) return openAuthPanel();
+  if (text.length < 2) return showToast(state.language === "en" ? "Please enter your suggestion." : "건의 내용을 입력해 주세요.");
+  const button = $("#submitSuggestion");
+  button.disabled = true;
+  try {
+    await api("/api/suggestions", { method: "POST", body: JSON.stringify({ text }) });
+    $("#suggestionText").value = "";
+    $("#suggestionStatus").textContent = state.language === "en" ? "Suggestion sent. Thank you." : "건의사항을 보냈습니다. 감사합니다.";
+    $("#suggestionStatus").hidden = false;
+  } catch (error) {
+    showApiFailure(error, state.language === "en" ? "Could not send the suggestion." : "건의사항을 보내지 못했습니다.");
+  } finally {
+    button.disabled = false;
+  }
 });
 $("#diaryEntries").addEventListener("click", event => {
   const segment = event.target.closest("[data-diary-segment-play]");
@@ -4254,6 +4358,7 @@ $("#skipLastSignal").addEventListener("click", () => {
     body: JSON.stringify({ userId: state.userId })
   }).catch(() => {});
   stopRandomSignal("시그널 연결이 끊어졌습니다.");
+  showPostRandomSignalAd();
 });
 $("#randomChatMessages").addEventListener("click", event => {
   const bubble = event.target.closest("[data-random-message]");
@@ -4623,23 +4728,12 @@ $("#shopWorld").addEventListener("click", event => {
   }
   const unequip = event.target.closest("[data-shop-unequip]");
   if (unequip) {
-    api("/api/shop/unequip", { method: "POST", body: JSON.stringify({ slot: unequip.dataset.shopUnequip }) }).then(result => {
-      state.shopInventory = result.inventory || [];
-      state.shopEquipped = result.equipped || {};
-      applyAccountUpdate(result.account);
-      renderShop();
-    }).catch(error => showApiFailure(error));
+    unequipShopSlot(unequip.dataset.shopUnequip).catch(error => showApiFailure(error));
     return;
   }
   const equip = event.target.closest("[data-shop-equip]");
   if (!equip) return;
-  api("/api/shop/equip", { method: "POST", body: JSON.stringify({ itemId: equip.dataset.shopEquip }) }).then(result => {
-    state.shopInventory = result.inventory || [];
-    state.shopEquipped = result.equipped || {};
-    applyAccountUpdate(result.account);
-    renderShop();
-    showToast(state.language === "en" ? "Item equipped." : "아이템을 장착했습니다.");
-  }).catch(error => showApiFailure(error));
+  equipShopItem(equip.dataset.shopEquip).catch(error => showApiFailure(error));
 });
 $("#buyCoins100").addEventListener("click", () => {
   if (window.AndroidBilling?.purchaseCoins100) {
@@ -4674,6 +4768,14 @@ $("#closeShopPreview").addEventListener("click", () => $("#shopPreviewPanel").hi
 $("#shopPreviewItems").addEventListener("click", event => {
   const sound = event.target.closest("[data-preview-sound]");
   if (sound) playMorse("TEST", null, "TEST", sound.dataset.previewSound);
+  const preview = event.target.closest("[data-shop-preview-item]");
+  if (!preview || !state.shopInventory.includes(preview.dataset.shopPreviewItem)) return;
+  const item = shopItem(preview.dataset.shopPreviewItem);
+  if (!item) return;
+  const action = state.shopEquipped?.[item.slot] === item.id
+    ? unequipShopSlot(item.slot)
+    : equipShopItem(item.id);
+  action.then(() => openOwnedItemPreview(item.id)).catch(error => showApiFailure(error));
 });
 $("#groupThemeChoices").addEventListener("click", event => {
   const button = event.target.closest("[data-group-theme]");

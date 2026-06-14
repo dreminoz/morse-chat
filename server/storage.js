@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { MongoClient } = require("mongodb");
 
-const emptyData = () => ({ direct: [], groupChats: [], groupMessages: [], space: [], spaceReports: [], friendRequests: [], friendships: [], secretLogs: [], diaryVaults: [], diaryEntries: [], gameScores: [], shopPurchases: [], accounts: [], sessions: [] });
+const emptyData = () => ({ direct: [], groupChats: [], groupMessages: [], space: [], spaceReports: [], friendRequests: [], friendships: [], secretLogs: [], diaryVaults: [], diaryEntries: [], gameScores: [], shopPurchases: [], suggestions: [], accounts: [], sessions: [] });
 
 class FileStore {
   constructor(filePath) {
@@ -222,6 +222,7 @@ class FileStore {
     if (this.data.shopPurchases.some(purchase => purchase.purchaseToken === item.purchaseToken)) return false;
     this.data.shopPurchases.push(item); this.save(); return true;
   }
+  async addSuggestion(item) { this.data.suggestions.push(item); this.save(); return item; }
 }
 
 class MongoStore {
@@ -248,6 +249,7 @@ class MongoStore {
     this.diaryEntries = this.db.collection("diary_entries");
     this.gameScores = this.db.collection("game_scores");
     this.shopPurchases = this.db.collection("shop_purchases");
+    this.suggestions = this.db.collection("suggestions");
     await Promise.all([
       this.accounts.createIndex({ googleSub: 1 }, { unique: true }),
       this.accounts.createIndex({ signalId: 1 }, { unique: true }),
@@ -278,6 +280,8 @@ class MongoStore {
       ,this.gameScores.createIndex({ owner: 1 }, { unique: true })
       ,this.gameScores.createIndex({ timeMs: 1 })
       ,this.shopPurchases.createIndex({ purchaseToken: 1 }, { unique: true })
+      ,this.suggestions.createIndex({ createdAt: -1 })
+      ,this.suggestions.createIndex({ owner: 1, createdAt: -1 })
     ]);
     await this.migrateLegacyFile();
     const accepted = await this.friendRequests.find({ status: "accepted" }, { projection: { from: 1, to: 1 } }).toArray();
@@ -303,6 +307,7 @@ class MongoStore {
     if (legacy.diaryEntries.length) await this.diaryEntries.insertMany(legacy.diaryEntries, { ordered: false }).catch(() => {});
     if (legacy.gameScores.length) await this.gameScores.insertMany(legacy.gameScores, { ordered: false }).catch(() => {});
     if (legacy.shopPurchases.length) await this.shopPurchases.insertMany(legacy.shopPurchases, { ordered: false }).catch(() => {});
+    if (legacy.suggestions.length) await this.suggestions.insertMany(legacy.suggestions, { ordered: false }).catch(() => {});
   }
 
   async health() {
@@ -518,6 +523,7 @@ class MongoStore {
     try { await this.shopPurchases.insertOne(item); return true; }
     catch (error) { if (error.code === 11000) return false; throw error; }
   }
+  async addSuggestion(item) { await this.suggestions.insertOne(item); return item; }
 }
 
 async function createStore({ dataFile }) {

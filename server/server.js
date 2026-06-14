@@ -313,7 +313,7 @@ function serveFile(req, res) {
     return;
   }
   const ext = path.extname(filePath);
-  const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml" };
+  const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".txt": "text/plain" };
   res.writeHead(200, {
     "Content-Type": `${types[ext] || "application/octet-stream"}; charset=utf-8`,
     "Cache-Control": "no-cache, must-revalidate"
@@ -388,6 +388,22 @@ const server = http.createServer(async (req, res) => {
     account.notificationLanguage = language === "en" ? "en" : "ko";
     await store.updateAccount(account);
     return json(res, 200, { ok: true });
+  }
+  if (req.method === "POST" && url.pathname === "/api/suggestions") {
+    const { text } = await readBody(req);
+    const cleanText = String(text || "").trim();
+    if (cleanText.length < 2 || cleanText.length > 2000) return json(res, 400, { error: "invalid-suggestion" });
+    const suggestion = {
+      id: crypto.randomUUID(),
+      owner: account.signalId,
+      nickname: account.nickname,
+      googleSub: account.googleSub,
+      text: cleanText,
+      status: "new",
+      createdAt: Date.now()
+    };
+    await store.addSuggestion(suggestion);
+    return json(res, 200, { suggestion: { id: suggestion.id, status: suggestion.status, createdAt: suggestion.createdAt } });
   }
   if (req.method === "GET" && url.pathname === "/api/diary/status") {
     return json(res, 200, { hasPassword: Boolean(await store.diaryVault(account.signalId)) });

@@ -85,9 +85,11 @@ h1 span { color: var(--ink); -webkit-text-stroke: 0; -webkit-text-fill-color: va
 .shop-preview-card { max-height: 90dvh; }.shop-preview-items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .shop-preview-item { display: grid; gap: 6px; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: white; }
 .shop-preview-item.single-item { grid-column: 1 / -1; width: min(100%, 260px); margin: 0 auto; }
-.shop-preview-item.owned { box-shadow: inset 0 0 0 2px #080808; }.shop-preview-item strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }.shop-preview-item > small { color: var(--muted); font-size: 8px; }
-.shop-theme-preview { display: flex; flex-direction: column; gap: 5px; height: 82px; padding: 9px; overflow: hidden; border-radius: 11px; background: #eee; }.shop-theme-preview i { width: 55%; height: 13px; border-radius: 999px; background: white; }.shop-theme-preview i:nth-child(2) { align-self: flex-end; background: #080808; }.shop-theme-preview b { width: 100%; height: 17px; margin-top: auto; border-radius: 6px; background: white; }
+.shop-preview-item.owned { cursor: pointer; box-shadow: inset 0 0 0 2px #080808; }.shop-preview-item strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }.shop-preview-item > small { color: var(--muted); font-size: 8px; }
+.shop-theme-preview { display: grid; grid-template-rows: auto 1fr auto; gap: 5px; height: 112px; padding: 8px; overflow: hidden; border-radius: 13px; color: #080808; background: #eee; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }.shop-theme-preview header { display: flex; align-items: center; gap: 5px; }.shop-theme-preview header i { width: 17px; height: 17px; border-radius: 50%; background: currentColor; }.shop-theme-preview header b { width: 42%; height: 6px; border-radius: 999px; background: currentColor; opacity: .45; }.shop-theme-preview main { display: flex; flex-direction: column; justify-content: center; gap: 5px; }.shop-theme-preview main i { width: 58%; height: 13px; border: 1px solid rgba(0,0,0,.14); border-radius: 7px; background: white; }.shop-theme-preview main i:nth-child(2) { align-self: flex-end; color: white; background: #080808; }.shop-theme-preview main i:nth-child(3) { width: 42%; }.shop-theme-preview footer { height: 19px; border: 1px solid rgba(0,0,0,.14); border-radius: 7px; background: white; }
 .shop-theme-preview.theme-chat_midnight, .shop-theme-preview.theme-random_void { background: #090b12; }.shop-theme-preview.theme-chat_ocean, .shop-theme-preview.theme-random_ice { background: #0b6687; }.shop-theme-preview.theme-chat_neon, .shop-theme-preview.theme-random_radar { background: #04150c; box-shadow: inset 0 0 0 1px #00ffc8; }.shop-theme-preview.theme-chat_cream { background: #fff0d5; }.shop-theme-preview.theme-random_sunset { background: linear-gradient(#ffd6b0, #b16b8e); }
+.shop-theme-preview.theme-chat_midnight, .shop-theme-preview.theme-chat_ocean, .shop-theme-preview.theme-chat_neon, .shop-theme-preview.theme-random_void, .shop-theme-preview.theme-random_radar { color: white; }.shop-theme-preview.theme-chat_midnight main i:nth-child(2) { background: #202533; }.shop-theme-preview.theme-chat_ocean main i:nth-child(2) { background: #087ea4; }.shop-theme-preview.theme-chat_neon main i:nth-child(2) { color: #080808; background: #00ffc8; }.shop-theme-preview.theme-random_radar { background-color: #04150c; background-image: linear-gradient(rgba(48,255,130,.12) 1px, transparent 1px),linear-gradient(90deg,rgba(48,255,130,.12) 1px,transparent 1px); background-size: 13px 13px; }.shop-theme-preview.theme-random_void { background: radial-gradient(circle at top,#22263a,#050507 62%); }.shop-theme-preview.theme-random_ice { color: #073445; background: linear-gradient(145deg,#f5fdff,#b8e8f3); }
+.shop-profile-preview { position: relative; display: grid; place-items: center; width: 104px; height: 104px; margin: 4px auto; border-radius: 50%; color: white; background: #080808; }.shop-profile-preview span { position: relative; z-index: 2; font-size: 38px; font-weight: 950; }.shop-profile-preview i,.shop-profile-preview b { position: absolute; border-radius: 50%; }.shop-profile-preview i { inset: 16px; border: 1px solid rgba(255,255,255,.35); }.shop-profile-preview b { width: 7px; height: 7px; top: 18px; right: 24px; background: currentColor; opacity: .7; }
 .shop-profile-preview { display: grid; place-items: center; width: 82px; height: 82px; margin: 0 auto; border-radius: 50%; color: white; background: #080808; font-size: 28px; font-weight: 900; }
 .shop-profile-preview.cosmetic-border_ring { box-shadow: 0 0 0 4px white, 0 0 0 7px #080808; }.shop-profile-preview.cosmetic-border_neon { border: 3px solid #00ffc8; box-shadow: 0 0 14px #00ffc8; }.shop-profile-preview.cosmetic-border_double { border: 5px double white; outline: 2px solid #080808; }.shop-profile-preview.cosmetic-border_dashed { border: 4px dashed white; outline: 2px dashed #080808; }.shop-profile-preview.cosmetic-profile_night { background: radial-gradient(circle at 65% 25%, #596080, #090b12 55%); }.shop-profile-preview.cosmetic-profile_ocean { background: radial-gradient(circle at 35% 30%, #36b5d8, #063650 68%); }.shop-profile-preview.cosmetic-profile_sunset { background: linear-gradient(145deg, #ffd18d, #e86775 55%, #4e3c6e); }.shop-profile-preview.cosmetic-profile_cream { color: #5c402c; background: #f5dfb8; }
 .shop-sound-preview { display: grid; place-items: center; gap: 5px; height: 82px; border: 0; border-radius: 11px; color: white; background: #080808; }.shop-sound-preview span { font-size: 11px; font-weight: 900; }.shop-sound-preview small { color: #aaa; font-size: 7px; }
@@ -234,11 +236,13 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 .diary-lock-card p:not(.eyebrow) { color: var(--muted); font-size: 11px; line-height: 1.6; }
 .diary-lock-card input { width: 100%; margin-top: 8px; padding: 13px; border: 1px solid var(--line); border-radius: 12px; font: inherit; }
 .diary-lock-card button { width: 100%; margin-top: 10px; padding: 13px; }
-.diary-desk { display: grid; grid-template-rows: auto auto minmax(90px, 1fr) auto; height: calc(100dvh - 250px); min-height: 620px; }
+.diary-desk { display: grid; gap: 10px; min-height: 620px; padding-bottom: 28px; }
 .diary-header { align-items: center; margin: 0; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
 .diary-header h2 { margin: 2px 0 0; font-size: 28px; }
 .diary-header button { padding: 9px 11px; border: 1px solid var(--line); border-radius: 10px; background: white; font-weight: 850; }
-.diary-entries { display: flex; flex-direction: column; gap: 9px; min-height: 0; padding: 12px 1px; overflow-y: auto; }
+.diary-saved-section { min-height: 130px; padding: 13px; border: 1px solid var(--line); border-radius: 17px; background: white; }
+.diary-saved-section .section-heading, .diary-composer .section-heading { margin-bottom: 9px; }
+.diary-entries { display: flex; flex-direction: column; gap: 9px; max-height: 340px; min-height: 82px; overflow-y: auto; }
 .diary-note { padding: 13px; border: 1px solid var(--line); border-radius: 15px; background: white; }
 .diary-note[role="button"], button.diary-note { width: 100%; color: inherit; text-align: left; }
 .diary-note time { display: block; margin-bottom: 7px; color: var(--muted); font-size: 8px; }
@@ -248,7 +252,7 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 .diary-note.vibration-only { min-height: 62px; color: white; background: var(--ink); }
 .diary-note.vibration-only strong { display: block; font-size: 11px; }
 .diary-note.vibration-only small { display: block; margin-top: 5px; color: #aaa; font-size: 8px; }
-.diary-composer { padding: 7px 0 max(5px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--paper); }
+.diary-composer { padding: 14px; border: 1px solid var(--line); border-radius: 17px; background: white; }
 .diary-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px; }
 .diary-actions .primary-button { grid-column: 1 / -1; }
 .diary-actions button { padding: 10px; border: 1px solid var(--ink); border-radius: 11px; font-weight: 850; }
@@ -267,12 +271,14 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 .diary-list-open { width: 100%; margin: 7px 0 0; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: white; font-size: 9px; font-weight: 850; }
 .diary-year-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; max-height: 150px; margin-top: 7px; padding: 7px; overflow-y: auto; border: 1px solid var(--line); border-radius: 11px; background: white; }
 .diary-year-picker button { padding: 7px 2px; border: 0; border-radius: 7px; background: var(--paper); font-size: 8px; }
-.diary-draft-segments { display: flex; gap: 5px; min-height: 27px; margin-bottom: 6px; overflow-x: auto; }
-.diary-draft-segments button { flex: 0 0 auto; max-width: 190px; padding: 7px 9px; overflow: hidden; border: 1px solid var(--line); border-radius: 999px; text-overflow: ellipsis; white-space: nowrap; background: white; font-size: 8px; }
+.diary-draft-segments { display: grid; gap: 6px; min-height: 40px; margin-bottom: 8px; }
+.diary-draft-segments button { width: 100%; padding: 9px; overflow-wrap: anywhere; border: 1px solid var(--line); border-radius: 10px; text-align: left; white-space: pre-wrap; background: var(--paper); font-size: 9px; line-height: 1.5; }
 .diary-draft-segments button.vibration-only { color: white; border-color: #080808; background: #080808; }
 .diary-draft-segments small { margin: auto 0; color: var(--muted); font-size: 8px; }
 .diary-segment-list { display: grid; gap: 5px; }.diary-segment-list p { padding: 8px; border-radius: 9px; background: var(--paper); }.diary-segment-vibration { width: 100%; padding: 10px; border: 0; border-radius: 9px; color: white; background: #080808; font-size: 9px; font-weight: 850; }
 .diary-all-entries { display: grid; gap: 8px; max-height: 68dvh; overflow-y: auto; }
+.suggestion-settings textarea { width: 100%; min-height: 110px; padding: 12px; resize: vertical; border: 1px solid var(--line); border-radius: 12px; font: inherit; line-height: 1.5; }
+.suggestion-settings > button { width: 100%; margin-top: 8px; padding: 11px; border: 0; border-radius: 11px; color: white; background: var(--ink); font-weight: 850; }
 .group-extra-actions { display: grid; grid-template-columns: 1fr 1fr 1.25fr; gap: 5px; margin-bottom: 5px; }
 .group-extra-actions select, .group-extra-actions button, .group-extra-actions label { min-width: 0; padding: 8px 4px; border: 1px solid var(--ink); border-radius: 9px; background: white; font-size: 8px; font-weight: 850; }
 .group-extra-actions button { color: white; background: var(--ink); }
@@ -452,6 +458,7 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 .profile-visual.cosmetic-profile_ocean { background: radial-gradient(circle at 35% 30%, #36b5d8, #063650 68%); }
 .profile-visual.cosmetic-profile_sunset { background: linear-gradient(145deg, #ffd18d, #e86775 55%, #4e3c6e); }
 .profile-visual.cosmetic-profile_cream { color: #5c402c; background: #f5dfb8; }.profile-visual.cosmetic-profile_cream pre { color: #5c402c; }
+.shop-profile-preview.cosmetic-border_ring { box-shadow: 0 0 0 4px white, 0 0 0 7px #080808; }.shop-profile-preview.cosmetic-border_neon { border: 3px solid #00ffc8; box-shadow: 0 0 18px #00ffc8, inset 0 0 14px rgba(0,255,200,.4); }.shop-profile-preview.cosmetic-border_double { border: 5px double white; outline: 2px solid #080808; }.shop-profile-preview.cosmetic-border_dashed { border: 4px dashed white; outline: 2px dashed #080808; outline-offset: 3px; }.shop-profile-preview.cosmetic-profile_night { background: radial-gradient(circle at 65% 25%, #596080, #090b12 55%); }.shop-profile-preview.cosmetic-profile_ocean { background: radial-gradient(circle at 35% 30%, #36b5d8, #063650 68%); }.shop-profile-preview.cosmetic-profile_sunset { background: linear-gradient(145deg, #ffd18d, #e86775 55%, #4e3c6e); }.shop-profile-preview.cosmetic-profile_cream { color: #5c402c; background: #f5dfb8; }
 .profile-nickname, .profile-signal-id { display: block; text-align: center; }
 .profile-nickname { font-size: 28px; }
 .profile-signal-id { margin-top: 5px; color: var(--muted); font-size: 10px; }
