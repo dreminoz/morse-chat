@@ -54,13 +54,14 @@
 
     <section id="friendsWorld" class="world-view" hidden>
       <div id="conversationList">
-        <form id="friendForm" class="composer friend-composer">
-          <input id="friendInput" maxlength="24" placeholder="친구 닉네임" autocomplete="off">
-          <button type="submit" aria-label="친구 추가">+</button>
-        </form>
+        <section id="friendNativeAdSlot" class="friend-native-ad-slot" aria-label="광고">
+          <span>AD</span>
+          <div><strong>MORSE CHAT</strong><small>네이티브 광고</small></div>
+        </section>
         <section id="friendRequestSection" class="friend-request-section">
           <button id="openReceivedRequests" type="button"><span>받은 요청</span><strong id="receivedRequestCount">0</strong></button>
           <button id="openSentRequests" type="button"><span>보낸 요청</span><strong id="sentRequestCount">0</strong></button>
+          <button id="openAddFriend" type="button"><span>친구 추가</span><strong>+</strong></button>
           <button id="openCreateGroup" type="button"><span>그룹챗 만들기</span><strong>+</strong></button>
         </section>
         <p class="label">그룹챗</p>
@@ -611,6 +612,18 @@
         <input id="groupNameInput" maxlength="40" placeholder="그룹 이름">
         <div id="groupFriendChoices" class="group-friend-choices"></div>
         <button type="submit">선택한 친구와 만들기</button>
+      </form>
+    </section>
+  </div>
+
+  <div id="addFriendPanel" class="profile-overlay" hidden>
+    <section class="request-panel-card">
+      <button id="closeAddFriend" class="profile-close" type="button">×</button>
+      <p class="eyebrow">MORSE CHAT</p>
+      <h2>친구 추가</h2>
+      <form id="friendForm" class="group-create-form">
+        <input id="friendInput" maxlength="24" placeholder="친구 닉네임" autocomplete="off">
+        <button type="submit">친구 요청 보내기</button>
       </form>
     </section>
   </div>

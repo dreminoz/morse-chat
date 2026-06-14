@@ -286,6 +286,9 @@ const I18N_PAIRS = [
   ["문구 삭제", "Delete phrase"],
   ["메시지 삭제", "Delete message"],
   ["친구 이름", "Friend name"],
+  ["친구 요청 보내기", "Send friend request"],
+  ["친구 닉네임", "Friend nickname"],
+  ["네이티브 광고", "Native ad"],
   ["친구 추가", "Add friend"],
   ["문구 저장", "Save phrase"],
   ["전달할 문구를 입력하세요", "Enter a phrase to send"],
@@ -1601,6 +1604,7 @@ function openGroupChat(groupId) {
   state.groupMessages = [];
   document.body.classList.add("chat-open");
   $("#conversationList").hidden = true;
+  window.AndroidAds?.hideFriendNativeAd?.();
   $("#chatRoom").hidden = true;
   $("#groupRoom").hidden = false;
   renderGroupMessages();
@@ -1613,6 +1617,7 @@ function closeGroupChat() {
   state.groupMessages = [];
   $("#groupRoom").hidden = true;
   $("#conversationList").hidden = false;
+  requestAnimationFrame(updateFriendNativeAd);
   loadGroups();
 }
 
@@ -2230,6 +2235,7 @@ function openChat(friend) {
   resetChatMorse();
   state.chats[friend] ||= [];
   $("#conversationList").hidden = true;
+  window.AndroidAds?.hideFriendNativeAd?.();
   $("#chatRoom").hidden = false;
   renderChat();
   renderChatComposer();
@@ -2252,6 +2258,7 @@ function closeChat() {
   state.activeFriend = null;
   $("#chatRoom").hidden = true;
   $("#conversationList").hidden = false;
+  requestAnimationFrame(updateFriendNativeAd);
   renderFriends();
 }
 
@@ -2737,6 +2744,9 @@ function switchWorld(world) {
     loadFriends();
     loadFriendRequests();
     loadGroups();
+    requestAnimationFrame(updateFriendNativeAd);
+  } else {
+    window.AndroidAds?.hideFriendNativeAd?.();
   }
   if (world === "dailyGroup") loadDailyGroup();
   if (world === "games") {
@@ -2747,6 +2757,30 @@ function switchWorld(world) {
   if (world === "shop") loadShop();
   if (world === "profile") renderMyProfile();
 }
+
+function updateFriendNativeAd() {
+  const slot = $("#friendNativeAdSlot");
+  const overlayOpen = document.querySelector(".profile-overlay:not([hidden]), .auth-overlay:not([hidden])");
+  const visible = state.world === "friends" && !$("#conversationList").hidden && !slot.hidden && !overlayOpen;
+  if (!visible) {
+    window.AndroidAds?.hideFriendNativeAd?.();
+    return;
+  }
+  const rect = slot.getBoundingClientRect();
+  if (rect.bottom <= 0 || rect.top >= innerHeight || rect.width <= 0 || rect.height <= 0) {
+    window.AndroidAds?.hideFriendNativeAd?.();
+    return;
+  }
+  window.AndroidAds?.showFriendNativeAd?.(rect.left, rect.top, rect.width, rect.height);
+}
+
+window.addEventListener("resize", () => requestAnimationFrame(updateFriendNativeAd));
+document.addEventListener("scroll", () => requestAnimationFrame(updateFriendNativeAd), true);
+new MutationObserver(() => requestAnimationFrame(updateFriendNativeAd)).observe(document.body, {
+  subtree: true,
+  attributes: true,
+  attributeFilter: ["hidden"]
+});
 
 function armBackExit() {
   state.backExitArmed = true;
@@ -2768,6 +2802,10 @@ function closeOpenOverlay() {
   }
   if (!$("#createGroupPanel").hidden) {
     $("#createGroupPanel").hidden = true;
+    return true;
+  }
+  if (!$("#addFriendPanel").hidden) {
+    $("#addFriendPanel").hidden = true;
     return true;
   }
   if (!$("#groupManagePanel").hidden) {
@@ -3327,6 +3365,7 @@ $("#friendForm").addEventListener("submit", async event => {
       body: JSON.stringify({ nickname })
     });
     input.value = "";
+    $("#addFriendPanel").hidden = true;
     showToast(state.language === "en" ? "Friend request sent." : "친구 요청을 보냈습니다.");
     loadFriendRequests();
     return;
@@ -3350,6 +3389,12 @@ $("#friendForm").addEventListener("submit", async event => {
     else showApiFailure(error, state.language === "en" ? "Failed to add friend." : "친구를 추가하지 못했습니다.");
   }
 });
+$("#openAddFriend").addEventListener("click", () => {
+  $("#friendInput").value = "";
+  $("#addFriendPanel").hidden = false;
+  $("#friendInput").focus();
+});
+$("#closeAddFriend").addEventListener("click", () => $("#addFriendPanel").hidden = true);
 $("#friendRequests").addEventListener("click", async event => {
   const button = event.target.closest("[data-friend-request]");
   if (!button) return;
