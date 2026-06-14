@@ -15,6 +15,11 @@ const MORSE = {
 
 const $ = (selector) => document.querySelector(selector);
 const I18N_PAIRS = [
+  ["그룹 사진 설정", "Set group photo"],
+  ["강퇴", "Remove"],
+  ["나가기", "Leave"],
+  ["멤버를 불러오는 중입니다.", "Loading members."],
+  ["짧게: 점 · 길게: 선", "Short: dot · Long: dash"],
   ["알림 켜기", "Enable notifications"],
   ["알림", "Notifications"],
   ["알림을 켰습니다.", "Notifications enabled."],
@@ -314,9 +319,7 @@ function isEmojiGrapheme(value) {
 }
 
 function chatInputText(text) {
-  return graphemes(text)
-    .filter(value => isEmojiGrapheme(value) || [...value].every(char => char === " " || char === "\n" || MORSE[char.toUpperCase()]))
-    .join("");
+  return text;
 }
 
 function morseCharacters(text) {
@@ -324,7 +327,7 @@ function morseCharacters(text) {
     .filter(value => !isEmojiGrapheme(value))
     .flatMap(value => [...value])
     .map(char => char === "\n" ? " " : char)
-    .filter(char => char === " " || MORSE[char]);
+    .filter(char => char === " " || /^[A-Z0-9]$/.test(char));
 }
 
 function createSignalId() {
@@ -452,6 +455,9 @@ const state = {
   groupMessages: [],
   dailyGroup: null,
   dailyGroupMessages: [],
+  groupSignal: "",
+  dailyGroupSignal: "",
+  groupKeyerStartedAt: 0,
   activeFriend: null,
   chatSignal: "",
   chatMorseText: "",
@@ -543,6 +549,7 @@ const state = {
   randomSendHoldTimer: null,
   randomSendLongPressed: false,
   spaceSignals: JSON.parse(localStorage.getItem("morse-space-signals") || "[]"),
+  receivedSpaceIds: new Set(JSON.parse(localStorage.getItem("morse-received-space-ids") || "[]")),
   spaceReceivedText: "",
   spaceReceivedMorse: "",
   spaceReceivedSignal: null,
@@ -586,25 +593,9 @@ async function api(path, options = {}) {
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
     const error = Object.assign(new Error(body.error || "server-error"), { status: response.status, body });
-    if (response.status === 401 && body.error === "auth-required" && !path.startsWith("/api/auth/")) {
-      expireAccountSession();
-      error.handled = true;
-    }
     throw error;
   }
   return body;
-}
-
-function expireAccountSession() {
-  state.eventSource?.close();
-  state.authToken = "";
-  state.account = null;
-  state.serverConnected = false;
-  localStorage.removeItem("morse-auth-token");
-  localStorage.removeItem("morse-account");
-  renderSettings();
-  openAuthPanel();
-  showToast("로그인이 만료되었습니다. Google 계정으로 다시 로그인하세요.");
 }
 
 function showApiFailure(error, fallback = "서버 연결에 실패했습니다.") {
@@ -898,7 +889,6 @@ async function initializeAuth() {
       renderSettings();
     }
   } catch (error) {
-    if (error?.status === 401) expireAccountSession();
     renderSettings();
   }
 }
@@ -1411,7 +1401,7 @@ function renderGroups() {
   $("#groupList").innerHTML = state.groups.length
     ? state.groups.map(group => `
       <button type="button" class="friend-card" data-open-group="${escapeHtml(group.id)}">
-        <span class="friend-avatar">#</span>
+        ${group.profileAscii ? `<span class="friend-avatar"><span class="ascii-avatar" data-no-i18n>${escapeHtml(group.profileAscii)}</span></span>` : `<span class="friend-avatar">#</span>`}
         <span class="friend-info">
           <strong data-no-i18n>${escapeHtml(group.name)}</strong>
           <small>${group.members.length}명 참여 중</small>
@@ -1434,11 +1424,11 @@ function groupMemberName(group, signalId, fallback = "") {
 }
 
 function renderGroupMessageList(target, messages, group) {
-  target.innerHTML = messages.length ? messages.map(message => {
+  target.innerHTML = messages.length ? messages.map((message, index) => {
     const mine = message.mine || message.from === state.userId;
     return `<div class="chat-message-row${mine ? " mine" : ""}">
-      <div class="chat-bubble">
-        <small class="group-message-author" data-no-i18n>${escapeHtml(groupMemberName(group, message.from, message.fromNickname))}</small>
+      <div class="chat-bubble" data-group-message="${index}">
+        <button type="button" class="group-author-button" data-group-profile="${escapeHtml(message.from)}" data-daily-author="${group?.type === "daily" ? "true" : "false"}">${escapeHtml(groupMemberName(group, message.from, message.fromNickname))}</button>
         <span data-no-i18n>${escapeHtml(message.text)}</span>
       </div>
     </div>`;
@@ -1498,7 +1488,7 @@ function renderGroupFriendChoices(target, addMode = false) {
 
 function renderDailyGroup() {
   if (!state.dailyGroup) return;
-  $("#dailyGroupStatus").textContent = `오늘의 익명 그룹 · ${state.dailyGroup.members.length}/10명`;
+  $("#dailyGroupStatus").textContent = `${state.dailyGroup.members.length}/10명`;
   renderGroupMessageList($("#dailyGroupMessages"), state.dailyGroupMessages, state.dailyGroup);
 }
 
@@ -1522,6 +1512,33 @@ function sendGroupMessage(group, text, daily = false) {
     if (!list.some(item => item.id === message.id)) list.push(message);
     daily ? renderDailyGroup() : renderGroupMessages();
   }).catch(error => showApiFailure(error));
+}
+
+function appendGroupMorseMark(daily, mark) {
+  const key = daily ? "dailyGroupSignal" : "groupSignal";
+  const input = $(daily ? "#dailyGroupInput" : "#groupMessageInput");
+  state[key] += mark;
+  pulseSignal(mark);
+  clearTimeout(state.groupLetterTimer);
+  state.groupLetterTimer = setTimeout(() => {
+    const decoded = decodedInput(state[key], false);
+    if (decoded) input.value += decoded.toLowerCase();
+    state[key] = "";
+  }, state.unit * 3);
+}
+
+function bindGroupKeyer(selector, daily) {
+  const keyer = $(selector);
+  keyer.addEventListener("pointerdown", event => {
+    state.groupKeyerStartedAt = performance.now();
+    keyer.classList.add("pressed");
+    keyer.setPointerCapture?.(event.pointerId);
+  });
+  keyer.addEventListener("pointerup", () => {
+    keyer.classList.remove("pressed");
+    appendGroupMorseMark(daily, performance.now() - state.groupKeyerStartedAt < state.unit * 2 ? "." : "-");
+  });
+  keyer.addEventListener("pointercancel", () => keyer.classList.remove("pressed"));
 }
 
 function renderFriendRequests() {
@@ -1928,6 +1945,15 @@ function imageToAscii(image) {
   const range = Math.max(24, light - dark);
   const shades = "@%#*+=-:. ";
   const normalizedValues = brightnessValues.map(value => Math.max(0, Math.min(1, (value - dark) / range)));
+  const cornerSamples = [];
+  const cornerSize = Math.max(2, Math.round(Math.min(width, height) * .12));
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    if ((x < cornerSize || x >= width - cornerSize) && (y < cornerSize || y >= height - cornerSize)) {
+      cornerSamples.push(normalizedValues[y * width + x]);
+    }
+  }
+  cornerSamples.sort((a, b) => a - b);
+  const background = cornerSamples[Math.floor(cornerSamples.length / 2)] ?? 1;
   const lines = [];
   for (let y = 0; y < height; y++) {
     let line = "";
@@ -1943,6 +1969,11 @@ function imageToAscii(image) {
       const edge = Math.sqrt(edgeX * edgeX + edgeY * edgeY);
       const localAverage = (left + right + up + down + normalized) / 5;
       const localContrast = normalized - localAverage;
+      const backgroundDistance = Math.abs(normalized - background);
+      if (backgroundDistance < .075 && edge < .12) {
+        line += " ";
+        continue;
+      }
       if (edge > .18) {
         const horizontal = Math.abs(edgeX) > Math.abs(edgeY) * 1.7;
         const vertical = Math.abs(edgeY) > Math.abs(edgeX) * 1.7;
@@ -1953,8 +1984,10 @@ function imageToAscii(image) {
         line += shades[Math.min(shades.length - 1, Math.floor(corrected * shades.length))];
       }
     }
-    lines.push(line);
+    lines.push(line.replace(/\s+$/g, ""));
   }
+  while (lines.length && !lines[0].trim()) lines.shift();
+  while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
   return lines.join("\n");
 }
 
@@ -2704,8 +2737,19 @@ $("#groupMessageForm").addEventListener("submit", event => {
 });
 $("#openGroupManage").addEventListener("click", () => {
   if (!state.activeGroup) return;
+  const owner = state.activeGroup.owner === state.userId;
   $("#groupManageName").textContent = state.activeGroup.name;
-  $("#groupManageMembers").textContent = state.activeGroup.members.map(member => member.nickname).join(", ");
+  $("#groupManageVisual").innerHTML = state.activeGroup.profileAscii
+    ? `<pre data-no-i18n>${escapeHtml(state.activeGroup.profileAscii)}</pre>`
+    : `<strong>${escapeHtml(state.activeGroup.name).charAt(0)}</strong>`;
+  $("#groupPhotoLabel").hidden = !owner;
+  $("#groupManageMembers").innerHTML = state.activeGroup.members.map(member => `
+    <article class="group-member-card">
+      <button type="button" class="friend-profile-button" data-member-profile="${escapeHtml(member.signalId)}">${profileAvatarHtml(member, member.nickname)}</button>
+      <strong data-no-i18n>${escapeHtml(member.nickname)}</strong>
+      ${member.owner ? "<small>(방장)</small>" : ""}
+      ${owner && !member.owner ? `<button type="button" class="kick-member" data-kick-member="${escapeHtml(member.signalId)}">강퇴</button>` : ""}
+    </article>`).join("");
   renderGroupFriendChoices($("#groupAddFriendChoices"), true);
   $("#groupManagePanel").hidden = false;
 });
@@ -2730,6 +2774,57 @@ $("#leaveGroup").addEventListener("click", () => {
     closeGroupChat();
   }).catch(error => showApiFailure(error, "그룹챗에서 나가지 못했습니다."));
 });
+$("#groupManageMembers").addEventListener("click", event => {
+  const profile = event.target.closest("[data-member-profile]");
+  if (profile) return openFriendProfile(profile.dataset.memberProfile);
+  const kick = event.target.closest("[data-kick-member]");
+  if (!kick || !state.activeGroup || !confirm("이 멤버를 강퇴할까요?")) return;
+  api("/api/groups/kick", {
+    method: "POST",
+    body: JSON.stringify({ groupId: state.activeGroup.id, member: kick.dataset.kickMember })
+  }).then(({ group }) => {
+    state.activeGroup = group;
+    $("#openGroupManage").click();
+    renderGroupMessages();
+  }).catch(error => showApiFailure(error, "멤버를 강퇴하지 못했습니다."));
+});
+$("#groupPhotoInput").addEventListener("change", event => {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+  state.asciiTarget = "group-profile";
+  prepareAsciiPhoto(file);
+});
+$("#groupMessages").addEventListener("click", event => {
+  const profile = event.target.closest("[data-group-profile]");
+  if (profile) openFriendProfile(profile.dataset.groupProfile);
+  const bubble = event.target.closest("[data-group-message]");
+  if (bubble && !profile) playMorse(state.groupMessages[Number(bubble.dataset.groupMessage)]?.text || "");
+});
+$("#dailyGroupMessages").addEventListener("click", event => {
+  const author = event.target.closest("[data-group-profile]");
+  if (author) {
+    if (author.dataset.groupProfile === state.dailyGroup?.members?.find(member => member.nickname === "나")?.signalId) return;
+    if (!confirm("이 익명 멤버를 차단할까요?")) return;
+    api("/api/daily-group/block", {
+      method: "POST",
+      body: JSON.stringify({ groupId: state.dailyGroup.id, anonymousId: author.dataset.groupProfile })
+    }).then(loadDailyGroup).catch(error => showApiFailure(error, "멤버를 차단하지 못했습니다."));
+    return;
+  }
+  const bubble = event.target.closest("[data-group-message]");
+  if (bubble) playMorse(state.dailyGroupMessages[Number(bubble.dataset.groupMessage)]?.text || "");
+});
+$("#leaveDailyGroup").addEventListener("click", () => {
+  if (!state.dailyGroup || !confirm("오늘의 데일리 그룹챗에서 나갈까요?")) return;
+  api("/api/groups/leave", { method: "POST", body: JSON.stringify({ groupId: state.dailyGroup.id }) }).then(() => {
+    state.dailyGroup = null;
+    state.dailyGroupMessages = [];
+    $("#dailyGroupMessages").innerHTML = '<p class="chat-empty">오늘의 그룹챗에서 나갔습니다.</p>';
+  }).catch(error => showApiFailure(error, "그룹챗에서 나가지 못했습니다."));
+});
+bindGroupKeyer("#groupMessageKeyer", false);
+bindGroupKeyer("#dailyGroupKeyer", true);
 $("#dailyGroupForm").addEventListener("submit", event => {
   event.preventDefault();
   const input = $("#dailyGroupInput");
@@ -2877,11 +2972,9 @@ $("#chatMorseText").addEventListener("input", event => {
   clearTimeout(state.chatSpaceTimer);
   state.chatSignal = "";
   const raw = event.target.value;
-  const unsupported = unsupportedChars(raw);
   state.chatMorseText = chatInputText(raw);
   event.target.value = state.chatMorseText;
   $("#chatMorseSignal").textContent = "현재 글자: 비어 있음";
-  if (unsupported.length) showToast(`지원하지 않는 문자: ${unsupported.slice(0, 5).join(" ")}`);
 });
 $("#clearChatMorse").addEventListener("pointerdown", event => {
   state.chatDeleteHeld = false;
@@ -3005,6 +3098,16 @@ $("#sendAscii").addEventListener("click", () => {
       if (error.status === 409) showToast(state.language === "en" ? "Today's signal was already sent." : "오늘은 이미 시그널을 발신했습니다.");
       else showApiFailure(error);
     });
+  } else if (state.asciiTarget === "group-profile" && state.activeGroup) {
+    api("/api/groups/profile", {
+      method: "PATCH",
+      body: JSON.stringify({ groupId: state.activeGroup.id, profileAscii: state.asciiDraft })
+    }).then(({ group }) => {
+      state.activeGroup = group;
+      $("#openGroupManage").click();
+      renderGroupMessages();
+      loadGroups();
+    }).catch(error => showApiFailure(error, "그룹 사진을 저장하지 못했습니다."));
   } else return;
   state.asciiDraft = "";
   $("#asciiPreview").hidden = true;
@@ -3418,7 +3521,9 @@ $("#receiveSpaceSignal").addEventListener("click", () => {
     $("#receiveSpaceSignal").disabled = false;
     $("#spaceReceiveStatus").textContent = "레이더가 우주 시그널을 탐색하고 있습니다.";
   }, 10000);
-  api(`/api/space/random?exclude=${encodeURIComponent(state.userId)}`).then(signal => {
+  api(`/api/space/random?received=${encodeURIComponent([...state.receivedSpaceIds].join(","))}`).then(signal => {
+    state.receivedSpaceIds.add(signal.id);
+    localStorage.setItem("morse-received-space-ids", JSON.stringify([...state.receivedSpaceIds].slice(-1000)));
     state.spaceReceivedSignal = signal;
     state.spaceReceivedText = signal.text;
     state.spaceReceivedMorse = signal.type === "ascii" ? "" : signal.text;

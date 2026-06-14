@@ -91,6 +91,11 @@ class FileStore {
   }
   async directInbox(user) { return this.data.direct.filter(item => item.to === user).slice(-500); }
   async createGroup(group) { this.data.groupChats.push(group); this.save(); return group; }
+  async updateGroup(group) {
+    const index = this.data.groupChats.findIndex(item => item.id === group.id);
+    if (index >= 0) this.data.groupChats[index] = group;
+    this.save(); return group;
+  }
   async groupById(id) { return this.data.groupChats.find(item => item.id === id) || null; }
   async groupsForUser(user) { return this.data.groupChats.filter(item => item.members.includes(user)); }
   async ensureDailyGroup(user, day, createId) {
@@ -123,6 +128,7 @@ class FileStore {
     const group = await this.groupById(id);
     if (!group) return null;
     group.members = group.members.filter(item => item !== user);
+    if (group.owner === user) group.owner = group.members[0] || "";
     if (!group.members.length) this.data.groupChats = this.data.groupChats.filter(item => item.id !== id);
     this.save(); return group;
   }
@@ -154,10 +160,10 @@ class FileStore {
     this.save();
     return true;
   }
-  async randomSpace(exclude) {
+  async randomSpace(exclude, received = []) {
     const account = await this.findAccountBySignalId(exclude);
     const blocked = account?.blockedSpaceSenders || [];
-    const choices = this.data.space.filter(item => item.sender !== exclude && !blocked.includes(item.sender));
+    const choices = this.data.space.filter(item => item.sender !== exclude && !blocked.includes(item.sender) && !received.includes(item.id));
     return choices.length ? choices[Math.floor(Math.random() * choices.length)] : null;
   }
   async reportSpace(item) { this.data.spaceReports.push(item); this.save(); }
@@ -318,6 +324,10 @@ class MongoStore {
     return this.direct.find({ to: user }, { projection: { _id: 0 } }).sort({ createdAt: -1 }).limit(500).toArray().then(items => items.reverse());
   }
   async createGroup(group) { await this.groupChats.insertOne({ ...group, memberCount: group.members.length }); return group; }
+  async updateGroup(group) {
+    await this.groupChats.replaceOne({ id: group.id }, { ...group, memberCount: group.members.length }, { upsert: true });
+    return group;
+  }
   async groupById(id) { return this.clean(await this.groupChats.findOne({ id })); }
   async groupsForUser(user) {
     return this.groupChats.find({ members: user }, { projection: { _id: 0, memberCount: 0 } }).sort({ createdAt: -1 }).toArray();
@@ -353,6 +363,10 @@ class MongoStore {
     await this.groupChats.updateOne({ id, members: user }, { $pull: { members: user }, $inc: { memberCount: -1 } });
     const group = await this.groupById(id);
     if (group && !group.members.length) await this.groupChats.deleteOne({ id });
+    else if (group?.owner === user) {
+      group.owner = group.members[0];
+      await this.updateGroup(group);
+    }
     return group;
   }
   async addGroupMessage(item) { await this.groupMessages.insertOne(item); }
@@ -380,9 +394,9 @@ class MongoStore {
     try { await this.space.insertOne(signal); return true; }
     catch (error) { if (error.code === 11000) return false; throw error; }
   }
-  async randomSpace(exclude) {
+  async randomSpace(exclude, received = []) {
     const account = await this.findAccountBySignalId(exclude);
-    const [signal] = await this.space.aggregate([{ $match: { sender: { $ne: exclude, $nin: account?.blockedSpaceSenders || [] } } }, { $sample: { size: 1 } }, { $project: { _id: 0 } }]).toArray();
+    const [signal] = await this.space.aggregate([{ $match: { id: { $nin: received }, sender: { $ne: exclude, $nin: account?.blockedSpaceSenders || [] } } }, { $sample: { size: 1 } }, { $project: { _id: 0 } }]).toArray();
     return signal || null;
   }
   async reportSpace(item) {

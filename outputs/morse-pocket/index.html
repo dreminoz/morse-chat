@@ -121,8 +121,9 @@
           </button>
         </header>
         <div id="groupMessages" class="chat-messages"></div>
-        <form id="groupMessageForm" class="group-message-form">
+        <form id="groupMessageForm" class="group-message-form group-morse-form">
           <textarea id="groupMessageInput" maxlength="1000" placeholder="그룹 메시지를 입력하세요"></textarea>
+          <button id="groupMessageKeyer" class="morse-keyer compact-group-keyer" type="button"><strong>PRESS & HOLD</strong><span>짧게: 점 · 길게: 선</span></button>
           <button type="submit">보내기</button>
         </form>
       </section>
@@ -440,14 +441,11 @@
     </section>
 
     <section id="dailyGroupWorld" class="world-view daily-group-world" hidden>
-      <header class="daily-group-header">
-        <p class="eyebrow">MORSE CHAT DAILY</p>
-        <h2>데일리 그룹챗</h2>
-        <p id="dailyGroupStatus">오늘의 익명 그룹을 불러오는 중입니다.</p>
-      </header>
+      <header class="daily-group-header"><strong id="dailyGroupStatus">멤버를 불러오는 중입니다.</strong><button id="leaveDailyGroup" type="button">나가기</button></header>
       <div id="dailyGroupMessages" class="chat-messages daily-group-messages"></div>
-      <form id="dailyGroupForm" class="group-message-form">
+      <form id="dailyGroupForm" class="group-message-form group-morse-form">
         <textarea id="dailyGroupInput" maxlength="1000" placeholder="익명 메시지를 입력하세요"></textarea>
+        <button id="dailyGroupKeyer" class="morse-keyer compact-group-keyer" type="button"><strong>PRESS & HOLD</strong><span>짧게: 점 · 길게: 선</span></button>
         <button type="submit">보내기</button>
       </form>
     </section>
@@ -510,7 +508,10 @@
       <button id="closeGroupManage" class="profile-close" type="button">×</button>
       <p class="eyebrow">GROUP CHAT</p>
       <h2 id="groupManageName">그룹챗</h2>
-      <p id="groupManageMembers" class="profile-description"></p>
+      <div id="groupManageVisual" class="group-manage-visual"></div>
+      <label id="groupPhotoLabel" class="profile-photo-button" for="groupPhotoInput">그룹 사진 설정</label>
+      <input id="groupPhotoInput" class="visually-hidden" type="file" accept="image/*">
+      <div id="groupManageMembers" class="group-member-grid"></div>
       <div id="groupAddFriendChoices" class="group-friend-choices"></div>
       <button id="leaveGroup" class="danger-button" type="button">그룹챗 나가기</button>
     </section>

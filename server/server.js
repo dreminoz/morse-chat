@@ -19,6 +19,7 @@ const clients = new Map();
 const randomQueue = [];
 const randomPairs = new Map();
 const lastPartners = new Map();
+const randomPartnerHistory = new Map();
 let store;
 const pushEnabled = Boolean(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
 if (pushEnabled) webPush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
@@ -74,8 +75,11 @@ async function finalizeSecretSession(sessionId) {
     const decoded = decodeSecretPresses(logs, from);
     if (!decoded.morse) return;
     const peer = logs.find(item => item.from === from)?.to || "";
+    const sender = await store.findAccountBySignalId(from);
+    const receiver = await store.findAccountBySignalId(peer);
     await store.saveSecretDecode({
-      id: crypto.randomUUID(), sessionId, from, to: peer, action: "decoded",
+      id: crypto.randomUUID(), sessionId, from, fromNickname: sender?.nickname || from,
+      to: peer, toNickname: receiver?.nickname || peer, action: "decoded",
       morse: decoded.morse, text: decoded.text, createdAt: Date.now()
     });
   }));
@@ -191,8 +195,9 @@ async function publicGroup(group, viewer) {
     ? group.members.map((signalId, index) => ({ signalId: `ANON-${index + 1}`, nickname: signalId === viewer ? "나" : `익명 ${index + 1}` }))
     : await Promise.all(group.members.map(async signalId => {
       const member = await store.findAccountBySignalId(signalId);
-      return { signalId, nickname: member?.nickname || signalId };
+      return { ...publicAccount(member || { signalId, nickname: signalId }), owner: signalId === group.owner };
     }));
+  members.sort((a, b) => Number(Boolean(b.owner)) - Number(Boolean(a.owner)));
   return { ...group, members };
 }
 
@@ -219,6 +224,8 @@ function pairUsers(a, b) {
   lastPartners.delete(b);
   randomPairs.set(a, b);
   randomPairs.set(b, a);
+  randomPartnerHistory.set(a, new Set([...(randomPartnerHistory.get(a) || []), b]));
+  randomPartnerHistory.set(b, new Set([...(randomPartnerHistory.get(b) || []), a]));
   emit(a, "random-connected", { partner: "RANDOM SIGNAL" });
   emit(b, "random-connected", { partner: "RANDOM SIGNAL" });
   pushToUser(a, "random-connected", { url: "/#random" }).catch(console.error);
@@ -433,7 +440,11 @@ const server = http.createServer(async (req, res) => {
     const from = account.signalId;
     if (!to || !message) return json(res, 400, { error: "to and message required" });
     if (!await store.areFriends(from, to)) return json(res, 403, { error: "friends-only" });
-    const item = { id: crypto.randomUUID(), from, to, message, createdAt: Date.now() };
+    const target = await store.findAccountBySignalId(to);
+    const item = {
+      id: crypto.randomUUID(), from, fromNickname: account.nickname,
+      to, toNickname: target?.nickname || to, message, createdAt: Date.now()
+    };
     await store.addDirect(item);
     emit(to, "direct-message", item);
     const sender = account.nickname;
@@ -445,17 +456,36 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { groups: await Promise.all(groups.filter(group => group.type === "custom").map(group => publicGroup(group, account.signalId))) });
   }
   if (req.method === "POST" && url.pathname === "/api/groups/create") {
-    const { name, members = [] } = await readBody(req);
+    const { name, members = [], profileAscii = "" } = await readBody(req);
     const cleanName = String(name || "").trim().slice(0, 40);
     if (!cleanName) return json(res, 400, { error: "name-required" });
     const selected = [...new Set(members)].filter(member => member !== account.signalId);
     for (const member of selected) if (!await store.areFriends(account.signalId, member)) return json(res, 403, { error: "friends-only" });
     const group = await store.createGroup({
       id: crypto.randomUUID(), type: "custom", name: cleanName, owner: account.signalId,
-      members: [account.signalId, ...selected], createdAt: Date.now()
+      members: [account.signalId, ...selected], profileAscii: String(profileAscii || "").slice(0, 30000), createdAt: Date.now()
     });
     await emitGroup(group, "group-updated", { groupId: group.id });
     return json(res, 200, { group: await publicGroup(group, account.signalId) });
+  }
+  if (req.method === "PATCH" && url.pathname === "/api/groups/profile") {
+    const { groupId, profileAscii = "" } = await readBody(req);
+    const group = await store.groupById(groupId);
+    if (!group || group.type !== "custom" || group.owner !== account.signalId) return json(res, 403, { error: "owner-only" });
+    group.profileAscii = String(profileAscii).slice(0, 30000);
+    const updated = await store.updateGroup(group);
+    await emitGroup(updated, "group-updated", { groupId });
+    return json(res, 200, { group: await publicGroup(updated, account.signalId) });
+  }
+  if (req.method === "POST" && url.pathname === "/api/groups/kick") {
+    const { groupId, member } = await readBody(req);
+    const group = await store.groupById(groupId);
+    if (!group || group.type !== "custom" || group.owner !== account.signalId) return json(res, 403, { error: "owner-only" });
+    if (!member || member === group.owner) return json(res, 400, { error: "invalid-member" });
+    const updated = await store.removeGroupMember(groupId, member);
+    emit(member, "group-updated", { groupId, removed: true });
+    await emitGroup(updated, "group-updated", { groupId });
+    return json(res, 200, { group: await publicGroup(updated, account.signalId) });
   }
   if (req.method === "POST" && url.pathname === "/api/groups/add") {
     const { groupId, friend } = await readBody(req);
@@ -469,9 +499,20 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "POST" && url.pathname === "/api/groups/leave") {
     const { groupId } = await readBody(req);
     const group = await store.groupById(groupId);
-    if (!group || group.type !== "custom" || !group.members.includes(account.signalId)) return json(res, 404, { error: "group-not-found" });
+    if (!group || !group.members.includes(account.signalId)) return json(res, 404, { error: "group-not-found" });
     const updated = await store.removeGroupMember(groupId, account.signalId);
     await emitGroup(updated, "group-updated", { groupId });
+    return json(res, 200, { ok: true });
+  }
+  if (req.method === "POST" && url.pathname === "/api/daily-group/block") {
+    const { groupId, anonymousId } = await readBody(req);
+    const group = await store.groupById(groupId);
+    if (!group || group.type !== "daily" || !group.members.includes(account.signalId)) return json(res, 404, { error: "group-not-found" });
+    const index = Number(String(anonymousId || "").replace("ANON-", "")) - 1;
+    const blocked = group.members[index];
+    if (!blocked || blocked === account.signalId) return json(res, 400, { error: "invalid-member" });
+    account.blockedDailyMembers = [...new Set([...(account.blockedDailyMembers || []), blocked])];
+    await store.updateAccount(account);
     return json(res, 200, { ok: true });
   }
   if (req.method === "GET" && url.pathname === "/api/groups/history") {
@@ -499,9 +540,10 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method === "GET" && url.pathname === "/api/daily-group") {
     const group = await store.ensureDailyGroup(account.signalId, localDay(), crypto.randomUUID());
+    const blocked = account.blockedDailyMembers || [];
     return json(res, 200, {
       group: await publicGroup(group, account.signalId),
-      messages: (await store.groupHistory(group.id)).map(item => publicGroupMessage(group, item, account.signalId))
+      messages: (await store.groupHistory(group.id)).filter(item => !blocked.includes(item.from)).map(item => publicGroupMessage(group, item, account.signalId))
     });
   }
   if (req.method === "GET" && url.pathname === "/api/direct/history") {
@@ -524,7 +566,9 @@ const server = http.createServer(async (req, res) => {
       id: crypto.randomUUID(),
       sessionId,
       from: account.signalId,
+      fromNickname: account.nickname,
       to,
+      toNickname: (await store.findAccountBySignalId(to))?.nickname || to,
       action,
       unit: Math.min(500, Math.max(40, Number(unit) || 120)),
       createdAt: Date.now()
@@ -573,7 +617,8 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method === "GET" && url.pathname === "/api/space/random") {
     const exclude = account.signalId;
-    const signal = await store.randomSpace(exclude);
+    const received = String(url.searchParams.get("received") || "").split(",").filter(Boolean).slice(-1000);
+    const signal = await store.randomSpace(exclude, received);
     return signal ? json(res, 200, signal) : json(res, 404, { error: "no-signals" });
   }
   if (req.method === "POST" && url.pathname === "/api/space/report") {
@@ -593,7 +638,8 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "POST" && url.pathname === "/api/random/join") {
     const userId = account.signalId;
     leaveRandom(userId, false);
-    const partner = randomQueue.find(id => id !== userId);
+    const seen = randomPartnerHistory.get(userId) || new Set();
+    const partner = randomQueue.find(id => id !== userId && !seen.has(id) && !(randomPartnerHistory.get(id) || new Set()).has(userId));
     if (partner) {
       randomQueue.splice(randomQueue.indexOf(partner), 1);
       pairUsers(userId, partner);
