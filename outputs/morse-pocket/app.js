@@ -513,6 +513,7 @@ const state = {
   diarySelectedDate: new Date().toLocaleDateString("en-CA"),
   diaryCalendarMonth: new Date().toLocaleDateString("en-CA").slice(0, 7),
   diaryDirty: false,
+  diaryDraftSegments: [],
   gameWords: [],
   gameIndex: -1,
   gameRunning: false,
@@ -653,6 +654,7 @@ const state = {
   shopInventory: [],
   shopEquipped: {},
   shopLastDraw: null,
+  shopInventoryCategory: "randomTheme",
   chatMessageHoldTimer: null,
   chatMessageHoldIndex: -1,
   chatMessageLongPressed: false,
@@ -2295,16 +2297,15 @@ function renderDiaryLegacy() {
   $("#diaryEntries").scrollTop = $("#diaryEntries").scrollHeight;
 }
 
-function diaryEntryForDate(date = state.diarySelectedDate) {
-  return state.diaryEntries.find(entry => entry.date === date)
-    || state.diaryEntries.find(entry => !entry.date && new Date(entry.createdAt).toLocaleDateString("en-CA") === date);
+function diaryEntriesForDate(date = state.diarySelectedDate) {
+  return state.diaryEntries.filter(entry => (entry.date || new Date(entry.createdAt).toLocaleDateString("en-CA")) === date);
 }
 
 function selectDiaryDate(date) {
   state.diarySelectedDate = date;
-  const entry = diaryEntryForDate(date);
-  state.diaryText = entry?.text || "";
+  state.diaryText = "";
   state.diarySignal = "";
+  state.diaryDraftSegments = [];
   state.diaryDirty = false;
   renderDiary();
 }
@@ -2328,15 +2329,28 @@ function renderDiary() {
   $("#diaryText").value = state.diaryText;
   $("#diarySignal").textContent = state.diarySignal ? `현재 글자: ${prettyMorse(state.diarySignal)}` : "현재 글자: 비어 있음";
   renderDiaryCalendar();
-  const entry = diaryEntryForDate();
-  if (!entry) {
+  $("#diaryDraftSegments").innerHTML = state.diaryDraftSegments.length ? state.diaryDraftSegments.map((segment, index) =>
+    `<button type="button" data-remove-diary-segment="${index}" class="${segment.type === "vibration" ? "vibration-only" : ""}">${segment.type === "vibration" ? "진동" : "문자"} · ${escapeHtml(segment.text)}</button>`
+  ).join("") : '<small>보내기 또는 진동 전용을 눌러 일기 조각을 추가하세요.</small>';
+  const entries = diaryEntriesForDate();
+  if (!entries.length) {
     $("#diaryEntries").innerHTML = '<p class="chat-empty">선택한 날짜에 저장된 일기가 없습니다.</p>';
     return;
   }
-  const index = state.diaryEntries.indexOf(entry);
-  $("#diaryEntries").innerHTML = entry.vibrationOnly
-    ? `<button type="button" class="diary-note vibration-only" data-diary-play="${index}"><time>${state.diarySelectedDate}</time><strong>진동 전용 일기</strong><small>탭해서 모스 진동으로 듣기 · 무제한</small></button>`
-    : `<article class="diary-note"><time>${state.diarySelectedDate}</time><p data-no-i18n>${escapeHtml(entry.text)}</p><button type="button" data-delete-diary="${index}" aria-label="일기 삭제">×</button></article>`;
+  $("#diaryEntries").innerHTML = entries.map(entry => renderDiaryEntryCard(entry, state.diaryEntries.indexOf(entry))).join("");
+}
+
+function renderDiaryEntryCard(entry, index) {
+  const segments = entry.segments?.length ? entry.segments : [{ type: entry.vibrationOnly ? "vibration" : "text", text: entry.text }];
+  return `<article class="diary-note"><time>${entry.date || new Date(entry.createdAt).toLocaleDateString()} · ${new Date(entry.createdAt).toLocaleTimeString()}</time><div class="diary-segment-list">${segments.map(segment => segment.type === "vibration"
+    ? `<button type="button" class="diary-segment-vibration" data-diary-segment-play="${index}" data-segment-text="${escapeHtml(segment.text)}">진동 전용 · 탭해서 듣기</button>`
+    : `<p data-no-i18n>${escapeHtml(segment.text)}</p>`).join("")}</div><button type="button" data-delete-diary="${index}" aria-label="일기 삭제">×</button></article>`;
+}
+
+function renderDiaryList() {
+  $("#diaryAllEntries").innerHTML = state.diaryEntries.length
+    ? [...state.diaryEntries].sort((a, b) => b.createdAt - a.createdAt).map(entry => renderDiaryEntryCard(entry, state.diaryEntries.indexOf(entry))).join("")
+    : '<p class="chat-empty">저장된 일기가 없습니다.</p>';
 }
 
 function commitDiaryLetter(uppercase = false) {
@@ -2378,14 +2392,29 @@ function addDiarySignal(mark) {
   }
 }
 
-async function storeDiaryEntry(vibrationOnly = false) {
+function appendDiarySegment(type) {
   commitDiaryLetter();
   const text = state.diaryText.trim();
   if (!text) return;
+  if (type === "vibration" && !/^[A-Za-z0-9 ]+$/.test(text)) {
+    showToast("진동 전용에는 영어와 숫자만 사용할 수 있습니다.");
+    return;
+  }
+  state.diaryDraftSegments.push({ type, text });
+  state.diaryText = "";
+  state.diarySignal = "";
+  state.diaryDirty = true;
+  renderDiary();
+}
+
+async function storeDiaryEntry() {
+  commitDiaryLetter();
+  if (state.diaryText.trim()) appendDiarySegment("text");
+  if (!state.diaryDraftSegments.length) return;
   try {
     const { entries } = await api("/api/diary/entries", {
       method: "POST",
-      body: JSON.stringify({ passwordHash: state.diaryPasswordHash, text, vibrationOnly, date: state.diarySelectedDate })
+      body: JSON.stringify({ passwordHash: state.diaryPasswordHash, segments: state.diaryDraftSegments, date: state.diarySelectedDate })
     });
     entries.forEach(entry => {
       const index = state.diaryEntries.findIndex(item => item.id === entry.id);
@@ -2393,6 +2422,8 @@ async function storeDiaryEntry(vibrationOnly = false) {
       else state.diaryEntries.push(entry);
     });
     state.diarySignal = "";
+    state.diaryText = "";
+    state.diaryDraftSegments = [];
     state.diaryDirty = false;
     renderDiary();
   } catch (error) {
@@ -2514,6 +2545,32 @@ function shopItem(itemId) {
   return SHOP_ITEMS.find(item => item.id === itemId);
 }
 
+function shopCategoryLabels() {
+  return state.language !== "en"
+    ? { randomTheme: "랜덤 시그널", chatTheme: "대화창 테마", morseSound: "모스부호 소리", profile: "프로필 꾸미기" }
+    : { randomTheme: "Random Signal", chatTheme: "Chat Theme", morseSound: "Morse Sound", profile: "Profile Style" };
+}
+
+function shopPreviewVisual(item) {
+  if (item.category === "morseSound") return `<button type="button" class="shop-sound-preview" data-preview-sound="${item.id}"><span>${item.icon}</span><small>${state.language === "en" ? "Tap to preview sound" : "눌러서 소리 미리 듣기"}</small></button>`;
+  if (item.category === "profile") return `<div class="shop-profile-preview cosmetic-${item.id}"><span>M</span></div>`;
+  return `<div class="shop-theme-preview theme-${item.id}"><i></i><i></i><b></b></div>`;
+}
+
+function openShopPreview(categoryId) {
+  const category = SHOP_CATEGORIES.find(item => item.id === categoryId);
+  const labels = shopCategoryLabels();
+  $("#shopPreviewTitle").textContent = labels[categoryId] || category?.name || "";
+  $("#shopPreviewDescription").textContent = state.language === "en" ? "These items can appear from this random draw." : "이 랜덤 뽑기에서 나올 수 있는 아이템 목록입니다.";
+  $("#shopPreviewItems").innerHTML = SHOP_ITEMS.filter(item => item.category === categoryId).map(item => `
+    <article class="shop-preview-item ${state.shopInventory.includes(item.id) ? "owned" : ""}">
+      ${shopPreviewVisual(item)}
+      <strong>${item.name}</strong>
+      <small>${state.shopInventory.includes(item.id) ? (state.language === "en" ? "Owned" : "보유 중") : (state.language === "en" ? "Not owned" : "미보유")}</small>
+    </article>`).join("");
+  $("#shopPreviewPanel").hidden = false;
+}
+
 function renderShop() {
   const ko = state.language !== "en";
   const categoryNames = ko
@@ -2527,7 +2584,7 @@ function renderShop() {
   $(".shop-inventory-card .section-heading strong").textContent = ko ? "보유 아이템" : "Inventory";
   $(".shop-inventory-card .section-heading small").textContent = ko ? "장착을 눌러 아이템을 적용합니다." : "Tap Equip to use an item.";
   $("#shopDrawCategories").innerHTML = SHOP_CATEGORIES.map(category => `
-    <article class="shop-category-card">
+    <article class="shop-category-card" data-shop-preview="${category.id}">
       <span>${category.name.slice(0, 3).toUpperCase()}</span>
       <strong>${categoryNames[category.id]}</strong>
       <small>${categoryDescriptions[category.id]}</small>
@@ -2539,9 +2596,13 @@ function renderShop() {
     $("#shopResult").innerHTML = `<span>${result.item.icon}</span><div><small>${result.duplicate ? (ko ? "이미 보유한 아이템" : "Duplicate item") : (ko ? "새 아이템" : "New item")}</small><strong>${result.item.name}</strong></div>`;
   }
   const owned = state.shopInventory.map(shopItem).filter(Boolean);
-  $("#shopInventory").innerHTML = owned.length ? owned.map(item => {
+  $("#shopInventoryTabs").innerHTML = SHOP_CATEGORIES.map(category =>
+    `<button type="button" data-shop-inventory-category="${category.id}" class="${state.shopInventoryCategory === category.id ? "active" : ""}">${categoryNames[category.id]}</button>`
+  ).join("");
+  const categoryOwned = owned.filter(item => item.category === state.shopInventoryCategory);
+  $("#shopInventory").innerHTML = categoryOwned.length ? categoryOwned.map(item => {
     const equipped = state.shopEquipped?.[item.slot] === item.id;
-    return `<article class="shop-inventory-item"><span>${item.icon}</span><div><strong>${item.name}</strong><small>${categoryNames[item.category] || item.category}</small></div><button type="button" data-shop-equip="${item.id}" ${equipped ? "disabled" : ""}>${equipped ? (ko ? "장착 중" : "Equipped") : (ko ? "장착" : "Equip")}</button></article>`;
+    return `<article class="shop-inventory-item"><span>${item.icon}</span><div><strong>${item.name}</strong><small>${categoryNames[item.category] || item.category}</small></div><button type="button" ${equipped ? `data-shop-unequip="${item.slot}"` : `data-shop-equip="${item.id}"`}>${equipped ? (ko ? "장착 해제" : "Unequip") : (ko ? "장착" : "Equip")}</button></article>`;
   }).join("") : `<p class="shop-empty">${ko ? "아직 아이템이 없습니다. 랜덤 뽑기를 해보세요." : "No items yet. Try a random draw."}</p>`;
 }
 
@@ -3518,13 +3579,32 @@ function moveDiaryMonth(direction) {
 }
 $("#diaryPrevMonth").addEventListener("click", () => moveDiaryMonth(-1));
 $("#diaryNextMonth").addEventListener("click", () => moveDiaryMonth(1));
-$("#appendDiaryText").addEventListener("click", () => {
-  commitDiaryLetter();
-  if (state.diaryText && !state.diaryText.endsWith("\n")) state.diaryText += "\n";
-  state.diaryDirty = true;
-  renderDiary();
-  $("#diaryText").focus();
+$("#diaryCalendarTitle").addEventListener("click", () => {
+  const currentYear = Number(state.diaryCalendarMonth.slice(0, 4));
+  $("#diaryYearPicker").innerHTML = Array.from({ length: 21 }, (_, index) => currentYear - 10 + index)
+    .map(year => `<button type="button" data-diary-year="${year}">${year}</button>`).join("");
+  $("#diaryYearPicker").hidden = !$("#diaryYearPicker").hidden;
 });
+$("#diaryYearPicker").addEventListener("click", event => {
+  const button = event.target.closest("[data-diary-year]");
+  if (!button) return;
+  state.diaryCalendarMonth = `${button.dataset.diaryYear}-${state.diaryCalendarMonth.slice(5)}`;
+  $("#diaryYearPicker").hidden = true;
+  renderDiaryCalendar();
+});
+$("#appendDiaryText").addEventListener("click", () => appendDiarySegment("text"));
+$("#appendDiaryVibration").addEventListener("click", () => appendDiarySegment("vibration"));
+$("#diaryDraftSegments").addEventListener("click", event => {
+  const button = event.target.closest("[data-remove-diary-segment]");
+  if (!button) return;
+  state.diaryDraftSegments.splice(Number(button.dataset.removeDiarySegment), 1);
+  renderDiary();
+});
+$("#openDiaryList").addEventListener("click", () => {
+  renderDiaryList();
+  $("#diaryListPanel").hidden = false;
+});
+$("#closeDiaryList").addEventListener("click", () => $("#diaryListPanel").hidden = true);
 $("#diaryKeyer").addEventListener("pointerup", event => {
   $("#diaryKeyer").classList.remove("pressed");
   const deltaX = event.clientX - state.diaryKeyerStartX;
@@ -3540,26 +3620,11 @@ $("#clearDiaryText").addEventListener("click", () => {
   renderDiary();
 });
 $("#saveDiaryEntry").addEventListener("click", () => {
-  if (state.diarySaveSwiped) {
-    state.diarySaveSwiped = false;
-    return;
-  }
-  storeDiaryEntry(false);
+  storeDiaryEntry();
 });
-$("#saveDiaryEntry").addEventListener("pointerdown", event => {
-  state.diarySaveStartX = event.clientX;
-  state.diarySaveSwiped = false;
-  $("#saveDiaryEntry").classList.add("swiping");
-  $("#saveDiaryEntry").setPointerCapture?.(event.pointerId);
-});
-$("#saveDiaryEntry").addEventListener("pointerup", event => {
-  $("#saveDiaryEntry").classList.remove("swiping");
-  if (event.clientX - state.diarySaveStartX < 70) return;
-  state.diarySaveSwiped = true;
-  storeDiaryEntry(true);
-});
-$("#saveDiaryEntry").addEventListener("pointercancel", () => $("#saveDiaryEntry").classList.remove("swiping"));
 $("#diaryEntries").addEventListener("click", event => {
+  const segment = event.target.closest("[data-diary-segment-play]");
+  if (segment) return playMorse(segment.dataset.segmentText || "", null, "");
   const play = event.target.closest("[data-diary-play]");
   if (play) return playMorse(state.diaryEntries[Number(play.dataset.diaryPlay)]?.text || "", null, "");
   const remove = event.target.closest("[data-delete-diary]");
@@ -3573,6 +3638,22 @@ $("#diaryEntries").addEventListener("click", event => {
     state.diaryEntries.splice(index, 1);
     renderDiary();
   }).catch(error => showApiFailure(error, "일기를 삭제하지 못했습니다."));
+});
+$("#diaryAllEntries").addEventListener("click", event => {
+  const segment = event.target.closest("[data-diary-segment-play]");
+  if (segment) return playMorse(segment.dataset.segmentText || "", null, "");
+  const remove = event.target.closest("[data-delete-diary]");
+  if (!remove || !confirm("이 일기를 삭제할까요?")) return;
+  const index = Number(remove.dataset.deleteDiary);
+  const entry = state.diaryEntries[index];
+  api("/api/diary/entries", {
+    method: "DELETE",
+    body: JSON.stringify({ passwordHash: state.diaryPasswordHash, id: entry.id })
+  }).then(() => {
+    state.diaryEntries.splice(index, 1);
+    renderDiary();
+    renderDiaryList();
+  }).catch(error => showApiFailure(error));
 });
 $("#startGame").addEventListener("click", startSpeedGame);
 $("#refreshGameRanking").addEventListener("click", () => loadGameRanking(10));
@@ -4463,6 +4544,27 @@ $("#shopWorld").addEventListener("click", event => {
     }).catch(error => showApiFailure(error)).finally(() => draw.disabled = false);
     return;
   }
+  const inventoryCategory = event.target.closest("[data-shop-inventory-category]");
+  if (inventoryCategory) {
+    state.shopInventoryCategory = inventoryCategory.dataset.shopInventoryCategory;
+    renderShop();
+    return;
+  }
+  const categoryPreview = event.target.closest("[data-shop-preview]");
+  if (categoryPreview && !event.target.closest("[data-shop-draw]")) {
+    openShopPreview(categoryPreview.dataset.shopPreview);
+    return;
+  }
+  const unequip = event.target.closest("[data-shop-unequip]");
+  if (unequip) {
+    api("/api/shop/unequip", { method: "POST", body: JSON.stringify({ slot: unequip.dataset.shopUnequip }) }).then(result => {
+      state.shopInventory = result.inventory || [];
+      state.shopEquipped = result.equipped || {};
+      applyAccountUpdate(result.account);
+      renderShop();
+    }).catch(error => showApiFailure(error));
+    return;
+  }
   const equip = event.target.closest("[data-shop-equip]");
   if (!equip) return;
   api("/api/shop/equip", { method: "POST", body: JSON.stringify({ itemId: equip.dataset.shopEquip }) }).then(result => {
@@ -4472,6 +4574,11 @@ $("#shopWorld").addEventListener("click", event => {
     renderShop();
     showToast(state.language === "en" ? "Item equipped." : "아이템을 장착했습니다.");
   }).catch(error => showApiFailure(error));
+});
+$("#closeShopPreview").addEventListener("click", () => $("#shopPreviewPanel").hidden = true);
+$("#shopPreviewItems").addEventListener("click", event => {
+  const sound = event.target.closest("[data-preview-sound]");
+  if (sound) playMorse("TEST", null, "TEST", sound.dataset.previewSound);
 });
 $("#groupThemeChoices").addEventListener("click", event => {
   const button = event.target.closest("[data-group-theme]");

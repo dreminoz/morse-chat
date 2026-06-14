@@ -386,17 +386,24 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { entries: await store.diaryEntriesFor(account.signalId) });
   }
   if (req.method === "POST" && url.pathname === "/api/diary/entries") {
-    const { passwordHash, text, vibrationOnly = false, date = "", entries = [] } = await readBody(req);
+    const { passwordHash, text, vibrationOnly = false, segments = [], date = "", entries = [] } = await readBody(req);
     const vault = await store.diaryVault(account.signalId);
     if (!vault || vault.passwordHash !== passwordHash) return json(res, 403, { error: "wrong-password" });
-    const incoming = entries.length ? entries : [{ text, vibrationOnly, date, createdAt: Date.now() }];
+    const incoming = entries.length ? entries : [{ text, vibrationOnly, segments, date, createdAt: Date.now() }];
     const saved = [];
     for (const entry of incoming.slice(0, 500)) {
-      const cleanText = String(entry.text || "").trim().slice(0, 5000);
-      if (!cleanText) continue;
+      const cleanSegments = Array.isArray(entry.segments) ? entry.segments.slice(0, 200).map(segment => ({
+        type: segment.type === "vibration" ? "vibration" : "text",
+        text: String(segment.text || "").trim().slice(0, 1000)
+      })).filter(segment => segment.text) : [];
+      if (cleanSegments.some(segment => segment.type === "vibration" && !/^[A-Za-z0-9 ]+$/.test(segment.text))) {
+        return json(res, 400, { error: "invalid-vibration-text" });
+      }
+      const cleanText = String(entry.text || cleanSegments.map(segment => segment.text).join(" ")).trim().slice(0, 5000);
+      if (!cleanText && !cleanSegments.length) continue;
       const entryDate = /^\d{4}-\d{2}-\d{2}$/.test(String(entry.date || "")) ? String(entry.date) : "";
       const item = {
-        id: entryDate ? `diary-${entryDate}` : entry.id || crypto.randomUUID(), owner: account.signalId, text: cleanText,
+        id: entry.id || crypto.randomUUID(), owner: account.signalId, text: cleanText, segments: cleanSegments,
         date: entryDate, vibrationOnly: Boolean(entry.vibrationOnly), createdAt: Number(entry.createdAt) || Date.now(), updatedAt: Date.now()
       };
       saved.push(await store.addDiaryEntry(item));
@@ -521,6 +528,16 @@ const server = http.createServer(async (req, res) => {
     account.equipped = { ...(account.equipped || {}), [item.slot]: item.id };
     await store.updateAccount(account);
     return json(res, 200, { account: publicAccount(account), inventory: account.inventory, equipped: account.equipped });
+  }
+  if (req.method === "POST" && url.pathname === "/api/shop/unequip") {
+    const { slot } = await readBody(req);
+    if (!["chatTheme", "randomTheme", "morseSound", "profileBorder", "profileBackground"].includes(slot)) {
+      return json(res, 400, { error: "invalid-shop-slot" });
+    }
+    account.equipped = { ...(account.equipped || {}) };
+    delete account.equipped[slot];
+    await store.updateAccount(account);
+    return json(res, 200, { account: publicAccount(account), inventory: account.inventory || [], equipped: account.equipped });
   }
   if (req.method === "GET" && url.pathname === "/api/events") {
     const userId = account.signalId;

@@ -58,7 +58,8 @@ h1 span { color: var(--ink); -webkit-text-stroke: 0; -webkit-text-fill-color: va
 .shop-hero { padding: 22px; border-radius: 20px; color: white; background: #050505; }
 .shop-hero .eyebrow { color: #aaa; }.shop-hero h2 { margin: 6px 0; font-size: 34px; }.shop-hero p:last-child { margin: 0; color: #aaa; font-size: 10px; }
 .shop-category-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.shop-category-card { display: grid; gap: 7px; min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 17px; background: white; }
+.shop-category-card { display: grid; gap: 7px; min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 17px; background: white; cursor: pointer; }
+.shop-category-card:active { transform: scale(.985); }
 .shop-category-card > span { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px; color: white; background: #080808; font-size: 9px; font-weight: 900; }
 .shop-category-card strong { font-size: 13px; }.shop-category-card small { min-height: 30px; color: var(--muted); font-size: 8px; line-height: 1.5; }
 .shop-category-card button { padding: 10px 4px; border: 0; border-radius: 10px; color: white; background: #080808; font-size: 9px; font-weight: 850; }
@@ -67,10 +68,21 @@ h1 span { color: var(--ink); -webkit-text-stroke: 0; -webkit-text-fill-color: va
 .shop-result small, .shop-result strong { display: block; }.shop-result small { color: var(--muted); font-size: 8px; }.shop-result strong { margin-top: 4px; }
 @keyframes shopReveal { from { transform: scale(.94); opacity: 0; } }
 .shop-inventory-card { padding: 15px; border: 1px solid var(--line); border-radius: 18px; background: white; }
+.shop-inventory-tabs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; margin-bottom: 9px; }
+.shop-inventory-tabs button { padding: 8px 3px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); font-size: 8px; font-weight: 850; }
+.shop-inventory-tabs button.active { color: white; border-color: #080808; background: #080808; }
 .shop-inventory { display: grid; gap: 6px; }.shop-inventory-item { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 9px; border-radius: 12px; background: var(--paper); }
 .shop-inventory-item > span { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 11px; color: white; background: #080808; font-size: 8px; font-weight: 900; }
 .shop-inventory-item strong, .shop-inventory-item small { display: block; }.shop-inventory-item strong { font-size: 10px; }.shop-inventory-item small, .shop-empty { color: var(--muted); font-size: 8px; }
 .shop-inventory-item button { padding: 8px; border: 0; border-radius: 9px; color: white; background: #080808; font-size: 8px; font-weight: 850; }.shop-inventory-item button:disabled { color: #777; background: #ddd; }
+.shop-preview-card { max-height: 90dvh; }.shop-preview-items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.shop-preview-item { display: grid; gap: 6px; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: white; }
+.shop-preview-item.owned { box-shadow: inset 0 0 0 2px #080808; }.shop-preview-item strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }.shop-preview-item > small { color: var(--muted); font-size: 8px; }
+.shop-theme-preview { display: flex; flex-direction: column; gap: 5px; height: 82px; padding: 9px; overflow: hidden; border-radius: 11px; background: #eee; }.shop-theme-preview i { width: 55%; height: 13px; border-radius: 999px; background: white; }.shop-theme-preview i:nth-child(2) { align-self: flex-end; background: #080808; }.shop-theme-preview b { width: 100%; height: 17px; margin-top: auto; border-radius: 6px; background: white; }
+.shop-theme-preview.theme-chat_midnight, .shop-theme-preview.theme-random_void { background: #090b12; }.shop-theme-preview.theme-chat_ocean, .shop-theme-preview.theme-random_ice { background: #0b6687; }.shop-theme-preview.theme-chat_neon, .shop-theme-preview.theme-random_radar { background: #04150c; box-shadow: inset 0 0 0 1px #00ffc8; }.shop-theme-preview.theme-chat_cream { background: #fff0d5; }.shop-theme-preview.theme-random_sunset { background: linear-gradient(#ffd6b0, #b16b8e); }
+.shop-profile-preview { display: grid; place-items: center; width: 82px; height: 82px; margin: 0 auto; border-radius: 50%; color: white; background: #080808; font-size: 28px; font-weight: 900; }
+.shop-profile-preview.cosmetic-border_ring { box-shadow: 0 0 0 4px white, 0 0 0 7px #080808; }.shop-profile-preview.cosmetic-border_neon { border: 3px solid #00ffc8; box-shadow: 0 0 14px #00ffc8; }.shop-profile-preview.cosmetic-border_double { border: 5px double white; outline: 2px solid #080808; }.shop-profile-preview.cosmetic-border_dashed { border: 4px dashed white; outline: 2px dashed #080808; }.shop-profile-preview.cosmetic-profile_night { background: radial-gradient(circle at 65% 25%, #596080, #090b12 55%); }.shop-profile-preview.cosmetic-profile_ocean { background: radial-gradient(circle at 35% 30%, #36b5d8, #063650 68%); }.shop-profile-preview.cosmetic-profile_sunset { background: linear-gradient(145deg, #ffd18d, #e86775 55%, #4e3c6e); }.shop-profile-preview.cosmetic-profile_cream { color: #5c402c; background: #f5dfb8; }
+.shop-sound-preview { display: grid; place-items: center; gap: 5px; height: 82px; border: 0; border-radius: 11px; color: white; background: #080808; }.shop-sound-preview span { font-size: 11px; font-weight: 900; }.shop-sound-preview small { color: #aaa; font-size: 7px; }
 .group-theme-section { margin: 14px 0; }.group-theme-section > strong { display: block; margin-bottom: 7px; font-size: 11px; }.group-theme-choices { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }.group-theme-choices button { padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: white; font-size: 8px; font-weight: 850; }.group-theme-choices button.active { color: white; border-color: #080808; background: #080808; }
 .games-world { display: grid; gap: 12px; padding-bottom: 20px; }
 .game-header { align-items: center; margin: 0; padding: 18px; border-radius: 20px; color: white; background: var(--ink); }
@@ -229,7 +241,8 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 .diary-note.vibration-only strong { display: block; font-size: 11px; }
 .diary-note.vibration-only small { display: block; margin-top: 5px; color: #aaa; font-size: 8px; }
 .diary-composer { padding: 7px 0 max(5px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--paper); }
-.diary-actions { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 6px; margin-top: 6px; }
+.diary-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px; }
+.diary-actions .primary-button { grid-column: 1 / -1; }
 .diary-actions button { padding: 10px; border: 1px solid var(--ink); border-radius: 11px; font-weight: 850; }
 .diary-calendar-card { padding: 10px 0; border-bottom: 1px solid var(--line); }
 .diary-calendar-nav { display: grid; grid-template-columns: 38px 1fr 38px; align-items: center; text-align: center; }
@@ -243,6 +256,15 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 .diary-calendar button.selected { color: white; background: #080808; }
 .diary-calendar button.selected::after { background: white; }
 .diary-selected-date { display: block; margin-top: 7px; text-align: center; font-size: 10px; }
+.diary-list-open { width: 100%; margin: 7px 0 0; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: white; font-size: 9px; font-weight: 850; }
+.diary-year-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; max-height: 150px; margin-top: 7px; padding: 7px; overflow-y: auto; border: 1px solid var(--line); border-radius: 11px; background: white; }
+.diary-year-picker button { padding: 7px 2px; border: 0; border-radius: 7px; background: var(--paper); font-size: 8px; }
+.diary-draft-segments { display: flex; gap: 5px; min-height: 27px; margin-bottom: 6px; overflow-x: auto; }
+.diary-draft-segments button { flex: 0 0 auto; max-width: 190px; padding: 7px 9px; overflow: hidden; border: 1px solid var(--line); border-radius: 999px; text-overflow: ellipsis; white-space: nowrap; background: white; font-size: 8px; }
+.diary-draft-segments button.vibration-only { color: white; border-color: #080808; background: #080808; }
+.diary-draft-segments small { margin: auto 0; color: var(--muted); font-size: 8px; }
+.diary-segment-list { display: grid; gap: 5px; }.diary-segment-list p { padding: 8px; border-radius: 9px; background: var(--paper); }.diary-segment-vibration { width: 100%; padding: 10px; border: 0; border-radius: 9px; color: white; background: #080808; font-size: 9px; font-weight: 850; }
+.diary-all-entries { display: grid; gap: 8px; max-height: 68dvh; overflow-y: auto; }
 .group-extra-actions { display: grid; grid-template-columns: 1fr 1fr 1.25fr; gap: 5px; margin-bottom: 5px; }
 .group-extra-actions select, .group-extra-actions button, .group-extra-actions label { min-width: 0; padding: 8px 4px; border: 1px solid var(--ink); border-radius: 9px; background: white; font-size: 8px; font-weight: 850; }
 .group-extra-actions button { color: white; background: var(--ink); }
