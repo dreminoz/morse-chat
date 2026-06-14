@@ -12,6 +12,34 @@ const MORSE = {
   5: ".....", 6: "-....", 7: "--...", 8: "---..", 9: "----.",
   ".": ".-.-.-", ",": "--..--", "?": "..--..", "!": "-.-.--", "/": "-..-.", "@": ".--.-.", "-": "-....-"
 };
+const SHOP_ITEMS = [
+  { id: "chat_midnight", category: "chatTheme", slot: "chatTheme", name: "Midnight", icon: "MID" },
+  { id: "chat_cream", category: "chatTheme", slot: "chatTheme", name: "Soft Cream", icon: "CRM" },
+  { id: "chat_ocean", category: "chatTheme", slot: "chatTheme", name: "Deep Ocean", icon: "SEA" },
+  { id: "chat_neon", category: "chatTheme", slot: "chatTheme", name: "Signal Neon", icon: "NEO" },
+  { id: "random_void", category: "randomTheme", slot: "randomTheme", name: "Signal Void", icon: "VOID" },
+  { id: "random_radar", category: "randomTheme", slot: "randomTheme", name: "Radar Grid", icon: "RAD" },
+  { id: "random_sunset", category: "randomTheme", slot: "randomTheme", name: "Sunset Signal", icon: "SUN" },
+  { id: "random_ice", category: "randomTheme", slot: "randomTheme", name: "Frozen Signal", icon: "ICE" },
+  { id: "sound_click", category: "morseSound", slot: "morseSound", name: "Radio Click", icon: "CLK" },
+  { id: "sound_drop", category: "morseSound", slot: "morseSound", name: "Water Drop", icon: "DROP" },
+  { id: "sound_beep", category: "morseSound", slot: "morseSound", name: "Classic Beep", icon: "BEEP" },
+  { id: "sound_chime", category: "morseSound", slot: "morseSound", name: "Glass Chime", icon: "CHM" },
+  { id: "border_ring", category: "profile", slot: "profileBorder", name: "Signal Ring", icon: "RING" },
+  { id: "border_neon", category: "profile", slot: "profileBorder", name: "Neon Border", icon: "NEON" },
+  { id: "border_double", category: "profile", slot: "profileBorder", name: "Double Border", icon: "DBL" },
+  { id: "border_dashed", category: "profile", slot: "profileBorder", name: "Morse Border", icon: "DOT" },
+  { id: "profile_night", category: "profile", slot: "profileBackground", name: "Night Profile", icon: "NGT" },
+  { id: "profile_ocean", category: "profile", slot: "profileBackground", name: "Ocean Profile", icon: "OCN" },
+  { id: "profile_sunset", category: "profile", slot: "profileBackground", name: "Sunset Profile", icon: "SET" },
+  { id: "profile_cream", category: "profile", slot: "profileBackground", name: "Cream Profile", icon: "CRM" }
+];
+const SHOP_CATEGORIES = [
+  { id: "randomTheme", name: "Random Signal", description: "Random Signal chat decorations" },
+  { id: "chatTheme", name: "Chat Theme", description: "Direct and owner-controlled group themes" },
+  { id: "morseSound", name: "Morse Sound", description: "Sounds heard when a message is played" },
+  { id: "profile", name: "Profile Style", description: "Profile borders and backgrounds" }
+];
 
 const $ = (selector) => document.querySelector(selector);
 const I18N_PAIRS = [
@@ -458,6 +486,7 @@ const SENTENCES = [
   "MORSE CODE CONNECTS DOTS DASHES AND TIME",
   "SEND EACH LETTER WITH CARE AND CONFIDENCE"
 ];
+const GAME_WORD_POOL = ["CODE", "SIGNAL", "RADIO", "MORSE", "LIGHT", "SPACE", "WAVE", "HELLO", "READY", "QUIET", "SPEED", "NIGHT", "WORLD", "CLEAR", "POWER", "VOICE", "DREAM", "POINT", "DASH", "PULSE", "BRAVE", "FOCUS", "QUICK", "START", "TRAIN", "WRITE", "LISTEN", "CLOUD", "STORM", "FLASH"];
 const state = {
   phrases: JSON.parse(localStorage.getItem("morse-phrases") || "[]"),
   friends: JSON.parse(localStorage.getItem("morse-friends") || "[]"),
@@ -481,6 +510,19 @@ const state = {
   diaryKeyerStartY: 0,
   diarySaveStartX: 0,
   diarySaveSwiped: false,
+  gameWords: [],
+  gameIndex: -1,
+  gameRunning: false,
+  gameStartedAt: 0,
+  gameTimerInterval: null,
+  gameText: "",
+  gameSignal: "",
+  gameLetterTimer: null,
+  gameSpaceTimer: null,
+  gameKeyerStartX: 0,
+  gameKeyerStartY: 0,
+  gameRanking: [],
+  gameMyRank: null,
   groupSignal: "",
   dailyGroupSignal: "",
   groupText: "",
@@ -604,6 +646,9 @@ const state = {
   account: JSON.parse(localStorage.getItem("morse-account") || "null"),
   googleCredential: "",
   googleClientId: "",
+  shopInventory: [],
+  shopEquipped: {},
+  shopLastDraw: null,
   chatMessageHoldTimer: null,
   chatMessageHoldIndex: -1,
   chatMessageLongPressed: false,
@@ -735,7 +780,7 @@ function connectServer() {
   stream.addEventListener("random-last", event => {
     const message = JSON.parse(event.data).message;
     showToast(`라스트 시그널: ${message.text || message}`);
-    if (message.text && vibrationPattern(message.text).length) playMorse(message.text);
+    if (message.text && vibrationPattern(message.text).length) playMorse(message.text, null, message.text, message.senderSound || "");
   });
 }
 
@@ -775,6 +820,7 @@ async function setupPushNotifications() {
 function setAccount(token, account) {
   state.authToken = token;
   state.account = account;
+  state.shopEquipped = account.equipped || {};
   state.userId = account.signalId;
   localStorage.setItem("morse-auth-token", token);
   localStorage.setItem("morse-account", JSON.stringify(account));
@@ -784,6 +830,7 @@ function setAccount(token, account) {
   connectServer();
   setupPushNotifications();
   renderSettings();
+  loadShop();
   switchWorld(notificationWorldFromHash() || "friends");
   loadFriendProfiles();
 }
@@ -799,6 +846,7 @@ function notificationWorldFromHash() {
 
 function applyAccountUpdate(account) {
   state.account = account;
+  state.shopEquipped = account.equipped || {};
   state.userId = account.signalId;
   state.profileDraftAscii = account.profileAscii || "";
   localStorage.setItem("morse-account", JSON.stringify(account));
@@ -979,11 +1027,39 @@ function vibrationPattern(text) {
   return units;
 }
 
-function playMorse(text, onComplete, playerLabel = text) {
+function playMorseAudio(pattern, soundId) {
+  if (!soundId || !window.AudioContext && !window.webkitAudioContext) return;
+  const AudioEngine = window.AudioContext || window.webkitAudioContext;
+  const context = playMorseAudio.context ||= new AudioEngine();
+  context.resume?.();
+  let elapsed = 0;
+  pattern.forEach((duration, index) => {
+    if (index % 2 === 0) {
+      const start = context.currentTime + elapsed / 1000;
+      const end = start + Math.min(duration, 420) / 1000;
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = soundId === "sound_chime" ? "triangle" : soundId === "sound_click" ? "square" : "sine";
+      const startFrequency = soundId === "sound_drop" ? 960 : soundId === "sound_chime" ? 1100 : soundId === "sound_click" ? 180 : 680;
+      const endFrequency = soundId === "sound_drop" ? 310 : soundId === "sound_chime" ? 720 : startFrequency;
+      oscillator.frequency.setValueAtTime(startFrequency, start);
+      oscillator.frequency.exponentialRampToValueAtTime(endFrequency, end);
+      gain.gain.setValueAtTime(soundId === "sound_click" ? .025 : .055, start);
+      gain.gain.exponentialRampToValueAtTime(.001, end);
+      oscillator.connect(gain).connect(context.destination);
+      oscillator.start(start);
+      oscillator.stop(end);
+    }
+    elapsed += duration;
+  });
+}
+
+function playMorse(text, onComplete, playerLabel = text, soundId = "") {
   stopMorse(false);
   const pattern = vibrationPattern(text);
   if (!pattern.length) return;
   const duration = pattern.reduce((sum, value) => sum + value, 0);
+  playMorseAudio(pattern, soundId);
   if (window.AndroidVibration) window.AndroidVibration.vibrate(pattern.join(","));
   else if (navigator.vibrate) navigator.vibrate(pattern);
   else showToast("이 기기에서는 진동 재생을 지원하지 않습니다.");
@@ -1006,6 +1082,10 @@ function stopMorse(stopTraining = true) {
   $("#player").hidden = true;
   $("#playerPulse").classList.remove("active");
   if (stopTraining && state.training) endTraining();
+}
+
+function equippedSound() {
+  return state.account?.equipped?.morseSound || state.shopEquipped?.morseSound || "";
 }
 
 const RANDOM_REPLIES = {
@@ -1032,6 +1112,7 @@ const RANDOM_REPLIES = {
 };
 
 function renderRandomSignal() {
+  applyTheme($("#randomSignalWorld"), state.account?.equipped?.randomTheme, "theme-");
   const mode = state.randomSignalState;
   $("#randomSignalIdle").hidden = mode !== "idle";
   $("#randomSignalSearching").hidden = mode !== "searching";
@@ -1220,8 +1301,8 @@ function sendRandomChat(text, hidden = false) {
   const cleanText = text.trim();
   if (!cleanText || state.randomSignalState !== "connected") return;
   const outgoing = hidden
-    ? { mine: true, text: cleanText, hidden: true, limit: state.randomHiddenLimit, views: 0 }
-    : { mine: true, text: cleanText };
+    ? { mine: true, text: cleanText, hidden: true, limit: state.randomHiddenLimit, views: 0, senderSound: equippedSound() }
+    : { mine: true, text: cleanText, senderSound: equippedSound() };
   state.randomMessages.push(outgoing);
   resetRandomChatInput();
   renderRandomSignal();
@@ -1472,8 +1553,12 @@ function renderGroupMessageList(target, messages, group) {
 
 function renderGroupMessages() {
   if (!state.activeGroup) return;
+  applyTheme($("#groupRoom"), state.activeGroup.theme, "theme-");
   $("#groupRoomName").textContent = state.activeGroup.name;
   $("#groupRoomMembers").textContent = `${state.activeGroup.members.length}명 참여 중`;
+  $("#groupRoomAvatar").innerHTML = state.activeGroup.profileAscii
+    ? `<span class="ascii-avatar" data-no-i18n>${escapeHtml(state.activeGroup.profileAscii)}</span>`
+    : escapeHtml(state.activeGroup.name).charAt(0).toUpperCase();
   renderGroupMessageList($("#groupMessages"), state.groupMessages, state.activeGroup);
   renderGroupComposer(false);
 }
@@ -1700,6 +1785,15 @@ function profileVisualHtml(profile, fallback = "?") {
     : `<span class="profile-fallback">${escapeHtml(profile?.nickname || fallback).charAt(0).toUpperCase()}</span>`;
 }
 
+function profileCosmeticClasses(profile) {
+  const equipped = profile?.equipped || {};
+  return [equipped.profileBorder, equipped.profileBackground].filter(Boolean).map(value => `cosmetic-${value}`).join(" ");
+}
+
+function applyProfileCosmetics(target, profile) {
+  target.className = `${target.className.replace(/\bcosmetic-\S+/g, "").trim()} ${profileCosmeticClasses(profile)}`.trim();
+}
+
 function profileAvatarHtml(profile, fallback = "?") {
   return `<span class="friend-avatar">${profile?.profileAscii
     ? `<span class="ascii-avatar" data-no-i18n>${escapeHtml(profile.profileAscii)}</span>`
@@ -1722,6 +1816,7 @@ function renderMyProfile() {
   if (!state.account) return;
   const profile = { ...state.account, profileAscii: state.profileDraftAscii ?? state.account.profileAscii ?? "" };
   $("#myProfileVisual").innerHTML = profileVisualHtml(profile, state.account.signalId);
+  applyProfileCosmetics($("#myProfileVisual"), profile);
   $("#myProfileNickname").textContent = state.account.nickname;
   $("#myProfileSignalId").textContent = state.account.signalId;
   $("#myProfileDescription").value = state.account.description || "";
@@ -1734,6 +1829,7 @@ async function openFriendProfile(signalId) {
     state.profileCache[signalId] = profile;
     state.viewingProfileSignalId = signalId;
     $("#friendProfileVisual").innerHTML = profileVisualHtml(profile, signalId);
+    applyProfileCosmetics($("#friendProfileVisual"), profile);
     $("#friendProfileNickname").textContent = profile.nickname;
     $("#friendProfileSignalId").textContent = profile.signalId;
     $("#friendProfileDescription").textContent = profile.description || "아직 자기소개가 없습니다.";
@@ -1782,6 +1878,7 @@ function hiddenSignalExhausted(message) {
 function renderChat() {
   const friend = state.activeFriend;
   if (!friend) return;
+  applyTheme($("#chatRoom"), state.account?.equipped?.chatTheme, "theme-");
   const messages = state.chats[friend] || [];
   const profile = state.profileCache[friend];
   $("#chatFriendName").textContent = profile?.nickname || friend;
@@ -1907,6 +2004,7 @@ function refreshLocalizedViews() {
   renderWriter();
   renderSettings();
   if (state.diaryUnlocked) renderDiary();
+  renderGame();
 }
 
 function applyLanguage(language) {
@@ -1915,6 +2013,7 @@ function applyLanguage(language) {
   document.documentElement.lang = language;
   translateElement(document.body, language);
   document.title = "MORSE CHAT";
+  if (!$("#shopWorld").hidden) renderShop();
   if (state.authToken) {
     api("/api/push/language", { method: "POST", body: JSON.stringify({ language }) }).catch(() => {});
   }
@@ -2007,8 +2106,8 @@ function sendChatMessage(message, hidden = false) {
     return;
   }
   const outgoing = hidden
-    ? { text: message, hidden: true, limit: state.hiddenViewLimit, views: 0 }
-    : message;
+    ? { text: message, hidden: true, limit: state.hiddenViewLimit, views: 0, senderSound: equippedSound() }
+    : typeof message === "object" ? { ...message, senderSound: equippedSound() } : { text: message, senderSound: equippedSound() };
   const localMessage = taggedChatMessage(outgoing, true);
   const wireMessage = { ...localMessage };
   delete wireMessage.mine;
@@ -2242,6 +2341,172 @@ async function storeDiaryEntry(vibrationOnly = false) {
   }
 }
 
+function gameTimeLabel(timeMs) {
+  return `${(Number(timeMs || 0) / 1000).toFixed(2)}초`;
+}
+
+function renderGameRanking(target, ranking) {
+  target.innerHTML = ranking.length ? ranking.map(item => `
+    <div class="ranking-row${item.mine ? " mine" : ""}">
+      <span>${item.rank}</span><strong data-no-i18n>${escapeHtml(item.nickname)}</strong><span>${gameTimeLabel(item.timeMs)}</span>
+    </div>`).join("") : '<p class="chat-empty">아직 등록된 기록이 없습니다.</p>';
+}
+
+function loadGameRanking(limit = 10) {
+  if (!state.authToken) return;
+  return api(`/api/game/ranking?limit=${limit}`).then(({ ranking, mine }) => {
+    state.gameRanking = ranking;
+    state.gameMyRank = mine;
+    $("#gameMyRank").textContent = mine ? `${mine.rank}등 · ${gameTimeLabel(mine.timeMs)}` : "기록 없음";
+    if (limit === 10) renderGameRanking($("#gameRankingPreview"), ranking);
+    else {
+      renderGameRanking($("#gameRankingFull"), ranking);
+      $("#fullRankingMine").textContent = mine ? `내 순위: ${mine.rank}등 · ${gameTimeLabel(mine.timeMs)}` : "아직 내 기록이 없습니다.";
+    }
+  }).catch(error => showApiFailure(error, "랭킹을 불러오지 못했습니다."));
+}
+
+function renderGame() {
+  $("#gameProgress").textContent = state.gameRunning ? `${state.gameIndex + 1} / 10` : "0 / 10";
+  $("#gameWordNumber").textContent = state.gameRunning ? `${state.gameIndex + 1}번째 단어` : "시작 준비";
+  $("#gameTargetWord").textContent = state.gameWords[state.gameIndex] || "READY";
+  $("#gameInput").value = state.gameText;
+  $("#gameSignal").textContent = state.gameSignal ? `현재 글자: ${prettyMorse(state.gameSignal)}` : "현재 글자: 비어 있음";
+  $("#gameKeyer").querySelector("small").textContent = state.chatKeyerMode === "auto"
+    ? "3단위 휴식: 글자 확정"
+    : `${state.reverseChatSwipe ? "오른쪽" : "왼쪽"}: 글자 확정 · 위: 대문자`;
+  $("#startGame").textContent = state.gameRunning ? "게임 포기" : "게임 시작";
+}
+
+function updateGameTimer() {
+  if (state.gameRunning) $("#gameTimer").textContent = gameTimeLabel(performance.now() - state.gameStartedAt);
+}
+
+function startSpeedGame() {
+  if (state.gameRunning) {
+    state.gameRunning = false;
+    clearInterval(state.gameTimerInterval);
+    $("#gameFeedback").textContent = "게임을 종료했습니다.";
+    return renderGame();
+  }
+  state.gameWords = [...GAME_WORD_POOL].sort(() => Math.random() - .5).slice(0, 10);
+  state.gameIndex = 0;
+  state.gameText = "";
+  state.gameSignal = "";
+  state.gameRunning = true;
+  state.gameStartedAt = performance.now();
+  clearInterval(state.gameTimerInterval);
+  state.gameTimerInterval = setInterval(updateGameTimer, 30);
+  $("#gameFeedback").textContent = "첫 단어를 입력하세요.";
+  renderGame();
+}
+
+async function finishSpeedGame() {
+  const timeMs = Math.round(performance.now() - state.gameStartedAt);
+  state.gameRunning = false;
+  clearInterval(state.gameTimerInterval);
+  $("#gameTimer").textContent = gameTimeLabel(timeMs);
+  $("#gameFeedback").textContent = `완주 기록: ${gameTimeLabel(timeMs)}`;
+  renderGame();
+  try {
+    const result = await api("/api/game/score", { method: "POST", body: JSON.stringify({ timeMs }) });
+    $("#gameFeedback").textContent += result.improved ? " · 최고 기록 갱신!" : " · 기존 최고 기록 유지";
+    loadGameRanking(10);
+  } catch (error) { showApiFailure(error, "게임 기록을 저장하지 못했습니다."); }
+}
+
+function checkGameWord() {
+  if (!state.gameRunning || state.gameText.toUpperCase() !== state.gameWords[state.gameIndex]) return;
+  state.gameIndex += 1;
+  state.gameText = "";
+  state.gameSignal = "";
+  if (state.gameIndex >= 10) return finishSpeedGame();
+  $("#gameFeedback").textContent = "정답! 다음 단어";
+  renderGame();
+}
+
+function commitGameLetter(uppercase = true) {
+  clearTimeout(state.gameLetterTimer);
+  if (!state.gameSignal || !state.gameRunning) return false;
+  const decoded = decodedInput(state.gameSignal, uppercase);
+  state.gameSignal = "";
+  if (!decoded) return false;
+  state.gameText += decoded.toUpperCase();
+  renderGame();
+  checkGameWord();
+  return true;
+}
+
+function addGameSignal(mark) {
+  if (!state.gameRunning || state.gameSignal.length >= 10) return;
+  clearTimeout(state.gameLetterTimer);
+  pulseSignal(mark);
+  state.gameSignal += mark;
+  renderGame();
+  if (state.chatKeyerMode === "auto") state.gameLetterTimer = setTimeout(commitGameLetter, state.unit * 3);
+}
+
+function applyTheme(target, themeId, prefix) {
+  [...target.classList].filter(name => name.startsWith(prefix)).forEach(name => target.classList.remove(name));
+  if (themeId) target.classList.add(`${prefix}${themeId}`);
+}
+
+function shopItem(itemId) {
+  return SHOP_ITEMS.find(item => item.id === itemId);
+}
+
+function renderShop() {
+  const ko = state.language !== "en";
+  const categoryNames = ko
+    ? { randomTheme: "랜덤 시그널 꾸미기", chatTheme: "대화창 테마", morseSound: "모스부호 소리", profile: "프로필 꾸미기" }
+    : Object.fromEntries(SHOP_CATEGORIES.map(category => [category.id, category.name]));
+  const categoryDescriptions = ko
+    ? { randomTheme: "랜덤 시그널 대화창을 꾸밉니다.", chatTheme: "개인 대화와 방장 그룹챗에 적용합니다.", morseSound: "메시지를 재생할 때 발신자의 소리가 납니다.", profile: "프로필 테두리와 배경을 꾸밉니다." }
+    : Object.fromEntries(SHOP_CATEGORIES.map(category => [category.id, category.description]));
+  $(".shop-hero h2").textContent = ko ? "상점" : "Shop";
+  $(".shop-hero p:last-child").textContent = ko ? "종류를 고르고 꾸미기 아이템을 무작위로 뽑아보세요." : "Choose a category and draw one decoration at random.";
+  $(".shop-inventory-card .section-heading strong").textContent = ko ? "보유 아이템" : "Inventory";
+  $(".shop-inventory-card .section-heading small").textContent = ko ? "장착을 눌러 아이템을 적용합니다." : "Tap Equip to use an item.";
+  $("#shopDrawCategories").innerHTML = SHOP_CATEGORIES.map(category => `
+    <article class="shop-category-card">
+      <span>${category.name.slice(0, 3).toUpperCase()}</span>
+      <strong>${categoryNames[category.id]}</strong>
+      <small>${categoryDescriptions[category.id]}</small>
+      <button type="button" data-shop-draw="${category.id}">${ko ? "랜덤 뽑기" : "Random Draw"}</button>
+    </article>`).join("");
+  const result = state.shopLastDraw;
+  $("#shopResult").hidden = !result;
+  if (result) {
+    $("#shopResult").innerHTML = `<span>${result.item.icon}</span><div><small>${result.duplicate ? (ko ? "이미 보유한 아이템" : "Duplicate item") : (ko ? "새 아이템" : "New item")}</small><strong>${result.item.name}</strong></div>`;
+  }
+  const owned = state.shopInventory.map(shopItem).filter(Boolean);
+  $("#shopInventory").innerHTML = owned.length ? owned.map(item => {
+    const equipped = state.shopEquipped?.[item.slot] === item.id;
+    return `<article class="shop-inventory-item"><span>${item.icon}</span><div><strong>${item.name}</strong><small>${categoryNames[item.category] || item.category}</small></div><button type="button" data-shop-equip="${item.id}" ${equipped ? "disabled" : ""}>${equipped ? (ko ? "장착 중" : "Equipped") : (ko ? "장착" : "Equip")}</button></article>`;
+  }).join("") : `<p class="shop-empty">${ko ? "아직 아이템이 없습니다. 랜덤 뽑기를 해보세요." : "No items yet. Try a random draw."}</p>`;
+}
+
+function loadShop() {
+  if (!state.authToken) return;
+  api("/api/shop").then(({ inventory, equipped }) => {
+    state.shopInventory = inventory || [];
+    state.shopEquipped = equipped || {};
+    renderShop();
+    if (!$("#groupManagePanel").hidden) renderGroupThemeChoices();
+  }).catch(error => showApiFailure(error));
+}
+
+function renderGroupThemeChoices() {
+  if (!state.activeGroup) return;
+  const owner = state.activeGroup.owner === state.userId;
+  $("#groupThemeSection").hidden = !owner;
+  if (!owner) return;
+  const themes = state.shopInventory.map(shopItem).filter(item => item?.slot === "chatTheme");
+  $("#groupThemeChoices").innerHTML = themes.length ? themes.map(item =>
+    `<button type="button" data-group-theme="${item.id}" class="${state.activeGroup.theme === item.id ? "active" : ""}">${item.name}</button>`
+  ).join("") : '<small>Draw a Chat Theme in the Shop first.</small>';
+}
+
 function switchWorld(world) {
   if (!["friends", "hall", "space", "randomSignal", "dailyGroup", "games", "secretDiary", "shop", "profile"].includes(world)) world = "hall";
   if (state.world === "secretDiary" && world !== "secretDiary") lockSecretDiary();
@@ -2281,7 +2546,12 @@ function switchWorld(world) {
     loadGroups();
   }
   if (world === "dailyGroup") loadDailyGroup();
+  if (world === "games") {
+    renderGame();
+    loadGameRanking(10);
+  }
   if (world === "secretDiary") openSecretDiary();
+  if (world === "shop") loadShop();
   if (world === "profile") renderMyProfile();
 }
 
@@ -2967,8 +3237,10 @@ $("#openGroupManage").addEventListener("click", () => {
       ${owner && !member.owner ? `<button type="button" class="kick-member" data-kick-member="${escapeHtml(member.signalId)}">강퇴</button>` : ""}
     </article>`).join("");
   renderGroupFriendChoices($("#groupAddFriendChoices"), true);
+  renderGroupThemeChoices();
   $("#groupManagePanel").hidden = false;
 });
+$("#openGroupManageAvatar").addEventListener("click", () => $("#openGroupManage").click());
 $("#closeGroupManage").addEventListener("click", () => $("#groupManagePanel").hidden = true);
 $("#groupAddFriendChoices").addEventListener("click", event => {
   const button = event.target.closest("[data-add-group-friend]");
@@ -3015,7 +3287,10 @@ $("#groupMessages").addEventListener("click", event => {
   const profile = event.target.closest("[data-group-profile]");
   if (profile) openFriendProfile(profile.dataset.groupProfile);
   const bubble = event.target.closest("[data-group-message]");
-  if (bubble && !profile) playMorse(state.groupMessages[Number(bubble.dataset.groupMessage)]?.text || "");
+  if (bubble && !profile) {
+    const message = state.groupMessages[Number(bubble.dataset.groupMessage)];
+    playMorse(message?.text || "", null, message?.text || "", message?.senderSound || "");
+  }
 });
 $("#dailyGroupMessages").addEventListener("click", event => {
   const author = event.target.closest("[data-group-profile]");
@@ -3029,7 +3304,10 @@ $("#dailyGroupMessages").addEventListener("click", event => {
     return;
   }
   const bubble = event.target.closest("[data-group-message]");
-  if (bubble) playMorse(state.dailyGroupMessages[Number(bubble.dataset.groupMessage)]?.text || "");
+  if (bubble) {
+    const message = state.dailyGroupMessages[Number(bubble.dataset.groupMessage)];
+    playMorse(message?.text || "", null, message?.text || "", message?.senderSound || "");
+  }
 });
 $("#leaveDailyGroup").addEventListener("click", () => {
   if (!state.dailyGroup || !confirm("오늘의 데일리 그룹챗에서 나갈까요?")) return;
@@ -3050,6 +3328,7 @@ $("#dailyGroupInput").addEventListener("input", event => {
   state.dailyGroupSignal = "";
   state.dailyGroupText = event.target.value;
   renderGroupComposer(true);
+  renderGame();
 });
 $("#clearGroupMessage").addEventListener("click", () => clearGroupComposerCharacter(false));
 $("#clearDailyGroupMessage").addEventListener("click", () => clearGroupComposerCharacter(true));
@@ -3060,6 +3339,7 @@ $("#dailyGroupForm").addEventListener("submit", event => {
   state.dailyGroupText = "";
   state.dailyGroupSignal = "";
   renderGroupComposer(true);
+  renderGame();
 });
 $("#unlockDiary").addEventListener("click", async () => {
   const password = $("#diaryPassword").value;
@@ -3162,6 +3442,44 @@ $("#diaryEntries").addEventListener("click", event => {
     renderDiary();
   }).catch(error => showApiFailure(error, "일기를 삭제하지 못했습니다."));
 });
+$("#startGame").addEventListener("click", startSpeedGame);
+$("#refreshGameRanking").addEventListener("click", () => loadGameRanking(10));
+$("#openFullRanking").addEventListener("click", () => {
+  $("#gameRankingPanel").hidden = false;
+  loadGameRanking(100);
+});
+$("#closeGameRanking").addEventListener("click", () => $("#gameRankingPanel").hidden = true);
+$("#gameInput").addEventListener("input", event => {
+  if (!state.gameRunning) return event.target.value = "";
+  state.gameSignal = "";
+  state.gameText = event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  renderGame();
+  checkGameWord();
+});
+$("#clearGameInput").addEventListener("click", () => {
+  if (state.gameSignal) state.gameSignal = state.gameSignal.slice(0, -1);
+  else state.gameText = state.gameText.slice(0, -1);
+  renderGame();
+});
+$("#gameKeyer").addEventListener("pointerdown", event => {
+  if (!state.gameRunning) return;
+  clearTimeout(state.gameLetterTimer);
+  state.keyerPressStart = performance.now();
+  state.gameKeyerStartX = event.clientX;
+  state.gameKeyerStartY = event.clientY;
+  $("#gameKeyer").classList.add("pressed");
+  $("#gameKeyer").setPointerCapture?.(event.pointerId);
+});
+$("#gameKeyer").addEventListener("pointerup", event => {
+  $("#gameKeyer").classList.remove("pressed");
+  if (!state.gameRunning) return;
+  const deltaX = event.clientX - state.gameKeyerStartX;
+  const deltaY = event.clientY - state.gameKeyerStartY;
+  if (state.chatKeyerMode === "auto" && handleAutoVerticalSwipe(deltaX, deltaY, commitGameLetter, () => {})) return;
+  if (state.chatKeyerMode === "manual" && handleManualComposerSwipe(deltaX, deltaY, commitGameLetter, () => {}, () => {})) return;
+  addGameSignal(performance.now() - state.keyerPressStart < state.unit * 2 ? "." : "-");
+});
+$("#gameKeyer").addEventListener("pointercancel", () => $("#gameKeyer").classList.remove("pressed"));
 $("#closeChat").addEventListener("click", closeChat);
 $("#openChatProfile").addEventListener("click", () => state.activeFriend && openFriendProfile(state.activeFriend));
 $("#openChatProfileInfo").addEventListener("click", () => state.activeFriend && openFriendProfile(state.activeFriend));
@@ -3296,7 +3614,7 @@ $("#chatMessages").addEventListener("click", event => {
     renderChat();
   }
   const text = chatMessageText(message);
-  if (text && vibrationPattern(text).length) playMorse(text, null, hidden ? "" : text);
+  if (text && vibrationPattern(text).length) playMorse(text, null, hidden ? "" : text, message?.senderSound || "");
 });
 $("#chatMorseText").addEventListener("input", event => {
   clearTimeout(state.chatLetterTimer);
@@ -3410,7 +3728,7 @@ $("#sendAscii").addEventListener("click", () => {
   if (state.asciiTarget === "friend" && state.activeFriend) {
     sendChatMessage({ type: "ascii", text: state.asciiDraft });
   } else if (state.asciiTarget === "random" && state.randomSignalState === "connected") {
-    const outgoing = { mine: true, type: "ascii", text: state.asciiDraft };
+    const outgoing = { mine: true, type: "ascii", text: state.asciiDraft, senderSound: equippedSound() };
     state.randomMessages.push(outgoing);
     renderRandomSignal();
     api("/api/random/send", {
@@ -3695,7 +4013,7 @@ $("#randomChatMessages").addEventListener("click", event => {
     message.views = Number(message.views || 0) + 1;
     renderRandomSignal();
   }
-  if (vibrationPattern(message.text).length) playMorse(message.text, null, message.hidden ? "" : message.text);
+  if (vibrationPattern(message.text).length) playMorse(message.text, null, message.hidden ? "" : message.text, message.senderSound || "");
 });
 $("#randomChatInput").addEventListener("input", event => {
   clearTimeout(state.randomChatLetterTimer);
@@ -3997,6 +4315,38 @@ $("#trainingCard").addEventListener("pointerup", event => {
 });
 $("#showAnswer").addEventListener("change", event => $("#trainingMorse").style.visibility = event.target.checked ? "visible" : "hidden");
 $("#stopPlayer").addEventListener("click", () => stopMorse());
+$("#shopWorld").addEventListener("click", event => {
+  const draw = event.target.closest("[data-shop-draw]");
+  if (draw) {
+    draw.disabled = true;
+    api("/api/shop/draw", { method: "POST", body: JSON.stringify({ category: draw.dataset.shopDraw }) }).then(result => {
+      state.shopInventory = result.inventory || [];
+      state.shopEquipped = result.equipped || {};
+      state.shopLastDraw = { item: shopItem(result.item.id), duplicate: result.duplicate };
+      renderShop();
+    }).catch(error => showApiFailure(error)).finally(() => draw.disabled = false);
+    return;
+  }
+  const equip = event.target.closest("[data-shop-equip]");
+  if (!equip) return;
+  api("/api/shop/equip", { method: "POST", body: JSON.stringify({ itemId: equip.dataset.shopEquip }) }).then(result => {
+    state.shopInventory = result.inventory || [];
+    state.shopEquipped = result.equipped || {};
+    applyAccountUpdate(result.account);
+    renderShop();
+    showToast(state.language === "en" ? "Item equipped." : "아이템을 장착했습니다.");
+  }).catch(error => showApiFailure(error));
+});
+$("#groupThemeChoices").addEventListener("click", event => {
+  const button = event.target.closest("[data-group-theme]");
+  if (!button || !state.activeGroup) return;
+  api("/api/groups/theme", { method: "PATCH", body: JSON.stringify({ groupId: state.activeGroup.id, itemId: button.dataset.groupTheme }) }).then(({ group }) => {
+    state.activeGroup = group;
+    renderGroupMessages();
+    renderGroupThemeChoices();
+    loadGroups();
+  }).catch(error => showApiFailure(error));
+});
 document.querySelectorAll(".world-tab").forEach(button => button.addEventListener("click", () => switchWorld(button.dataset.world)));
 
 document.querySelectorAll(".quiz-mode").forEach(button => button.addEventListener("click", () => {
@@ -4105,6 +4455,7 @@ renderQuiz();
 renderQuizRecords();
 renderWriter();
 renderSettings();
+renderGame();
 $("#morseReference").innerHTML = LETTERS.map(letter => `
   <button type="button" data-reference-letter="${letter}"><strong>${letter}</strong><span>${prettyMorse(MORSE[letter])}</span></button>
 `).join("");

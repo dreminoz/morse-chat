@@ -30,6 +30,28 @@ const SECRET_MORSE = {
   "-.--": "Y", "--..": "Z", "-----": "0", ".----": "1", "..---": "2", "...--": "3", "....-": "4",
   ".....": "5", "-....": "6", "--...": "7", "---..": "8", "----.": "9"
 };
+const SHOP_ITEMS = [
+  { id: "chat_midnight", category: "chatTheme", slot: "chatTheme" },
+  { id: "chat_cream", category: "chatTheme", slot: "chatTheme" },
+  { id: "chat_ocean", category: "chatTheme", slot: "chatTheme" },
+  { id: "chat_neon", category: "chatTheme", slot: "chatTheme" },
+  { id: "random_void", category: "randomTheme", slot: "randomTheme" },
+  { id: "random_radar", category: "randomTheme", slot: "randomTheme" },
+  { id: "random_sunset", category: "randomTheme", slot: "randomTheme" },
+  { id: "random_ice", category: "randomTheme", slot: "randomTheme" },
+  { id: "sound_click", category: "morseSound", slot: "morseSound" },
+  { id: "sound_drop", category: "morseSound", slot: "morseSound" },
+  { id: "sound_beep", category: "morseSound", slot: "morseSound" },
+  { id: "sound_chime", category: "morseSound", slot: "morseSound" },
+  { id: "border_ring", category: "profile", slot: "profileBorder" },
+  { id: "border_neon", category: "profile", slot: "profileBorder" },
+  { id: "border_double", category: "profile", slot: "profileBorder" },
+  { id: "border_dashed", category: "profile", slot: "profileBorder" },
+  { id: "profile_night", category: "profile", slot: "profileBackground" },
+  { id: "profile_ocean", category: "profile", slot: "profileBackground" },
+  { id: "profile_sunset", category: "profile", slot: "profileBackground" },
+  { id: "profile_cream", category: "profile", slot: "profileBackground" }
+];
 
 function decodeSecretPresses(logs, sender) {
   const events = logs.filter(item => item.from === sender && ["down", "up"].includes(item.action));
@@ -110,7 +132,8 @@ function publicAccount(account) {
     nickname: account.nickname,
     signalId: account.signalId,
     description: account.description || "",
-    profileAscii: account.profileAscii || ""
+    profileAscii: account.profileAscii || "",
+    equipped: account.equipped || {}
   };
 }
 
@@ -381,6 +404,25 @@ const server = http.createServer(async (req, res) => {
     if (!vault || vault.passwordHash !== passwordHash) return json(res, 403, { error: "wrong-password" });
     return json(res, 200, { removed: await store.removeDiaryEntry(account.signalId, id) });
   }
+  if (req.method === "GET" && url.pathname === "/api/game/ranking") {
+    const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit")) || 10));
+    const ranking = await store.gameRanking(limit);
+    const mine = await store.gameRank(account.signalId);
+    return json(res, 200, {
+      ranking: ranking.map(({ owner, ...score }, index) => ({ ...score, rank: index + 1, mine: owner === account.signalId })),
+      mine: mine ? { ...mine.score, rank: mine.rank } : null
+    });
+  }
+  if (req.method === "POST" && url.pathname === "/api/game/score") {
+    const { timeMs } = await readBody(req);
+    const cleanTime = Math.round(Number(timeMs));
+    if (!Number.isFinite(cleanTime) || cleanTime < 1000 || cleanTime > 3600000) return json(res, 400, { error: "invalid-time" });
+    const result = await store.submitGameScore({
+      owner: account.signalId, nickname: account.nickname, timeMs: cleanTime, completedAt: Date.now()
+    });
+    const mine = await store.gameRank(account.signalId);
+    return json(res, 200, { ...result, mine: { ...mine.score, rank: mine.rank } });
+  }
   if (req.method === "GET" && url.pathname === "/api/profile") {
     const nickname = url.searchParams.get("nickname");
     const signalId = url.searchParams.get("signalId") || account.signalId;
@@ -454,6 +496,27 @@ const server = http.createServer(async (req, res) => {
     await store.updateAccount(account);
     return json(res, 200, { account: publicAccount(account) });
   }
+  if (req.method === "GET" && url.pathname === "/api/shop") {
+    return json(res, 200, { inventory: account.inventory || [], equipped: account.equipped || {} });
+  }
+  if (req.method === "POST" && url.pathname === "/api/shop/draw") {
+    const { category } = await readBody(req);
+    const pool = SHOP_ITEMS.filter(item => item.category === category);
+    if (!pool.length) return json(res, 400, { error: "invalid-shop-category" });
+    const item = pool[crypto.randomInt(pool.length)];
+    const duplicate = (account.inventory || []).includes(item.id);
+    account.inventory = [...new Set([...(account.inventory || []), item.id])];
+    await store.updateAccount(account);
+    return json(res, 200, { item, duplicate, inventory: account.inventory, equipped: account.equipped || {} });
+  }
+  if (req.method === "POST" && url.pathname === "/api/shop/equip") {
+    const { itemId } = await readBody(req);
+    const item = SHOP_ITEMS.find(candidate => candidate.id === itemId);
+    if (!item || !(account.inventory || []).includes(itemId)) return json(res, 403, { error: "item-not-owned" });
+    account.equipped = { ...(account.equipped || {}), [item.slot]: item.id };
+    await store.updateAccount(account);
+    return json(res, 200, { account: publicAccount(account), inventory: account.inventory, equipped: account.equipped });
+  }
   if (req.method === "GET" && url.pathname === "/api/events") {
     const userId = account.signalId;
     res.writeHead(200, {
@@ -480,14 +543,17 @@ const server = http.createServer(async (req, res) => {
     if (!to || !message) return json(res, 400, { error: "to and message required" });
     if (!await store.areFriends(from, to)) return json(res, 403, { error: "friends-only" });
     const target = await store.findAccountBySignalId(to);
+    const decoratedMessage = typeof message === "object"
+      ? { ...message, senderSound: account.equipped?.morseSound || "" }
+      : { text: String(message), senderSound: account.equipped?.morseSound || "" };
     const item = {
       id: crypto.randomUUID(), from, fromNickname: account.nickname,
-      to, toNickname: target?.nickname || to, message, createdAt: Date.now()
+      to, toNickname: target?.nickname || to, message: decoratedMessage, createdAt: Date.now()
     };
     await store.addDirect(item);
     emit(to, "direct-message", item);
     const sender = account.nickname;
-    pushToUser(to, "direct", { sender, ...messagePushData(message), url: "/#friends" }).catch(console.error);
+    pushToUser(to, "direct", { sender, ...messagePushData(decoratedMessage), url: "/#friends" }).catch(console.error);
     return json(res, 200, item);
   }
   if (req.method === "GET" && url.pathname === "/api/groups") {
@@ -512,6 +578,17 @@ const server = http.createServer(async (req, res) => {
     const group = await store.groupById(groupId);
     if (!group || group.type !== "custom" || group.owner !== account.signalId) return json(res, 403, { error: "owner-only" });
     group.profileAscii = String(profileAscii).slice(0, 30000);
+    const updated = await store.updateGroup(group);
+    await emitGroup(updated, "group-updated", { groupId });
+    return json(res, 200, { group: await publicGroup(updated, account.signalId) });
+  }
+  if (req.method === "PATCH" && url.pathname === "/api/groups/theme") {
+    const { groupId, itemId } = await readBody(req);
+    const group = await store.groupById(groupId);
+    const item = SHOP_ITEMS.find(candidate => candidate.id === itemId && candidate.slot === "chatTheme");
+    if (!group || group.type !== "custom" || group.owner !== account.signalId) return json(res, 403, { error: "owner-only" });
+    if (!item || !(account.inventory || []).includes(itemId)) return json(res, 403, { error: "item-not-owned" });
+    group.theme = itemId;
     const updated = await store.updateGroup(group);
     await emitGroup(updated, "group-updated", { groupId });
     return json(res, 200, { group: await publicGroup(updated, account.signalId) });
@@ -568,7 +645,7 @@ const server = http.createServer(async (req, res) => {
     const cleanText = String(text || "").trim().slice(0, 1000);
     if (!group || !group.members.includes(account.signalId)) return json(res, 404, { error: "group-not-found" });
     if (!cleanText) return json(res, 400, { error: "text-required" });
-    const item = { id: crypto.randomUUID(), groupId, from: account.signalId, fromNickname: account.nickname, text: cleanText, createdAt: Date.now() };
+    const item = { id: crypto.randomUUID(), groupId, from: account.signalId, fromNickname: account.nickname, text: cleanText, senderSound: account.equipped?.morseSound || "", createdAt: Date.now() };
     await store.addGroupMessage(item);
     group.members.forEach(member => emit(member, "group-message", publicGroupMessage(group, item, member)));
     if (group.type === "daily") {
@@ -701,8 +778,11 @@ const server = http.createServer(async (req, res) => {
     const userId = account.signalId;
     const partner = randomPairs.get(userId);
     if (!partner) return json(res, 409, { error: "not-connected" });
-    emit(partner, "random-message", { message });
-    pushToUser(partner, "random", { ...messagePushData(message), url: "/#random" }).catch(console.error);
+    const decoratedMessage = typeof message === "object"
+      ? { ...message, senderSound: account.equipped?.morseSound || "" }
+      : { text: String(message), senderSound: account.equipped?.morseSound || "" };
+    emit(partner, "random-message", { message: decoratedMessage });
+    pushToUser(partner, "random", { ...messagePushData(decoratedMessage), url: "/#random" }).catch(console.error);
     return json(res, 200, { ok: true });
   }
   if (req.method === "POST" && url.pathname === "/api/random/last") {
@@ -710,7 +790,10 @@ const server = http.createServer(async (req, res) => {
     const userId = account.signalId;
     const last = lastPartners.get(userId);
     if (!last) return json(res, 410, { error: "unavailable" });
-    emit(last.partner, "random-last", { message });
+    const decoratedMessage = typeof message === "object"
+      ? { ...message, senderSound: account.equipped?.morseSound || "" }
+      : { text: String(message), senderSound: account.equipped?.morseSound || "" };
+    emit(last.partner, "random-last", { message: decoratedMessage });
     lastPartners.delete(userId);
     return json(res, 200, { ok: true });
   }

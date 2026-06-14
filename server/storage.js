@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { MongoClient } = require("mongodb");
 
-const emptyData = () => ({ direct: [], groupChats: [], groupMessages: [], space: [], spaceReports: [], friendRequests: [], friendships: [], secretLogs: [], diaryVaults: [], diaryEntries: [], accounts: [], sessions: [] });
+const emptyData = () => ({ direct: [], groupChats: [], groupMessages: [], space: [], spaceReports: [], friendRequests: [], friendships: [], secretLogs: [], diaryVaults: [], diaryEntries: [], gameScores: [], accounts: [], sessions: [] });
 
 class FileStore {
   constructor(filePath) {
@@ -185,6 +185,22 @@ class FileStore {
     this.data.diaryEntries = this.data.diaryEntries.filter(item => !(item.owner === owner && item.id === id));
     this.save(); return this.data.diaryEntries.length !== before;
   }
+  async submitGameScore(item) {
+    const existing = this.data.gameScores.find(score => score.owner === item.owner);
+    if (!existing || item.timeMs < existing.timeMs) {
+      if (existing) Object.assign(existing, item);
+      else this.data.gameScores.push(item);
+      this.save();
+      return { score: item, improved: true };
+    }
+    return { score: existing, improved: false };
+  }
+  async gameRanking(limit = 100) { return [...this.data.gameScores].sort((a, b) => a.timeMs - b.timeMs).slice(0, limit); }
+  async gameRank(owner) {
+    const ranking = await this.gameRanking(this.data.gameScores.length);
+    const index = ranking.findIndex(item => item.owner === owner);
+    return index < 0 ? null : { rank: index + 1, score: ranking[index] };
+  }
 }
 
 class MongoStore {
@@ -209,6 +225,7 @@ class MongoStore {
     this.space = this.db.collection("space_signals");
     this.diaryVaults = this.db.collection("diary_vaults");
     this.diaryEntries = this.db.collection("diary_entries");
+    this.gameScores = this.db.collection("game_scores");
     await Promise.all([
       this.accounts.createIndex({ googleSub: 1 }, { unique: true }),
       this.accounts.createIndex({ signalId: 1 }, { unique: true }),
@@ -236,6 +253,8 @@ class MongoStore {
       ,this.diaryVaults.createIndex({ owner: 1 }, { unique: true })
       ,this.diaryEntries.createIndex({ owner: 1, createdAt: 1 })
       ,this.diaryEntries.createIndex({ owner: 1, id: 1 }, { unique: true })
+      ,this.gameScores.createIndex({ owner: 1 }, { unique: true })
+      ,this.gameScores.createIndex({ timeMs: 1 })
     ]);
     await this.migrateLegacyFile();
     const accepted = await this.friendRequests.find({ status: "accepted" }, { projection: { from: 1, to: 1 } }).toArray();
@@ -259,6 +278,7 @@ class MongoStore {
     if (legacy.space.length) await this.space.insertMany(legacy.space, { ordered: false }).catch(() => {});
     if (legacy.diaryVaults.length) await this.diaryVaults.insertMany(legacy.diaryVaults, { ordered: false }).catch(() => {});
     if (legacy.diaryEntries.length) await this.diaryEntries.insertMany(legacy.diaryEntries, { ordered: false }).catch(() => {});
+    if (legacy.gameScores.length) await this.gameScores.insertMany(legacy.gameScores, { ordered: false }).catch(() => {});
   }
 
   async health() {
@@ -441,6 +461,20 @@ class MongoStore {
   }
   async removeDiaryEntry(owner, id) {
     return Boolean((await this.diaryEntries.deleteOne({ owner, id })).deletedCount);
+  }
+  async submitGameScore(item) {
+    const existing = this.clean(await this.gameScores.findOne({ owner: item.owner }));
+    if (existing && existing.timeMs <= item.timeMs) return { score: existing, improved: false };
+    await this.gameScores.replaceOne({ owner: item.owner }, item, { upsert: true });
+    return { score: item, improved: true };
+  }
+  async gameRanking(limit = 100) {
+    return this.gameScores.find({}, { projection: { _id: 0 } }).sort({ timeMs: 1 }).limit(limit).toArray();
+  }
+  async gameRank(owner) {
+    const score = this.clean(await this.gameScores.findOne({ owner }));
+    if (!score) return null;
+    return { rank: await this.gameScores.countDocuments({ timeMs: { $lt: score.timeMs } }) + 1, score };
   }
 }
 
