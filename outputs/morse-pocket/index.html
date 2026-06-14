@@ -124,6 +124,12 @@
         </header>
         <div id="groupMessages" class="chat-messages"></div>
         <form id="groupMessageForm" class="chat-morse-composer group-chat-composer">
+          <div class="group-extra-actions">
+            <label class="photo-send-button" for="groupMessagePhotoInput"><span>ASCII 사진</span></label>
+            <select id="groupHiddenLimit"><option value="1">진동 전용 1회</option><option value="3">진동 전용 3회</option><option value="5">진동 전용 5회</option><option value="unlimited">진동 전용 무제한</option></select>
+            <button id="sendGroupHidden" type="button">진동 전용 보내기</button>
+          </div>
+          <input id="groupMessagePhotoInput" class="visually-hidden" type="file" accept="image/*">
           <div class="chat-morse-display"><textarea id="groupMessageInput" rows="1" maxlength="1000" placeholder="모스코드를 입력하세요"></textarea><small id="groupMessageSignal">현재 글자: 비어 있음</small></div>
           <button id="groupMessageKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>짧게 누르면 · 점 / 길게 누르면 − 선</span><small></small></button>
           <div class="group-chat-actions"><button id="clearGroupMessage" class="light-button" type="button">지우기</button><button type="submit">보내기</button></div>
@@ -446,6 +452,12 @@
       <header class="daily-group-header"><strong id="dailyGroupStatus">멤버를 불러오는 중입니다.</strong><button id="leaveDailyGroup" type="button">나가기</button></header>
       <div id="dailyGroupMessages" class="chat-messages daily-group-messages"></div>
       <form id="dailyGroupForm" class="chat-morse-composer group-chat-composer">
+        <div class="group-extra-actions">
+          <label class="photo-send-button" for="dailyGroupPhotoInput"><span>ASCII 사진</span></label>
+          <select id="dailyGroupHiddenLimit"><option value="1">진동 전용 1회</option><option value="3">진동 전용 3회</option><option value="5">진동 전용 5회</option><option value="unlimited">진동 전용 무제한</option></select>
+          <button id="sendDailyGroupHidden" type="button">진동 전용 보내기</button>
+        </div>
+        <input id="dailyGroupPhotoInput" class="visually-hidden" type="file" accept="image/*">
         <div class="chat-morse-display"><textarea id="dailyGroupInput" rows="1" maxlength="1000" placeholder="모스코드를 입력하세요"></textarea><small id="dailyGroupSignal">현재 글자: 비어 있음</small></div>
         <button id="dailyGroupKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>짧게 누르면 · 점 / 길게 누르면 − 선</span><small></small></button>
         <div class="group-chat-actions"><button id="clearDailyGroupMessage" class="light-button" type="button">지우기</button><button type="submit">보내기</button></div>
@@ -481,6 +493,12 @@
       </section>
       <section id="diaryDesk" class="diary-desk" hidden>
         <header class="diary-header"><div><p class="eyebrow">SECRET DIARY</p><h2>비밀일기</h2></div><button id="lockDiary" type="button">잠그기</button></header>
+        <section class="diary-calendar-card">
+          <div class="diary-calendar-nav"><button id="diaryPrevMonth" type="button">‹</button><strong id="diaryCalendarTitle"></strong><button id="diaryNextMonth" type="button">›</button></div>
+          <div class="diary-weekdays"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+          <div id="diaryCalendar" class="diary-calendar"></div>
+          <strong id="diarySelectedDate" class="diary-selected-date"></strong>
+        </section>
         <div id="diaryEntries" class="diary-entries"></div>
         <div class="diary-composer">
           <div class="chat-morse-display">
@@ -489,8 +507,9 @@
           </div>
           <button id="diaryKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>짧게 누르면 · 점 / 길게 누르면 − 선</span><small>대화 입력 설정을 따릅니다</small></button>
           <div class="diary-actions">
+            <button id="appendDiaryText" type="button">보내기</button>
             <button id="clearDiaryText" type="button">지우기</button>
-            <button id="saveDiaryEntry" class="primary-button swipe-send" type="button"><strong>저장</strong><small>오른쪽 밀기: 진동 전용</small></button>
+            <button id="saveDiaryEntry" class="primary-button swipe-send" type="button"><strong>일기 저장</strong><small>오른쪽 밀기: 진동 전용으로 저장</small></button>
           </div>
         </div>
       </section>

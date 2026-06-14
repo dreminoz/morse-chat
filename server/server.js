@@ -234,6 +234,10 @@ function publicGroupMessage(group, item, viewer) {
     fromNickname: item.from === viewer ? "나" : `익명 ${index + 1}`,
     mine: item.from === viewer,
     text: item.text,
+    type: item.type || "text",
+    hidden: Boolean(item.hidden),
+    limit: item.limit || "1",
+    senderSound: item.senderSound || "",
     createdAt: item.createdAt
   };
 }
@@ -382,17 +386,18 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { entries: await store.diaryEntriesFor(account.signalId) });
   }
   if (req.method === "POST" && url.pathname === "/api/diary/entries") {
-    const { passwordHash, text, vibrationOnly = false, entries = [] } = await readBody(req);
+    const { passwordHash, text, vibrationOnly = false, date = "", entries = [] } = await readBody(req);
     const vault = await store.diaryVault(account.signalId);
     if (!vault || vault.passwordHash !== passwordHash) return json(res, 403, { error: "wrong-password" });
-    const incoming = entries.length ? entries : [{ text, vibrationOnly, createdAt: Date.now() }];
+    const incoming = entries.length ? entries : [{ text, vibrationOnly, date, createdAt: Date.now() }];
     const saved = [];
     for (const entry of incoming.slice(0, 500)) {
       const cleanText = String(entry.text || "").trim().slice(0, 5000);
       if (!cleanText) continue;
+      const entryDate = /^\d{4}-\d{2}-\d{2}$/.test(String(entry.date || "")) ? String(entry.date) : "";
       const item = {
-        id: entry.id || crypto.randomUUID(), owner: account.signalId, text: cleanText,
-        vibrationOnly: Boolean(entry.vibrationOnly), createdAt: Number(entry.createdAt) || Date.now()
+        id: entryDate ? `diary-${entryDate}` : entry.id || crypto.randomUUID(), owner: account.signalId, text: cleanText,
+        date: entryDate, vibrationOnly: Boolean(entry.vibrationOnly), createdAt: Number(entry.createdAt) || Date.now(), updatedAt: Date.now()
       };
       saved.push(await store.addDiaryEntry(item));
     }
@@ -640,12 +645,17 @@ const server = http.createServer(async (req, res) => {
     });
   }
   if (req.method === "POST" && url.pathname === "/api/groups/send") {
-    const { groupId, text } = await readBody(req);
+    const { groupId, text, type = "text", hidden = false, limit = "1" } = await readBody(req);
     const group = await store.groupById(groupId);
-    const cleanText = String(text || "").trim().slice(0, 1000);
+    const cleanText = String(text || "").trim().slice(0, type === "ascii" ? 30000 : 1000);
     if (!group || !group.members.includes(account.signalId)) return json(res, 404, { error: "group-not-found" });
     if (!cleanText) return json(res, 400, { error: "text-required" });
-    const item = { id: crypto.randomUUID(), groupId, from: account.signalId, fromNickname: account.nickname, text: cleanText, senderSound: account.equipped?.morseSound || "", createdAt: Date.now() };
+    const item = {
+      id: crypto.randomUUID(), groupId, from: account.signalId, fromNickname: account.nickname, text: cleanText,
+      type: type === "ascii" ? "ascii" : "text", hidden: Boolean(hidden),
+      limit: ["1", "3", "5", "unlimited"].includes(String(limit)) ? String(limit) : "1",
+      senderSound: account.equipped?.morseSound || "", createdAt: Date.now()
+    };
     await store.addGroupMessage(item);
     group.members.forEach(member => emit(member, "group-message", publicGroupMessage(group, item, member)));
     if (group.type === "daily") {

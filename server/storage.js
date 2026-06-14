@@ -177,7 +177,11 @@ class FileStore {
   async diaryEntriesFor(owner) { return this.data.diaryEntries.filter(item => item.owner === owner).sort((a, b) => a.createdAt - b.createdAt); }
   async addDiaryEntry(item) {
     const existing = this.data.diaryEntries.find(entry => entry.owner === item.owner && entry.id === item.id);
-    if (existing) return existing;
+    if (existing) {
+      Object.assign(existing, item);
+      this.save();
+      return existing;
+    }
     this.data.diaryEntries.push(item); this.save(); return item;
   }
   async removeDiaryEntry(owner, id) {
@@ -456,7 +460,7 @@ class MongoStore {
     return this.diaryEntries.find({ owner }, { projection: { _id: 0 } }).sort({ createdAt: 1 }).toArray();
   }
   async addDiaryEntry(item) {
-    await this.diaryEntries.updateOne({ owner: item.owner, id: item.id }, { $setOnInsert: item }, { upsert: true });
+    await this.diaryEntries.updateOne({ owner: item.owner, id: item.id }, { $set: item }, { upsert: true });
     return item;
   }
   async removeDiaryEntry(owner, id) {
