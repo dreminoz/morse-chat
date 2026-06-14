@@ -2774,6 +2774,25 @@ function updateFriendNativeAd() {
   window.AndroidAds?.showFriendNativeAd?.(rect.left, rect.top, rect.width, rect.height);
 }
 
+window.handleAndroidAdStatus = (placement, status) => {
+  if (placement !== "native") return;
+  const slot = $("#friendNativeAdSlot");
+  if (!slot) return;
+  const statusText = slot.querySelector("small");
+  if (status === "loaded") {
+    slot.classList.add("ad-loaded");
+    if (statusText) statusText.textContent = state.language === "en" ? "Advertisement" : "광고";
+    requestAnimationFrame(updateFriendNativeAd);
+    return;
+  }
+  slot.classList.remove("ad-loaded");
+  const code = status.replace("error-", "");
+  const noFill = code === "3";
+  if (statusText) statusText.textContent = state.language === "en"
+    ? (noFill ? "Ad is preparing. Retrying automatically." : `Ad load failed (${code}). Retrying.`)
+    : (noFill ? "광고 준비 중입니다. 자동으로 다시 시도합니다." : `광고 로드 실패 (${code}) · 다시 시도 중`);
+};
+
 window.addEventListener("resize", () => requestAnimationFrame(updateFriendNativeAd));
 document.addEventListener("scroll", () => requestAnimationFrame(updateFriendNativeAd), true);
 new MutationObserver(() => requestAnimationFrame(updateFriendNativeAd)).observe(document.body, {

@@ -846,7 +846,13 @@ const server = http.createServer(async (req, res) => {
     const userId = account.signalId;
     leaveRandom(userId, false);
     const seen = randomPartnerHistory.get(userId) || new Set();
-    const partner = randomQueue.find(id => id !== userId && !seen.has(id) && !(randomPartnerHistory.get(id) || new Set()).has(userId));
+    const unseenPartner = randomQueue.find(id =>
+      id !== userId &&
+      !seen.has(id) &&
+      !(randomPartnerHistory.get(id) || new Set()).has(userId)
+    );
+    // Prefer a new person, but do not leave two waiting users disconnected forever.
+    const partner = unseenPartner || randomQueue.find(id => id !== userId);
     if (partner) {
       randomQueue.splice(randomQueue.indexOf(partner), 1);
       pairUsers(userId, partner);
