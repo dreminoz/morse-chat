@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { MongoClient } = require("mongodb");
 
-const emptyData = () => ({ direct: [], groupChats: [], groupMessages: [], space: [], spaceReports: [], friendRequests: [], friendships: [], secretLogs: [], accounts: [], sessions: [] });
+const emptyData = () => ({ direct: [], groupChats: [], groupMessages: [], space: [], spaceReports: [], friendRequests: [], friendships: [], secretLogs: [], diaryVaults: [], diaryEntries: [], accounts: [], sessions: [] });
 
 class FileStore {
   constructor(filePath) {
@@ -167,6 +167,24 @@ class FileStore {
     return choices.length ? choices[Math.floor(Math.random() * choices.length)] : null;
   }
   async reportSpace(item) { this.data.spaceReports.push(item); this.save(); }
+  async diaryVault(owner) { return this.data.diaryVaults.find(item => item.owner === owner) || null; }
+  async setDiaryVault(owner, passwordHash) {
+    const existing = await this.diaryVault(owner);
+    if (existing) existing.passwordHash = passwordHash;
+    else this.data.diaryVaults.push({ owner, passwordHash, createdAt: Date.now() });
+    this.save();
+  }
+  async diaryEntriesFor(owner) { return this.data.diaryEntries.filter(item => item.owner === owner).sort((a, b) => a.createdAt - b.createdAt); }
+  async addDiaryEntry(item) {
+    const existing = this.data.diaryEntries.find(entry => entry.owner === item.owner && entry.id === item.id);
+    if (existing) return existing;
+    this.data.diaryEntries.push(item); this.save(); return item;
+  }
+  async removeDiaryEntry(owner, id) {
+    const before = this.data.diaryEntries.length;
+    this.data.diaryEntries = this.data.diaryEntries.filter(item => !(item.owner === owner && item.id === id));
+    this.save(); return this.data.diaryEntries.length !== before;
+  }
 }
 
 class MongoStore {
@@ -189,6 +207,8 @@ class MongoStore {
     this.spaceReports = this.db.collection("space_reports");
     this.secretLogs = this.db.collection("secret_communication_logs");
     this.space = this.db.collection("space_signals");
+    this.diaryVaults = this.db.collection("diary_vaults");
+    this.diaryEntries = this.db.collection("diary_entries");
     await Promise.all([
       this.accounts.createIndex({ googleSub: 1 }, { unique: true }),
       this.accounts.createIndex({ signalId: 1 }, { unique: true }),
@@ -213,6 +233,9 @@ class MongoStore {
       ),
       this.space.createIndex({ sender: 1, day: 1 }, { unique: true }),
       this.space.createIndex({ createdAt: -1 })
+      ,this.diaryVaults.createIndex({ owner: 1 }, { unique: true })
+      ,this.diaryEntries.createIndex({ owner: 1, createdAt: 1 })
+      ,this.diaryEntries.createIndex({ owner: 1, id: 1 }, { unique: true })
     ]);
     await this.migrateLegacyFile();
     const accepted = await this.friendRequests.find({ status: "accepted" }, { projection: { from: 1, to: 1 } }).toArray();
@@ -234,6 +257,8 @@ class MongoStore {
     if (legacy.spaceReports.length) await this.spaceReports.insertMany(legacy.spaceReports, { ordered: false }).catch(() => {});
     if (legacy.secretLogs.length) await this.secretLogs.insertMany(legacy.secretLogs, { ordered: false }).catch(() => {});
     if (legacy.space.length) await this.space.insertMany(legacy.space, { ordered: false }).catch(() => {});
+    if (legacy.diaryVaults.length) await this.diaryVaults.insertMany(legacy.diaryVaults, { ordered: false }).catch(() => {});
+    if (legacy.diaryEntries.length) await this.diaryEntries.insertMany(legacy.diaryEntries, { ordered: false }).catch(() => {});
   }
 
   async health() {
@@ -402,6 +427,20 @@ class MongoStore {
   async reportSpace(item) {
     try { await this.spaceReports.insertOne(item); }
     catch (error) { if (error.code !== 11000) throw error; }
+  }
+  async diaryVault(owner) { return this.clean(await this.diaryVaults.findOne({ owner })); }
+  async setDiaryVault(owner, passwordHash) {
+    await this.diaryVaults.updateOne({ owner }, { $set: { owner, passwordHash }, $setOnInsert: { createdAt: Date.now() } }, { upsert: true });
+  }
+  async diaryEntriesFor(owner) {
+    return this.diaryEntries.find({ owner }, { projection: { _id: 0 } }).sort({ createdAt: 1 }).toArray();
+  }
+  async addDiaryEntry(item) {
+    await this.diaryEntries.updateOne({ owner: item.owner, id: item.id }, { $setOnInsert: item }, { upsert: true });
+    return item;
+  }
+  async removeDiaryEntry(owner, id) {
+    return Boolean((await this.diaryEntries.deleteOne({ owner, id })).deletedCount);
   }
 }
 

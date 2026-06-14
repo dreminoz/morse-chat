@@ -15,6 +15,20 @@ const MORSE = {
 
 const $ = (selector) => document.querySelector(selector);
 const I18N_PAIRS = [
+  ["비밀일기", "Secret Diary"],
+  ["비밀번호 입력", "Enter password"],
+  ["비밀번호 설정", "Set password"],
+  ["비밀번호 확인", "Confirm password"],
+  ["비밀일기 열기", "Open Secret Diary"],
+  ["비밀일기를 열려면 비밀번호를 입력하세요.", "Enter your password to open the Secret Diary."],
+  ["처음 사용할 비밀번호를 설정하세요. 잊으면 일기를 열 수 없습니다.", "Set your first password. A forgotten password cannot be recovered."],
+  ["일기를 입력하세요", "Write your diary entry"],
+  ["대화 입력 설정을 따릅니다", "Uses conversation input settings"],
+  ["오른쪽 밀기: 진동 전용", "Swipe right: vibration only"],
+  ["진동 전용 일기", "Vibration-only entry"],
+  ["탭해서 모스 진동으로 듣기 · 무제한", "Tap to play Morse vibration · Unlimited"],
+  ["아직 작성한 일기가 없습니다.", "No diary entries yet."],
+  ["잠그기", "Lock"],
   ["그룹 사진 설정", "Set group photo"],
   ["강퇴", "Remove"],
   ["나가기", "Leave"],
@@ -455,9 +469,29 @@ const state = {
   groupMessages: [],
   dailyGroup: null,
   dailyGroupMessages: [],
+  diaryUnlocked: false,
+  diaryEntries: JSON.parse(localStorage.getItem("morse-secret-diary-entries") || "[]"),
+  diaryHasServerPassword: false,
+  diaryPasswordHash: "",
+  diarySignal: "",
+  diaryText: "",
+  diaryLetterTimer: null,
+  diarySpaceTimer: null,
+  diaryKeyerStartX: 0,
+  diaryKeyerStartY: 0,
+  diarySaveStartX: 0,
+  diarySaveSwiped: false,
   groupSignal: "",
   dailyGroupSignal: "",
+  groupText: "",
+  dailyGroupText: "",
+  groupLetterTimer: null,
+  groupSpaceTimer: null,
+  dailyGroupLetterTimer: null,
+  dailyGroupSpaceTimer: null,
   groupKeyerStartedAt: 0,
+  groupKeyerStartX: 0,
+  groupKeyerStartY: 0,
   activeFriend: null,
   chatSignal: "",
   chatMorseText: "",
@@ -1441,6 +1475,7 @@ function renderGroupMessages() {
   $("#groupRoomName").textContent = state.activeGroup.name;
   $("#groupRoomMembers").textContent = `${state.activeGroup.members.length}명 참여 중`;
   renderGroupMessageList($("#groupMessages"), state.groupMessages, state.activeGroup);
+  renderGroupComposer(false);
 }
 
 function loadGroupHistory(groupId) {
@@ -1490,6 +1525,7 @@ function renderDailyGroup() {
   if (!state.dailyGroup) return;
   $("#dailyGroupStatus").textContent = `${state.dailyGroup.members.length}/10명`;
   renderGroupMessageList($("#dailyGroupMessages"), state.dailyGroupMessages, state.dailyGroup);
+  renderGroupComposer(true);
 }
 
 function loadDailyGroup() {
@@ -1514,28 +1550,91 @@ function sendGroupMessage(group, text, daily = false) {
   }).catch(error => showApiFailure(error));
 }
 
+function groupComposerKeys(daily) {
+  return daily
+    ? { signal: "dailyGroupSignal", text: "dailyGroupText", letterTimer: "dailyGroupLetterTimer", spaceTimer: "dailyGroupSpaceTimer", input: "#dailyGroupInput", status: "#dailyGroupSignal", keyer: "#dailyGroupKeyer" }
+    : { signal: "groupSignal", text: "groupText", letterTimer: "groupLetterTimer", spaceTimer: "groupSpaceTimer", input: "#groupMessageInput", status: "#groupMessageSignal", keyer: "#groupMessageKeyer" };
+}
+
+function renderGroupComposer(daily) {
+  const keys = groupComposerKeys(daily);
+  $(keys.input).value = state[keys.text];
+  $(keys.status).textContent = state[keys.signal] ? `현재 글자: ${prettyMorse(state[keys.signal])}` : "현재 글자: 비어 있음";
+  $(keys.keyer).querySelector("small").textContent = state.chatKeyerMode === "auto"
+    ? "3단위 휴식: 글자 확정 · 7단위 휴식: 띄어쓰기"
+    : `${state.reverseChatSwipe ? "오른쪽" : "왼쪽"}: 확정 · ${state.reverseChatSwipe ? "왼쪽" : "오른쪽"}: 띄어쓰기 · 위: 대문자 · 아래: 엔터`;
+}
+
+function commitGroupLetter(daily, uppercase = false) {
+  const keys = groupComposerKeys(daily);
+  clearTimeout(state[keys.letterTimer]);
+  if (!state[keys.signal]) return false;
+  const decoded = decodedInput(state[keys.signal], uppercase);
+  state[keys.signal] = "";
+  if (!decoded) {
+    renderGroupComposer(daily);
+    return false;
+  }
+  state[keys.text] += decoded;
+  renderGroupComposer(daily);
+  return true;
+}
+
+function commitGroupSpace(daily) {
+  const keys = groupComposerKeys(daily);
+  commitGroupLetter(daily);
+  if (state[keys.text] && !state[keys.text].endsWith(" ")) state[keys.text] += " ";
+  renderGroupComposer(daily);
+}
+
+function commitGroupNewline(daily) {
+  const keys = groupComposerKeys(daily);
+  commitGroupLetter(daily);
+  if (state[keys.text] && !state[keys.text].endsWith("\n")) state[keys.text] += "\n";
+  renderGroupComposer(daily);
+}
+
 function appendGroupMorseMark(daily, mark) {
-  const key = daily ? "dailyGroupSignal" : "groupSignal";
-  const input = $(daily ? "#dailyGroupInput" : "#groupMessageInput");
-  state[key] += mark;
+  const keys = groupComposerKeys(daily);
+  clearTimeout(state[keys.letterTimer]);
+  clearTimeout(state[keys.spaceTimer]);
+  if (state[keys.signal].length >= 10) return;
   pulseSignal(mark);
-  clearTimeout(state.groupLetterTimer);
-  state.groupLetterTimer = setTimeout(() => {
-    const decoded = decodedInput(state[key], false);
-    if (decoded) input.value += decoded.toLowerCase();
-    state[key] = "";
-  }, state.unit * 3);
+  state[keys.signal] += mark;
+  renderGroupComposer(daily);
+  if (state.chatKeyerMode === "auto") {
+    state[keys.letterTimer] = setTimeout(() => commitGroupLetter(daily), state.unit * 3);
+    state[keys.spaceTimer] = setTimeout(() => commitGroupSpace(daily), state.unit * 7);
+  }
+}
+
+function clearGroupComposerCharacter(daily) {
+  const keys = groupComposerKeys(daily);
+  if (state[keys.signal]) state[keys.signal] = state[keys.signal].slice(0, -1);
+  else state[keys.text] = graphemes(state[keys.text]).slice(0, -1).join("");
+  renderGroupComposer(daily);
 }
 
 function bindGroupKeyer(selector, daily) {
   const keyer = $(selector);
   keyer.addEventListener("pointerdown", event => {
+    const keys = groupComposerKeys(daily);
+    clearTimeout(state[keys.letterTimer]);
+    clearTimeout(state[keys.spaceTimer]);
     state.groupKeyerStartedAt = performance.now();
+    state.groupKeyerStartX = event.clientX;
+    state.groupKeyerStartY = event.clientY;
     keyer.classList.add("pressed");
     keyer.setPointerCapture?.(event.pointerId);
   });
-  keyer.addEventListener("pointerup", () => {
+  keyer.addEventListener("pointerup", event => {
     keyer.classList.remove("pressed");
+    const deltaX = event.clientX - state.groupKeyerStartX;
+    const deltaY = event.clientY - state.groupKeyerStartY;
+    if (state.chatKeyerMode === "auto"
+      && handleAutoVerticalSwipe(deltaX, deltaY, uppercase => commitGroupLetter(daily, uppercase), () => commitGroupNewline(daily))) return;
+    if (state.chatKeyerMode === "manual"
+      && handleManualComposerSwipe(deltaX, deltaY, uppercase => commitGroupLetter(daily, uppercase), () => commitGroupSpace(daily), () => commitGroupNewline(daily))) return;
     appendGroupMorseMark(daily, performance.now() - state.groupKeyerStartedAt < state.unit * 2 ? "." : "-");
   });
   keyer.addEventListener("pointercancel", () => keyer.classList.remove("pressed"));
@@ -1807,6 +1906,7 @@ function refreshLocalizedViews() {
   renderQuizRecords();
   renderWriter();
   renderSettings();
+  if (state.diaryUnlocked) renderDiary();
 }
 
 function applyLanguage(language) {
@@ -2031,8 +2131,120 @@ function closeChat() {
   renderFriends();
 }
 
+async function diaryPasswordHash(value) {
+  const bytes = new TextEncoder().encode(`MORSE-CHAT-DIARY:${value}`);
+  if (globalThis.crypto?.subtle) {
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+  }
+  return btoa(unescape(encodeURIComponent(value)));
+}
+
+async function openSecretDiary() {
+  state.diaryUnlocked = false;
+  state.diaryPasswordHash = "";
+  $("#diaryDesk").hidden = true;
+  $("#diaryLock").hidden = false;
+  $("#diaryPassword").value = "";
+  $("#diaryPasswordConfirm").value = "";
+  if (!state.authToken) {
+    openAuthPanel();
+    return;
+  }
+  try {
+    state.diaryHasServerPassword = (await api("/api/diary/status")).hasPassword;
+  } catch (error) {
+    showApiFailure(error);
+    return;
+  }
+  $("#diaryPasswordConfirm").hidden = state.diaryHasServerPassword;
+  $("#diaryLockTitle").textContent = state.diaryHasServerPassword ? "비밀번호 입력" : "비밀번호 설정";
+  $("#diaryLockHint").textContent = state.diaryHasServerPassword
+    ? "비밀일기를 열려면 비밀번호를 입력하세요."
+    : "처음 사용할 비밀번호를 설정하세요. 잊으면 일기를 열 수 없습니다.";
+  $("#unlockDiary").textContent = state.diaryHasServerPassword ? "비밀일기 열기" : "비밀번호 설정";
+}
+
+function lockSecretDiary() {
+  state.diaryUnlocked = false;
+  state.diarySignal = "";
+  state.diaryText = "";
+  state.diaryPasswordHash = "";
+  clearTimeout(state.diaryLetterTimer);
+  clearTimeout(state.diarySpaceTimer);
+  if ($("#diaryDesk")) $("#diaryDesk").hidden = true;
+  if ($("#diaryLock")) $("#diaryLock").hidden = false;
+}
+
+function renderDiary() {
+  $("#diaryText").value = state.diaryText;
+  $("#diarySignal").textContent = state.diarySignal ? `현재 글자: ${prettyMorse(state.diarySignal)}` : "현재 글자: 비어 있음";
+  $("#diaryEntries").innerHTML = state.diaryEntries.length
+    ? state.diaryEntries.map((entry, index) => entry.vibrationOnly
+      ? `<button type="button" class="diary-note vibration-only" data-diary-play="${index}"><time>${new Date(entry.createdAt).toLocaleString()}</time><strong>진동 전용 일기</strong><small>탭해서 모스 진동으로 듣기 · 무제한</small></button>`
+      : `<article class="diary-note"><time>${new Date(entry.createdAt).toLocaleString()}</time><p data-no-i18n>${escapeHtml(entry.text)}</p><button type="button" data-delete-diary="${index}" aria-label="일기 삭제">×</button></article>`
+    ).join("")
+    : '<p class="chat-empty">아직 작성한 일기가 없습니다.</p>';
+  $("#diaryEntries").scrollTop = $("#diaryEntries").scrollHeight;
+}
+
+function commitDiaryLetter(uppercase = false) {
+  clearTimeout(state.diaryLetterTimer);
+  if (!state.diarySignal) return false;
+  const decoded = decodedInput(state.diarySignal, uppercase);
+  state.diarySignal = "";
+  if (!decoded) return false;
+  state.diaryText += decoded;
+  renderDiary();
+  return true;
+}
+
+function commitDiarySpace() {
+  commitDiaryLetter();
+  if (state.diaryText && !state.diaryText.endsWith(" ")) state.diaryText += " ";
+  renderDiary();
+}
+
+function commitDiaryNewline() {
+  commitDiaryLetter();
+  if (state.diaryText && !state.diaryText.endsWith("\n")) state.diaryText += "\n";
+  renderDiary();
+}
+
+function addDiarySignal(mark) {
+  clearTimeout(state.diaryLetterTimer);
+  clearTimeout(state.diarySpaceTimer);
+  if (state.diarySignal.length >= 10) return;
+  pulseSignal(mark);
+  state.diarySignal += mark;
+  renderDiary();
+  if (state.chatKeyerMode === "auto") {
+    state.diaryLetterTimer = setTimeout(commitDiaryLetter, state.unit * 3);
+    state.diarySpaceTimer = setTimeout(commitDiarySpace, state.unit * 7);
+  }
+}
+
+async function storeDiaryEntry(vibrationOnly = false) {
+  commitDiaryLetter();
+  const text = state.diaryText.trim();
+  if (!text) return;
+  try {
+    const { entries } = await api("/api/diary/entries", {
+      method: "POST",
+      body: JSON.stringify({ passwordHash: state.diaryPasswordHash, text, vibrationOnly })
+    });
+    state.diaryEntries.push(...entries);
+    state.diaryText = "";
+    state.diarySignal = "";
+    renderDiary();
+  } catch (error) {
+    showApiFailure(error, "일기를 서버에 저장하지 못했습니다.");
+  }
+}
+
 function switchWorld(world) {
-  if (!["friends", "hall", "space", "randomSignal", "dailyGroup", "games", "shop", "profile"].includes(world)) world = "hall";
+  if (!["friends", "hall", "space", "randomSignal", "dailyGroup", "games", "secretDiary", "shop", "profile"].includes(world)) world = "hall";
+  if (state.world === "secretDiary" && world !== "secretDiary") lockSecretDiary();
   if (world !== "space") clearSpaceDecode();
   if (world !== "hall" && !state.account) {
     openAuthPanel();
@@ -2046,6 +2258,7 @@ function switchWorld(world) {
   $("#randomSignalWorld").hidden = world !== "randomSignal";
   $("#dailyGroupWorld").hidden = world !== "dailyGroup";
   $("#gamesWorld").hidden = world !== "games";
+  $("#secretDiaryWorld").hidden = world !== "secretDiary";
   $("#shopWorld").hidden = world !== "shop";
   $("#profileWorld").hidden = world !== "profile";
   document.querySelectorAll(".world-tab").forEach(button =>
@@ -2068,6 +2281,7 @@ function switchWorld(world) {
     loadGroups();
   }
   if (world === "dailyGroup") loadDailyGroup();
+  if (world === "secretDiary") openSecretDiary();
   if (world === "profile") renderMyProfile();
 }
 
@@ -2731,9 +2945,11 @@ $("#createGroupForm").addEventListener("submit", event => {
 $("#closeGroupChat").addEventListener("click", closeGroupChat);
 $("#groupMessageForm").addEventListener("submit", event => {
   event.preventDefault();
-  const input = $("#groupMessageInput");
-  sendGroupMessage(state.activeGroup, input.value);
-  input.value = "";
+  commitGroupLetter(false);
+  sendGroupMessage(state.activeGroup, state.groupText);
+  state.groupText = "";
+  state.groupSignal = "";
+  renderGroupComposer(false);
 });
 $("#openGroupManage").addEventListener("click", () => {
   if (!state.activeGroup) return;
@@ -2825,11 +3041,126 @@ $("#leaveDailyGroup").addEventListener("click", () => {
 });
 bindGroupKeyer("#groupMessageKeyer", false);
 bindGroupKeyer("#dailyGroupKeyer", true);
+$("#groupMessageInput").addEventListener("input", event => {
+  state.groupSignal = "";
+  state.groupText = event.target.value;
+  renderGroupComposer(false);
+});
+$("#dailyGroupInput").addEventListener("input", event => {
+  state.dailyGroupSignal = "";
+  state.dailyGroupText = event.target.value;
+  renderGroupComposer(true);
+});
+$("#clearGroupMessage").addEventListener("click", () => clearGroupComposerCharacter(false));
+$("#clearDailyGroupMessage").addEventListener("click", () => clearGroupComposerCharacter(true));
 $("#dailyGroupForm").addEventListener("submit", event => {
   event.preventDefault();
-  const input = $("#dailyGroupInput");
-  sendGroupMessage(state.dailyGroup, input.value, true);
-  input.value = "";
+  commitGroupLetter(true);
+  sendGroupMessage(state.dailyGroup, state.dailyGroupText, true);
+  state.dailyGroupText = "";
+  state.dailyGroupSignal = "";
+  renderGroupComposer(true);
+});
+$("#unlockDiary").addEventListener("click", async () => {
+  const password = $("#diaryPassword").value;
+  if (password.length < 4) return showToast("비밀번호를 4자 이상 입력하세요.");
+  const hash = await diaryPasswordHash(password);
+  try {
+    if (!state.diaryHasServerPassword) {
+      if (password !== $("#diaryPasswordConfirm").value) return showToast("비밀번호 확인이 일치하지 않습니다.");
+      await api("/api/diary/setup", { method: "POST", body: JSON.stringify({ passwordHash: hash }) });
+      state.diaryHasServerPassword = true;
+    }
+    const { entries } = await api("/api/diary/unlock", { method: "POST", body: JSON.stringify({ passwordHash: hash }) });
+    state.diaryPasswordHash = hash;
+    state.diaryEntries = entries;
+    const localEntries = JSON.parse(localStorage.getItem("morse-secret-diary-entries") || "[]");
+    if (localEntries.length) {
+      const migrated = await api("/api/diary/entries", {
+        method: "POST",
+        body: JSON.stringify({ passwordHash: hash, entries: localEntries })
+      });
+      state.diaryEntries.push(...migrated.entries);
+      localStorage.removeItem("morse-secret-diary-entries");
+      localStorage.removeItem("morse-secret-diary-password");
+    }
+  } catch (error) {
+    if (error.status === 403) return showToast("비밀번호가 맞지 않습니다.");
+    return showApiFailure(error, "비밀일기를 열지 못했습니다.");
+  }
+  state.diaryUnlocked = true;
+  $("#diaryLock").hidden = true;
+  $("#diaryDesk").hidden = false;
+  renderDiary();
+});
+["diaryPassword", "diaryPasswordConfirm"].forEach(id => $(`#${id}`).addEventListener("keydown", event => {
+  if (event.key === "Enter") $("#unlockDiary").click();
+}));
+$("#lockDiary").addEventListener("click", openSecretDiary);
+$("#diaryText").addEventListener("input", event => {
+  clearTimeout(state.diaryLetterTimer);
+  clearTimeout(state.diarySpaceTimer);
+  state.diarySignal = "";
+  state.diaryText = event.target.value;
+  $("#diarySignal").textContent = "현재 글자: 비어 있음";
+});
+$("#diaryKeyer").addEventListener("pointerdown", event => {
+  clearTimeout(state.diaryLetterTimer);
+  clearTimeout(state.diarySpaceTimer);
+  state.keyerPressStart = performance.now();
+  state.diaryKeyerStartX = event.clientX;
+  state.diaryKeyerStartY = event.clientY;
+  $("#diaryKeyer").classList.add("pressed");
+  $("#diaryKeyer").setPointerCapture?.(event.pointerId);
+});
+$("#diaryKeyer").addEventListener("pointerup", event => {
+  $("#diaryKeyer").classList.remove("pressed");
+  const deltaX = event.clientX - state.diaryKeyerStartX;
+  const deltaY = event.clientY - state.diaryKeyerStartY;
+  if (state.chatKeyerMode === "auto" && handleAutoVerticalSwipe(deltaX, deltaY, commitDiaryLetter, commitDiaryNewline)) return;
+  if (state.chatKeyerMode === "manual" && handleManualComposerSwipe(deltaX, deltaY, commitDiaryLetter, commitDiarySpace, commitDiaryNewline)) return;
+  addDiarySignal(performance.now() - state.keyerPressStart < state.unit * 2 ? "." : "-");
+});
+$("#diaryKeyer").addEventListener("pointercancel", () => $("#diaryKeyer").classList.remove("pressed"));
+$("#clearDiaryText").addEventListener("click", () => {
+  if (state.diarySignal) state.diarySignal = state.diarySignal.slice(0, -1);
+  else state.diaryText = graphemes(state.diaryText).slice(0, -1).join("");
+  renderDiary();
+});
+$("#saveDiaryEntry").addEventListener("click", () => {
+  if (state.diarySaveSwiped) {
+    state.diarySaveSwiped = false;
+    return;
+  }
+  storeDiaryEntry(false);
+});
+$("#saveDiaryEntry").addEventListener("pointerdown", event => {
+  state.diarySaveStartX = event.clientX;
+  state.diarySaveSwiped = false;
+  $("#saveDiaryEntry").classList.add("swiping");
+  $("#saveDiaryEntry").setPointerCapture?.(event.pointerId);
+});
+$("#saveDiaryEntry").addEventListener("pointerup", event => {
+  $("#saveDiaryEntry").classList.remove("swiping");
+  if (event.clientX - state.diarySaveStartX < 70) return;
+  state.diarySaveSwiped = true;
+  storeDiaryEntry(true);
+});
+$("#saveDiaryEntry").addEventListener("pointercancel", () => $("#saveDiaryEntry").classList.remove("swiping"));
+$("#diaryEntries").addEventListener("click", event => {
+  const play = event.target.closest("[data-diary-play]");
+  if (play) return playMorse(state.diaryEntries[Number(play.dataset.diaryPlay)]?.text || "", null, "");
+  const remove = event.target.closest("[data-delete-diary]");
+  if (!remove || !confirm("이 일기를 삭제할까요?")) return;
+  const index = Number(remove.dataset.deleteDiary);
+  const entry = state.diaryEntries[index];
+  api("/api/diary/entries", {
+    method: "DELETE",
+    body: JSON.stringify({ passwordHash: state.diaryPasswordHash, id: entry.id })
+  }).then(() => {
+    state.diaryEntries.splice(index, 1);
+    renderDiary();
+  }).catch(error => showApiFailure(error, "일기를 삭제하지 못했습니다."));
 });
 $("#closeChat").addEventListener("click", closeChat);
 $("#openChatProfile").addEventListener("click", () => state.activeFriend && openFriendProfile(state.activeFriend));
@@ -3282,6 +3613,8 @@ document.querySelectorAll("[data-chat-keyer-mode]").forEach(button => button.add
   clearKeyerTimers("writer");
   renderSettings();
   renderChatComposer();
+  renderGroupComposer(false);
+  renderGroupComposer(true);
   renderQuiz();
   renderWriter();
   if (state.randomSignalState === "connected") renderRandomChatComposer();
@@ -3298,6 +3631,8 @@ $("#reverseChatSwipe").addEventListener("change", event => {
   localStorage.setItem("morse-chat-swipe-reverse", String(state.reverseChatSwipe));
   renderSettings();
   renderChatComposer();
+  renderGroupComposer(false);
+  renderGroupComposer(true);
   if (state.randomSignalState === "connected") renderRandomChatComposer();
 });
 $("#settingsSpeed").addEventListener("input", event => {

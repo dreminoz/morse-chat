@@ -47,6 +47,7 @@
       <div class="world-tab-row secondary-world-tabs">
         <button class="world-tab" data-world="dailyGroup">데일리 그룹챗</button>
         <button class="world-tab" data-world="games">게임</button>
+        <button class="world-tab" data-world="secretDiary">비밀일기</button>
         <button class="world-tab" data-world="shop">상점</button>
       </div>
     </nav>
@@ -121,10 +122,10 @@
           </button>
         </header>
         <div id="groupMessages" class="chat-messages"></div>
-        <form id="groupMessageForm" class="group-message-form group-morse-form">
-          <textarea id="groupMessageInput" maxlength="1000" placeholder="그룹 메시지를 입력하세요"></textarea>
-          <button id="groupMessageKeyer" class="morse-keyer compact-group-keyer" type="button"><strong>PRESS & HOLD</strong><span>짧게: 점 · 길게: 선</span></button>
-          <button type="submit">보내기</button>
+        <form id="groupMessageForm" class="chat-morse-composer group-chat-composer">
+          <div class="chat-morse-display"><textarea id="groupMessageInput" rows="1" maxlength="1000" placeholder="모스코드를 입력하세요"></textarea><small id="groupMessageSignal">현재 글자: 비어 있음</small></div>
+          <button id="groupMessageKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>짧게 누르면 · 점 / 길게 누르면 − 선</span><small></small></button>
+          <div class="group-chat-actions"><button id="clearGroupMessage" class="light-button" type="button">지우기</button><button type="submit">보내기</button></div>
         </form>
       </section>
     </section>
@@ -443,10 +444,10 @@
     <section id="dailyGroupWorld" class="world-view daily-group-world" hidden>
       <header class="daily-group-header"><strong id="dailyGroupStatus">멤버를 불러오는 중입니다.</strong><button id="leaveDailyGroup" type="button">나가기</button></header>
       <div id="dailyGroupMessages" class="chat-messages daily-group-messages"></div>
-      <form id="dailyGroupForm" class="group-message-form group-morse-form">
-        <textarea id="dailyGroupInput" maxlength="1000" placeholder="익명 메시지를 입력하세요"></textarea>
-        <button id="dailyGroupKeyer" class="morse-keyer compact-group-keyer" type="button"><strong>PRESS & HOLD</strong><span>짧게: 점 · 길게: 선</span></button>
-        <button type="submit">보내기</button>
+      <form id="dailyGroupForm" class="chat-morse-composer group-chat-composer">
+        <div class="chat-morse-display"><textarea id="dailyGroupInput" rows="1" maxlength="1000" placeholder="모스코드를 입력하세요"></textarea><small id="dailyGroupSignal">현재 글자: 비어 있음</small></div>
+        <button id="dailyGroupKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>짧게 누르면 · 점 / 길게 누르면 − 선</span><small></small></button>
+        <div class="group-chat-actions"><button id="clearDailyGroupMessage" class="light-button" type="button">지우기</button><button type="submit">보내기</button></div>
       </form>
     </section>
 
@@ -455,6 +456,32 @@
         <p class="eyebrow">MORSE CHAT GAMES</p>
         <h2>게임</h2>
         <p>준비 중입니다.</p>
+      </section>
+    </section>
+
+    <section id="secretDiaryWorld" class="world-view secret-diary-world" hidden>
+      <section id="diaryLock" class="diary-lock-card">
+        <p class="eyebrow">SECRET DIARY</p>
+        <h2 id="diaryLockTitle">비밀번호 입력</h2>
+        <p id="diaryLockHint">비밀일기를 열려면 비밀번호를 입력하세요.</p>
+        <input id="diaryPassword" type="password" maxlength="64" autocomplete="off" placeholder="비밀번호">
+        <input id="diaryPasswordConfirm" type="password" maxlength="64" autocomplete="off" placeholder="비밀번호 확인" hidden>
+        <button id="unlockDiary" class="primary-button" type="button">비밀일기 열기</button>
+      </section>
+      <section id="diaryDesk" class="diary-desk" hidden>
+        <header class="diary-header"><div><p class="eyebrow">SECRET DIARY</p><h2>비밀일기</h2></div><button id="lockDiary" type="button">잠그기</button></header>
+        <div id="diaryEntries" class="diary-entries"></div>
+        <div class="diary-composer">
+          <div class="chat-morse-display">
+            <textarea id="diaryText" rows="4" maxlength="5000" placeholder="일기를 입력하세요"></textarea>
+            <small id="diarySignal">현재 글자: 비어 있음</small>
+          </div>
+          <button id="diaryKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>짧게 누르면 · 점 / 길게 누르면 − 선</span><small>대화 입력 설정을 따릅니다</small></button>
+          <div class="diary-actions">
+            <button id="clearDiaryText" type="button">지우기</button>
+            <button id="saveDiaryEntry" class="primary-button swipe-send" type="button"><strong>저장</strong><small>오른쪽 밀기: 진동 전용</small></button>
+          </div>
+        </div>
       </section>
     </section>
 

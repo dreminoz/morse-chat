@@ -342,6 +342,45 @@ const server = http.createServer(async (req, res) => {
     await store.updateAccount(account);
     return json(res, 200, { ok: true });
   }
+  if (req.method === "GET" && url.pathname === "/api/diary/status") {
+    return json(res, 200, { hasPassword: Boolean(await store.diaryVault(account.signalId)) });
+  }
+  if (req.method === "POST" && url.pathname === "/api/diary/setup") {
+    const { passwordHash } = await readBody(req);
+    if (!passwordHash || String(passwordHash).length < 20) return json(res, 400, { error: "invalid-password" });
+    if (await store.diaryVault(account.signalId)) return json(res, 409, { error: "password-already-set" });
+    await store.setDiaryVault(account.signalId, String(passwordHash));
+    return json(res, 200, { ok: true });
+  }
+  if (req.method === "POST" && url.pathname === "/api/diary/unlock") {
+    const { passwordHash } = await readBody(req);
+    const vault = await store.diaryVault(account.signalId);
+    if (!vault || vault.passwordHash !== passwordHash) return json(res, 403, { error: "wrong-password" });
+    return json(res, 200, { entries: await store.diaryEntriesFor(account.signalId) });
+  }
+  if (req.method === "POST" && url.pathname === "/api/diary/entries") {
+    const { passwordHash, text, vibrationOnly = false, entries = [] } = await readBody(req);
+    const vault = await store.diaryVault(account.signalId);
+    if (!vault || vault.passwordHash !== passwordHash) return json(res, 403, { error: "wrong-password" });
+    const incoming = entries.length ? entries : [{ text, vibrationOnly, createdAt: Date.now() }];
+    const saved = [];
+    for (const entry of incoming.slice(0, 500)) {
+      const cleanText = String(entry.text || "").trim().slice(0, 5000);
+      if (!cleanText) continue;
+      const item = {
+        id: entry.id || crypto.randomUUID(), owner: account.signalId, text: cleanText,
+        vibrationOnly: Boolean(entry.vibrationOnly), createdAt: Number(entry.createdAt) || Date.now()
+      };
+      saved.push(await store.addDiaryEntry(item));
+    }
+    return json(res, 200, { entries: saved });
+  }
+  if (req.method === "DELETE" && url.pathname === "/api/diary/entries") {
+    const { passwordHash, id } = await readBody(req);
+    const vault = await store.diaryVault(account.signalId);
+    if (!vault || vault.passwordHash !== passwordHash) return json(res, 403, { error: "wrong-password" });
+    return json(res, 200, { removed: await store.removeDiaryEntry(account.signalId, id) });
+  }
   if (req.method === "GET" && url.pathname === "/api/profile") {
     const nickname = url.searchParams.get("nickname");
     const signalId = url.searchParams.get("signalId") || account.signalId;
