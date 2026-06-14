@@ -2,12 +2,16 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const { OAuth2Client } = require("google-auth-library");
+const { OAuth2Client, GoogleAuth } = require("google-auth-library");
 const webPush = require("web-push");
 const { createStore } = require("./storage");
 
 const PORT = Number(process.env.PORT) || 8787;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+const GOOGLE_PLAY_PACKAGE_NAME = process.env.GOOGLE_PLAY_PACKAGE_NAME || "com.morsepocket.app";
+const GOOGLE_PLAY_SERVICE_ACCOUNT_JSON = process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON || "";
+const SHOP_DRAW_COST = 50;
+const SHOP_COIN_PRODUCT = "coins_100";
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "";
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "";
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:admin@example.com";
@@ -52,6 +56,20 @@ const SHOP_ITEMS = [
   { id: "profile_sunset", category: "profile", slot: "profileBackground" },
   { id: "profile_cream", category: "profile", slot: "profileBackground" }
 ];
+
+async function verifyGooglePlayPurchase(productId, purchaseToken) {
+  if (productId !== SHOP_COIN_PRODUCT || !purchaseToken) throw new Error("invalid-purchase");
+  if (!GOOGLE_PLAY_SERVICE_ACCOUNT_JSON) throw new Error("google-play-not-configured");
+  const credentials = JSON.parse(GOOGLE_PLAY_SERVICE_ACCOUNT_JSON);
+  const auth = new GoogleAuth({ credentials, scopes: ["https://www.googleapis.com/auth/androidpublisher"] });
+  const client = await auth.getClient();
+  const headers = await client.getRequestHeaders();
+  const endpoint = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${encodeURIComponent(GOOGLE_PLAY_PACKAGE_NAME)}/purchases/products/${encodeURIComponent(productId)}/tokens/${encodeURIComponent(purchaseToken)}`;
+  const response = await fetch(endpoint, { headers });
+  const purchase = await response.json().catch(() => ({}));
+  if (!response.ok || purchase.purchaseState !== 0 || purchase.consumptionState !== 0) throw new Error("purchase-not-verified");
+  return purchase;
+}
 
 function decodeSecretPresses(logs, sender) {
   const events = logs.filter(item => item.from === sender && ["down", "up"].includes(item.action));
@@ -133,7 +151,8 @@ function publicAccount(account) {
     signalId: account.signalId,
     description: account.description || "",
     profileAscii: account.profileAscii || "",
-    equipped: account.equipped || {}
+    equipped: account.equipped || {},
+    coins: Number(account.coins || 0)
   };
 }
 
@@ -334,6 +353,7 @@ const server = http.createServer(async (req, res) => {
         email: google.email,
         nickname: nickname.trim(),
         nicknameHistory: [],
+        coins: 0,
         signalId: `SIGNAL-${crypto.randomBytes(4).toString("hex").toUpperCase()}`,
         createdAt: Date.now()
       };
@@ -509,17 +529,40 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { account: publicAccount(account) });
   }
   if (req.method === "GET" && url.pathname === "/api/shop") {
-    return json(res, 200, { inventory: account.inventory || [], equipped: account.equipped || {} });
+    return json(res, 200, {
+      inventory: account.inventory || [], equipped: account.equipped || {},
+      coins: Number(account.coins || 0), drawCost: SHOP_DRAW_COST,
+      coinProduct: { id: SHOP_COIN_PRODUCT, coins: 100, displayPrice: "₩500" }
+    });
   }
   if (req.method === "POST" && url.pathname === "/api/shop/draw") {
     const { category } = await readBody(req);
-    const pool = SHOP_ITEMS.filter(item => item.category === category);
-    if (!pool.length) return json(res, 400, { error: "invalid-shop-category" });
+    const categoryItems = SHOP_ITEMS.filter(item => item.category === category);
+    if (!categoryItems.length) return json(res, 400, { error: "invalid-shop-category" });
+    const owned = new Set(account.inventory || []);
+    const pool = categoryItems.filter(item => !owned.has(item.id));
+    if (!pool.length) return json(res, 409, { error: "all-items-owned", coins: Number(account.coins || 0) });
+    if (Number(account.coins || 0) < SHOP_DRAW_COST) {
+      return json(res, 402, { error: "not-enough-coins", coins: Number(account.coins || 0), cost: SHOP_DRAW_COST });
+    }
     const item = pool[crypto.randomInt(pool.length)];
-    const duplicate = (account.inventory || []).includes(item.id);
-    account.inventory = [...new Set([...(account.inventory || []), item.id])];
-    await store.updateAccount(account);
-    return json(res, 200, { item, duplicate, inventory: account.inventory, equipped: account.equipped || {} });
+    const updated = await store.spendCoinsAndAddInventory(account.googleSub, item.id, SHOP_DRAW_COST);
+    if (!updated) return json(res, 409, { error: "draw-conflict" });
+    return json(res, 200, { item, duplicate: false, coins: updated.coins, inventory: updated.inventory, equipped: updated.equipped || {} });
+  }
+  if (req.method === "POST" && url.pathname === "/api/shop/google-play/verify") {
+    try {
+      const { productId, purchaseToken } = await readBody(req);
+      await verifyGooglePlayPurchase(productId, purchaseToken);
+      const recorded = await store.addShopPurchase({
+        id: crypto.randomUUID(), purchaseToken, productId, owner: account.signalId, coins: 100, createdAt: Date.now()
+      });
+      if (!recorded) return json(res, 409, { error: "purchase-already-used", coins: Number(account.coins || 0) });
+      const updated = await store.creditCoins(account.googleSub, 100);
+      return json(res, 200, { coins: Number(updated?.coins || 0) });
+    } catch (error) {
+      return json(res, 400, { error: error.message || "purchase-verification-failed" });
+    }
   }
   if (req.method === "POST" && url.pathname === "/api/shop/equip") {
     const { itemId } = await readBody(req);
@@ -752,7 +795,12 @@ const server = http.createServer(async (req, res) => {
     const { text, type = "text", day = localDay() } = await readBody(req);
     const sender = account.signalId;
     if (!text) return json(res, 400, { error: "text required" });
-    const signal = { id: crypto.randomUUID(), sender, text, type, day, createdAt: Date.now() };
+    const cleanText = String(text).trim();
+    if (type === "text" && !/^[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$/.test(cleanText)) {
+      return json(res, 400, { error: "space-english-numbers-only" });
+    }
+    if (!["text", "ascii"].includes(type)) return json(res, 400, { error: "invalid-space-type" });
+    const signal = { id: crypto.randomUUID(), sender, text: cleanText, type, day, createdAt: Date.now() };
     if (!await store.addSpace(signal)) return json(res, 409, { error: "daily-limit" });
     (await store.allAccounts()).filter(item => item.signalId !== sender && !(item.blockedSpaceSenders || []).includes(sender))
       .forEach(item => pushToUser(item.signalId, "space", { url: "/#space" }).catch(console.error));

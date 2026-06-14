@@ -57,12 +57,17 @@ h1 span { color: var(--ink); -webkit-text-stroke: 0; -webkit-text-fill-color: va
 .shop-world { display: grid; gap: 12px; padding-bottom: 22px; }
 .shop-hero { padding: 22px; border-radius: 20px; color: white; background: #050505; }
 .shop-hero .eyebrow { color: #aaa; }.shop-hero h2 { margin: 6px 0; font-size: 34px; }.shop-hero p:last-child { margin: 0; color: #aaa; font-size: 10px; }
+.shop-wallet-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 17px; background: white; }
+.shop-wallet-card div small, .shop-wallet-card div strong, .shop-wallet-card button strong, .shop-wallet-card button small { display: block; }
+.shop-wallet-card div small { color: var(--muted); font-size: 8px; font-weight: 850; letter-spacing: .12em; }.shop-wallet-card div strong { margin-top: 3px; font-size: 25px; }
+.shop-wallet-card button { min-width: 128px; padding: 10px 14px; border: 0; border-radius: 12px; color: white; text-align: left; background: #080808; }.shop-wallet-card button strong { font-size: 15px; }.shop-wallet-card button small { margin-top: 2px; color: #aaa; font-size: 7px; }
 .shop-category-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .shop-category-card { display: grid; gap: 7px; min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 17px; background: white; cursor: pointer; }
 .shop-category-card:active { transform: scale(.985); }
 .shop-category-card > span { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px; color: white; background: #080808; font-size: 9px; font-weight: 900; }
 .shop-category-card strong { font-size: 13px; }.shop-category-card small { min-height: 30px; color: var(--muted); font-size: 8px; line-height: 1.5; }
 .shop-category-card button { padding: 10px 4px; border: 0; border-radius: 10px; color: white; background: #080808; font-size: 9px; font-weight: 850; }
+.shop-category-card button:disabled { color: #777; background: #ddd; }
 .shop-result { display: flex; align-items: center; gap: 12px; padding: 14px; border: 2px solid #080808; border-radius: 16px; background: white; animation: shopReveal .28s ease-out; }
 .shop-result > span { display: grid; place-items: center; width: 50px; height: 50px; border-radius: 14px; color: white; background: #080808; font-size: 9px; font-weight: 900; }
 .shop-result small, .shop-result strong { display: block; }.shop-result small { color: var(--muted); font-size: 8px; }.shop-result strong { margin-top: 4px; }

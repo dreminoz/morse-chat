@@ -107,6 +107,7 @@ const I18N_PAIRS = [
   ["랜덤 시그널 수신", "Receive random signal"],
   ["모스 진동으로 읽기", "Read as Morse vibration"],
   ["우주로 보낼 문장을 입력하세요", "Enter a sentence to send into space"],
+  ["영어와 숫자로 우주 시그널을 입력하세요", "Enter a Space Signal using English letters and numbers"],
   ["오늘은 이미 시그널을 발신했습니다.", "You already transmitted a signal today."],
   ["오늘 아직 시그널을 발신하지 않았습니다.", "You have not transmitted a signal today."],
   ["우주로 시그널을 발신했습니다.", "Signal transmitted into space."],
@@ -254,6 +255,7 @@ const I18N_PAIRS = [
   ["전체 지우기", "Clear current code"],
   ["사진 변환 결과", "Photo conversion result"],
   ["알파벳 모스부호", "Alphabet Morse code"],
+  ["알파벳·숫자 모스부호", "Alphabet and number Morse code"],
   ["모스부호순", "Morse order"],
   ["알파벳순", "Alphabetical"],
   ["문장 훈련", "Sentence training"],
@@ -383,6 +385,7 @@ function compareMorse(a, b) {
   return aKey < bKey ? -1 : aKey > bKey ? 1 : 0;
 }
 const MORSE_ORDER = [...LETTERS].sort(compareMorse);
+const REFERENCE_ITEMS = [...LETTERS, ..."0123456789", "10"];
 const REVERSE_MORSE = Object.fromEntries(Object.entries(MORSE).map(([key, value]) => [value, key]));
 const SENTENCES = [
   "KEEP GOING",
@@ -653,6 +656,8 @@ const state = {
   googleClientId: "",
   shopInventory: [],
   shopEquipped: {},
+  shopCoins: 0,
+  shopDrawCost: 50,
   shopLastDraw: null,
   shopInventoryCategory: "randomTheme",
   chatMessageHoldTimer: null,
@@ -1378,9 +1383,7 @@ function commitSpaceSendSpace() {
 }
 
 function commitSpaceSendNewline() {
-  commitSpaceSendLetter();
-  if (state.spaceSendText && !state.spaceSendText.endsWith("\n")) state.spaceSendText += "\n";
-  renderSpace();
+  commitSpaceSendSpace();
 }
 
 function addSpaceSendSignal(mark) {
@@ -2592,12 +2595,23 @@ function renderShop() {
   $(".shop-hero p:last-child").textContent = ko ? "종류를 고르고 꾸미기 아이템을 무작위로 뽑아보세요." : "Choose a category and draw one decoration at random.";
   $(".shop-inventory-card .section-heading strong").textContent = ko ? "보유 아이템" : "Inventory";
   $(".shop-inventory-card .section-heading small").textContent = ko ? "장착을 눌러 아이템을 적용합니다." : "Tap Equip to use an item.";
+  $("#shopCoinBalance").textContent = Number(state.shopCoins || 0).toLocaleString();
+  $("#buyCoins100 strong").textContent = ko ? "재화 100개" : "100 coins";
   $("#shopDrawCategories").innerHTML = SHOP_CATEGORIES.map(category => `
     <article class="shop-category-card" data-shop-preview="${category.id}">
       <span>${category.name.slice(0, 3).toUpperCase()}</span>
       <strong>${categoryNames[category.id]}</strong>
       <small>${categoryDescriptions[category.id]}</small>
-      <button type="button" data-shop-draw="${category.id}">${ko ? "랜덤 뽑기" : "Random Draw"}</button>
+      ${(() => {
+        const allOwned = SHOP_ITEMS.filter(item => item.category === category.id).every(item => state.shopInventory.includes(item.id));
+        const insufficient = state.shopCoins < state.shopDrawCost;
+        const label = allOwned
+          ? (ko ? "모두 보유 중" : "All owned")
+          : insufficient
+            ? (ko ? `재화 ${state.shopDrawCost}개 필요` : `Need ${state.shopDrawCost} coins`)
+            : (ko ? `랜덤 뽑기 · ${state.shopDrawCost}` : `Random Draw · ${state.shopDrawCost}`);
+        return `<button type="button" data-shop-draw="${category.id}" ${allOwned || insufficient ? "disabled" : ""}>${label}</button>`;
+      })()}
     </article>`).join("");
   const result = state.shopLastDraw;
   $("#shopResult").hidden = !result;
@@ -2630,9 +2644,11 @@ function renderProfileInventorySections(items, ko) {
 
 function loadShop() {
   if (!state.authToken) return;
-  api("/api/shop").then(({ inventory, equipped }) => {
+  api("/api/shop").then(({ inventory, equipped, coins, drawCost }) => {
     state.shopInventory = inventory || [];
     state.shopEquipped = equipped || {};
+    state.shopCoins = Number(coins || 0);
+    state.shopDrawCost = Number(drawCost || 50);
     renderShop();
     if (!$("#groupManagePanel").hidden) renderGroupThemeChoices();
   }).catch(error => showApiFailure(error));
@@ -4355,7 +4371,11 @@ $("#spaceSendInput").addEventListener("input", event => {
   clearTimeout(state.spaceSendLetterTimer);
   clearTimeout(state.spaceSendSpaceTimer);
   state.spaceSendSignal = "";
-  state.spaceSendText = event.target.value;
+  const filtered = event.target.value.replace(/[^A-Za-z0-9 ]+/g, "").replace(/ {2,}/g, " ");
+  state.spaceSendText = filtered;
+  if (event.target.value !== filtered) {
+    showToast(state.language === "en" ? "Space Signals only allow English letters and numbers." : "우주 시그널은 영어와 숫자만 입력할 수 있습니다.");
+  }
   renderSpace();
 });
 $("#spaceSendKeyer").addEventListener("pointerdown", event => {
@@ -4384,6 +4404,10 @@ $("#spaceSendForm").addEventListener("submit", event => {
   commitSpaceSendLetter();
   const text = state.spaceSendText.trim();
   if (!text) return;
+  if (!/^[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$/.test(text)) {
+    showToast(state.language === "en" ? "Space Signals only allow English letters and numbers." : "우주 시그널은 영어와 숫자만 입력할 수 있습니다.");
+    return;
+  }
   api("/api/space/send", {
     method: "POST",
     body: JSON.stringify({ sender: state.userId, text, day: todayKey() })
@@ -4561,9 +4585,17 @@ $("#shopWorld").addEventListener("click", event => {
     api("/api/shop/draw", { method: "POST", body: JSON.stringify({ category: draw.dataset.shopDraw }) }).then(result => {
       state.shopInventory = result.inventory || [];
       state.shopEquipped = result.equipped || {};
+      state.shopCoins = Number(result.coins || 0);
       state.shopLastDraw = { item: shopItem(result.item.id), duplicate: result.duplicate };
       renderShop();
-    }).catch(error => showApiFailure(error)).finally(() => draw.disabled = false);
+    }).catch(error => {
+      if (error.status === 409 && error.body?.error === "all-items-owned") {
+        showToast(state.language === "en" ? "You already own every item in this category." : "이 종류의 아이템을 모두 가지고 있습니다.");
+      } else if (error.status === 402) {
+        showToast(state.language === "en" ? "You need 50 coins to draw." : "뽑기에는 재화 50개가 필요합니다.");
+      } else showApiFailure(error);
+      loadShop();
+    }).finally(() => draw.disabled = false);
     return;
   }
   const inventoryCategory = event.target.closest("[data-shop-inventory-category]");
@@ -4609,6 +4641,35 @@ $("#shopWorld").addEventListener("click", event => {
     showToast(state.language === "en" ? "Item equipped." : "아이템을 장착했습니다.");
   }).catch(error => showApiFailure(error));
 });
+$("#buyCoins100").addEventListener("click", () => {
+  if (window.AndroidBilling?.purchaseCoins100) {
+    window.AndroidBilling.purchaseCoins100();
+  } else {
+    showToast(state.language === "en" ? "Coin purchases are available in the Android app." : "재화 구매는 Android 앱에서 이용할 수 있습니다.");
+  }
+});
+window.handleAndroidPurchase = async (productId, purchaseToken) => {
+  try {
+    const result = await api("/api/shop/google-play/verify", {
+      method: "POST",
+      body: JSON.stringify({ productId, purchaseToken })
+    });
+    state.shopCoins = Number(result.coins || 0);
+    window.AndroidBilling?.consume?.(purchaseToken);
+    renderShop();
+    showToast(state.language === "en" ? "100 coins added." : "재화 100개가 지급되었습니다.");
+  } catch (error) {
+    if (error.body?.error === "purchase-already-used") {
+      showToast(state.language === "en" ? "This purchase was already credited." : "이미 지급된 구매입니다.");
+    } else {
+      showToast(state.language === "en" ? "Could not verify the purchase." : "구매 확인에 실패했습니다.");
+    }
+  }
+};
+window.handleAndroidBillingError = message => {
+  if (message === "cancelled") return;
+  showToast(state.language === "en" ? `Purchase failed: ${message}` : `결제에 실패했습니다: ${message}`);
+};
 $("#closeShopPreview").addEventListener("click", () => $("#shopPreviewPanel").hidden = true);
 $("#shopPreviewItems").addEventListener("click", event => {
   const sound = event.target.closest("[data-preview-sound]");
@@ -4733,8 +4794,8 @@ renderQuizRecords();
 renderWriter();
 renderSettings();
 renderGame();
-$("#morseReference").innerHTML = LETTERS.map(letter => `
-  <button type="button" data-reference-letter="${letter}"><strong>${letter}</strong><span>${prettyMorse(MORSE[letter])}</span></button>
+$("#morseReference").innerHTML = REFERENCE_ITEMS.map(letter => `
+  <button type="button" data-reference-letter="${letter}"><strong>${letter}</strong><span>${prettyMorse(textToMorse(letter))}</span></button>
 `).join("");
 $("#morseReference").addEventListener("click", event => {
   const button = event.target.closest("[data-reference-letter]");

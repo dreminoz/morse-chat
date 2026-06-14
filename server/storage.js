@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { MongoClient } = require("mongodb");
 
-const emptyData = () => ({ direct: [], groupChats: [], groupMessages: [], space: [], spaceReports: [], friendRequests: [], friendships: [], secretLogs: [], diaryVaults: [], diaryEntries: [], gameScores: [], accounts: [], sessions: [] });
+const emptyData = () => ({ direct: [], groupChats: [], groupMessages: [], space: [], spaceReports: [], friendRequests: [], friendships: [], secretLogs: [], diaryVaults: [], diaryEntries: [], gameScores: [], shopPurchases: [], accounts: [], sessions: [] });
 
 class FileStore {
   constructor(filePath) {
@@ -36,6 +36,19 @@ class FileStore {
     if (index >= 0) this.data.accounts[index] = account;
     this.save();
     return account;
+  }
+  async spendCoinsAndAddInventory(googleSub, itemId, cost) {
+    const account = await this.findAccountByGoogleSub(googleSub);
+    if (!account || Number(account.coins || 0) < cost || (account.inventory || []).includes(itemId)) return null;
+    account.coins = Number(account.coins || 0) - cost;
+    account.inventory = [...new Set([...(account.inventory || []), itemId])];
+    return this.updateAccount(account);
+  }
+  async creditCoins(googleSub, amount) {
+    const account = await this.findAccountByGoogleSub(googleSub);
+    if (!account) return null;
+    account.coins = Number(account.coins || 0) + amount;
+    return this.updateAccount(account);
   }
   async removePushEndpointFromOtherAccounts(endpoint, googleSub) {
     this.data.accounts.forEach(account => {
@@ -205,6 +218,10 @@ class FileStore {
     const index = ranking.findIndex(item => item.owner === owner);
     return index < 0 ? null : { rank: index + 1, score: ranking[index] };
   }
+  async addShopPurchase(item) {
+    if (this.data.shopPurchases.some(purchase => purchase.purchaseToken === item.purchaseToken)) return false;
+    this.data.shopPurchases.push(item); this.save(); return true;
+  }
 }
 
 class MongoStore {
@@ -230,6 +247,7 @@ class MongoStore {
     this.diaryVaults = this.db.collection("diary_vaults");
     this.diaryEntries = this.db.collection("diary_entries");
     this.gameScores = this.db.collection("game_scores");
+    this.shopPurchases = this.db.collection("shop_purchases");
     await Promise.all([
       this.accounts.createIndex({ googleSub: 1 }, { unique: true }),
       this.accounts.createIndex({ signalId: 1 }, { unique: true }),
@@ -259,6 +277,7 @@ class MongoStore {
       ,this.diaryEntries.createIndex({ owner: 1, id: 1 }, { unique: true })
       ,this.gameScores.createIndex({ owner: 1 }, { unique: true })
       ,this.gameScores.createIndex({ timeMs: 1 })
+      ,this.shopPurchases.createIndex({ purchaseToken: 1 }, { unique: true })
     ]);
     await this.migrateLegacyFile();
     const accepted = await this.friendRequests.find({ status: "accepted" }, { projection: { from: 1, to: 1 } }).toArray();
@@ -283,6 +302,7 @@ class MongoStore {
     if (legacy.diaryVaults.length) await this.diaryVaults.insertMany(legacy.diaryVaults, { ordered: false }).catch(() => {});
     if (legacy.diaryEntries.length) await this.diaryEntries.insertMany(legacy.diaryEntries, { ordered: false }).catch(() => {});
     if (legacy.gameScores.length) await this.gameScores.insertMany(legacy.gameScores, { ordered: false }).catch(() => {});
+    if (legacy.shopPurchases.length) await this.shopPurchases.insertMany(legacy.shopPurchases, { ordered: false }).catch(() => {});
   }
 
   async health() {
@@ -312,6 +332,20 @@ class MongoStore {
       { upsert: true }
     );
     return account;
+  }
+  async spendCoinsAndAddInventory(googleSub, itemId, cost) {
+    return this.clean(await this.accounts.findOneAndUpdate(
+      { googleSub, coins: { $gte: cost }, inventory: { $ne: itemId } },
+      { $inc: { coins: -cost }, $addToSet: { inventory: itemId } },
+      { returnDocument: "after" }
+    ));
+  }
+  async creditCoins(googleSub, amount) {
+    return this.clean(await this.accounts.findOneAndUpdate(
+      { googleSub },
+      { $inc: { coins: amount } },
+      { returnDocument: "after" }
+    ));
   }
   async removePushEndpointFromOtherAccounts(endpoint, googleSub) {
     await this.accounts.updateMany(
@@ -479,6 +513,10 @@ class MongoStore {
     const score = this.clean(await this.gameScores.findOne({ owner }));
     if (!score) return null;
     return { rank: await this.gameScores.countDocuments({ timeMs: { $lt: score.timeMs } }) + 1, score };
+  }
+  async addShopPurchase(item) {
+    try { await this.shopPurchases.insertOne(item); return true; }
+    catch (error) { if (error.code === 11000) return false; throw error; }
   }
 }
 

@@ -294,8 +294,8 @@
 
     <section id="reference" class="view">
       <div class="reference-heading">
-        <p class="label">A TO Z REFERENCE</p>
-        <strong>알파벳 모스부호</strong>
+        <p class="label">A TO Z · 0 TO 10 REFERENCE</p>
+        <strong>알파벳·숫자 모스부호</strong>
       </div>
       <div id="morseReference" class="morse-reference"></div>
     </section>
@@ -321,7 +321,7 @@
           <span class="space-signal-flight"></span>
         </div>
         <form id="spaceSendForm" class="space-send-form">
-          <textarea id="spaceSendInput" maxlength="300" placeholder="우주로 보낼 문장을 입력하세요"></textarea>
+          <textarea id="spaceSendInput" maxlength="300" inputmode="text" placeholder="영어와 숫자로 우주 시그널을 입력하세요"></textarea>
           <small id="spaceSendSignal" class="space-send-signal">현재 글자: 비어 있음</small>
           <button id="spaceSendKeyer" class="morse-keyer space-keyer" type="button">
             <strong>PRESS & HOLD</strong>
@@ -524,6 +524,10 @@
         <p class="eyebrow">MORSE CHAT SHOP</p>
         <h2>상점</h2>
         <p>준비 중입니다.</p>
+      </section>
+      <section class="shop-wallet-card">
+        <div><small>MY SIGNAL COINS</small><strong id="shopCoinBalance">0</strong></div>
+        <button id="buyCoins100" type="button"><strong>100</strong><small>₩500 · Google Play</small></button>
       </section>
       <div id="shopDrawCategories" class="shop-category-grid"></div>
       <section id="shopResult" class="shop-result" hidden></section>
