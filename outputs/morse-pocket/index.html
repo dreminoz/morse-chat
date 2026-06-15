@@ -27,14 +27,18 @@
       <div id="localAuthFields" class="local-auth-fields" hidden>
         <p id="usernameCheckStatus" class="username-check-status" role="status" hidden></p>
         <label><span>ID</span><input id="localUsername" maxlength="24" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="letters, numbers, _, ., -"></label>
-        <button id="checkUsername" class="light-button" type="button">Check ID</button>
+        <button id="checkUsername" class="light-button inline-check-button" type="button">Check ID</button>
+        <p id="localNicknameCheckStatus" class="username-check-status" role="status" hidden></p>
         <label id="localNicknameLabel" hidden><span>Nickname</span><input id="localNickname" maxlength="24" autocomplete="nickname"></label>
+        <button id="checkLocalNickname" class="light-button inline-check-button" type="button" hidden>Check nickname</button>
         <label><span>Password</span><input id="localPassword" type="password" maxlength="72" autocomplete="current-password"></label>
         <label id="localPasswordConfirmLabel" hidden><span>Confirm password</span><input id="localPasswordConfirm" type="password" maxlength="72" autocomplete="new-password"></label>
         <button id="submitLocalAuth" class="primary-button" type="button">Login</button>
       </div>
       <div id="authFields" hidden>
+        <p id="authNicknameCheckStatus" class="username-check-status" role="status" hidden></p>
         <label><span>Nickname</span><input id="authNickname" maxlength="24" autocomplete="nickname"></label>
+        <button id="checkAuthNickname" class="light-button inline-check-button" type="button">Check nickname</button>
         <button id="submitAuth" class="primary-button" type="button">Set nickname</button>
       </div>
       <p id="authStatus" class="auth-status">Choose a sign-in method.</p>

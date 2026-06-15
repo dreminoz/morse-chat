@@ -440,6 +440,11 @@ const server = http.createServer(async (req, res) => {
     if (!validUsername(username)) return json(res, 400, { error: "invalid-username", available: false });
     return json(res, 200, { available: !(await store.usernameTaken(username)) });
   }
+  if (req.method === "GET" && url.pathname === "/api/auth/nickname") {
+    const nickname = String(url.searchParams.get("nickname") || "").trim();
+    if (nickname.length < 2 || nickname.length > 24) return json(res, 400, { error: "invalid-nickname", available: false });
+    return json(res, 200, { available: !(await store.nicknameTaken(nickname)) });
+  }
   if (req.method === "POST" && url.pathname === "/api/auth/register") {
     try {
       const { username: rawUsername, nickname: rawNickname, password, passwordConfirm } = await readBody(req);

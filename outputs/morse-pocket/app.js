@@ -807,6 +807,8 @@ const state = {
   googleClientId: "",
   authMode: "login",
   usernameChecked: "",
+  localNicknameChecked: "",
+  authNicknameChecked: "",
   shopInventory: [],
   shopEquipped: {},
   shopCoins: 0,
@@ -1084,7 +1086,9 @@ function setAuthMode(mode) {
   $("#localNicknameLabel").hidden = mode !== "register";
   $("#localPasswordConfirmLabel").hidden = mode !== "register";
   $("#checkUsername").hidden = mode !== "register";
+  $("#checkLocalNickname").hidden = mode !== "register";
   setUsernameCheckStatus();
+  setNicknameCheckStatus("#localNicknameCheckStatus");
   $("#localPassword").autocomplete = mode === "register" ? "new-password" : "current-password";
   $("#submitLocalAuth").textContent = mode === "register"
     ? uiText("회원가입", "Sign up", "新規登録")
@@ -1106,6 +1110,12 @@ function openAuthPanel() {
   $("#localPassword").value = "";
   $("#localPasswordConfirm").value = "";
   state.googleCredential = "";
+  state.usernameChecked = "";
+  state.localNicknameChecked = "";
+  state.authNicknameChecked = "";
+  setUsernameCheckStatus();
+  setNicknameCheckStatus("#localNicknameCheckStatus");
+  setNicknameCheckStatus("#authNicknameCheckStatus");
   setAuthMode("login");
 }
 
@@ -1126,6 +1136,46 @@ function setUsernameCheckStatus(message = "", kind = "") {
   status.textContent = message;
   status.classList.remove("available", "taken", "error");
   if (kind) status.classList.add(kind);
+}
+
+function setNicknameCheckStatus(selector, message = "", kind = "") {
+  const status = $(selector);
+  if (!status) return;
+  status.hidden = !message;
+  status.textContent = message;
+  status.classList.remove("available", "taken", "error");
+  if (kind) status.classList.add(kind);
+}
+
+function normalizeNickname(selector) {
+  const input = $(selector);
+  const nickname = input.value.trim();
+  input.value = nickname;
+  return nickname;
+}
+
+async function checkNicknameAvailability(inputSelector, statusSelector, stateKey) {
+  const nickname = normalizeNickname(inputSelector);
+  if (nickname.length < 2 || nickname.length > 24) {
+    state[stateKey] = "";
+    setNicknameCheckStatus(statusSelector, "Nickname must be 2-24 chars.", "error");
+    return false;
+  }
+  try {
+    const result = await api(`/api/auth/nickname?nickname=${encodeURIComponent(nickname)}`);
+    if (result.available) {
+      state[stateKey] = nickname;
+      setNicknameCheckStatus(statusSelector, "This nickname is available.", "available");
+      return true;
+    }
+    state[stateKey] = "";
+    setNicknameCheckStatus(statusSelector, "This nickname is already taken.", "taken");
+    return false;
+  } catch (error) {
+    state[stateKey] = "";
+    setNicknameCheckStatus(statusSelector, "Could not check this nickname.", "error");
+    return false;
+  }
 }
 
 async function checkLocalUsername() {
@@ -1164,6 +1214,7 @@ async function submitLocalAuth() {
     const passwordConfirm = $("#localPasswordConfirm").value;
     if (state.usernameChecked !== username && !(await checkLocalUsername())) return;
     if (nickname.length < 2) return showToast("Nickname must be at least 2 chars.");
+    if (state.localNicknameChecked !== nickname && !(await checkNicknameAvailability("#localNickname", "#localNicknameCheckStatus", "localNicknameChecked"))) return;
     if (password !== passwordConfirm) return showToast("Passwords do not match.");
     endpoint = "/api/auth/register";
     body.nickname = nickname;
@@ -4674,7 +4725,17 @@ $("#localUsername").addEventListener("input", () => {
   if (state.usernameChecked && state.usernameChecked !== $("#localUsername").value.trim().toLowerCase()) state.usernameChecked = "";
   setUsernameCheckStatus();
 });
+$("#localNickname").addEventListener("input", () => {
+  if (state.localNicknameChecked && state.localNicknameChecked !== $("#localNickname").value.trim()) state.localNicknameChecked = "";
+  setNicknameCheckStatus("#localNicknameCheckStatus");
+});
+$("#authNickname").addEventListener("input", () => {
+  if (state.authNicknameChecked && state.authNicknameChecked !== $("#authNickname").value.trim()) state.authNicknameChecked = "";
+  setNicknameCheckStatus("#authNicknameCheckStatus");
+});
 $("#checkUsername").addEventListener("click", checkLocalUsername);
+$("#checkLocalNickname").addEventListener("click", () => checkNicknameAvailability("#localNickname", "#localNicknameCheckStatus", "localNicknameChecked"));
+$("#checkAuthNickname").addEventListener("click", () => checkNicknameAvailability("#authNickname", "#authNicknameCheckStatus", "authNicknameChecked"));
 $("#submitLocalAuth").addEventListener("click", submitLocalAuth);
 $("#openAuthSettings").addEventListener("click", openAuthPanel);
 $("#logoutAccount").addEventListener("click", logoutAccount);
@@ -4747,17 +4808,21 @@ $("#closeAuthPanel").addEventListener("click", () => {
 });
 $("#submitAuth").addEventListener("click", async () => {
   const nickname = $("#authNickname").value.trim();
-  if (!state.googleCredential) return showToast("Google 계정을 먼저 선택하세요.");
-  if (nickname.length < 2) return showToast("닉네임은 2자 이상 입력하세요.");
+  if (!state.googleCredential) return showToast("Select a Google account first.");
+  if (nickname.length < 2) return showToast("Nickname must be at least 2 chars.");
+  if (state.authNicknameChecked !== nickname && !(await checkNicknameAvailability("#authNickname", "#authNicknameCheckStatus", "authNicknameChecked"))) return;
   try {
     const result = await api("/api/auth/google", {
       method: "POST",
       body: JSON.stringify({ credential: state.googleCredential, nickname })
     });
     setAccount(result.token, result.account);
-    showToast("닉네임이 설정되었습니다.");
+    showToast("Nickname set.");
   } catch (error) {
-    showToast(error.body?.error || "닉네임 설정에 실패했습니다.");
+    if (error.body?.error === "nickname-taken") {
+      setNicknameCheckStatus("#authNicknameCheckStatus", "This nickname is already taken.", "taken");
+    }
+    showToast(error.body?.error || "Failed to set nickname.");
   }
 });
 $("#toggleAutocompleteSettings").addEventListener("click", () => {
