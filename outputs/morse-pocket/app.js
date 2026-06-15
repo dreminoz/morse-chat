@@ -10,7 +10,9 @@ const MORSE = {
   Q: "--.-", R: ".-.", S: "...", T: "-", U: "..-", V: "...-", W: ".--", X: "-..-",
   Y: "-.--", Z: "--..", 0: "-----", 1: ".----", 2: "..---", 3: "...--", 4: "....-",
   5: ".....", 6: "-....", 7: "--...", 8: "---..", 9: "----.",
-  ".": ".-.-.-", ",": "--..--", "?": "..--..", "!": "-.-.--", "/": "-..-.", "@": ".--.-.", "-": "-....-"
+  ".": ".-.-.-", ",": "--..--", "?": "..--..", "!": "-.-.--", "/": "-..-.", "@": ".--.-.", "-": "-....-",
+  "'": ".----.", "(": "-.--.", ")": "-.--.-", ":": "---...", ";": "-.-.-.", "=": "-...-", "+": ".-.-.",
+  "_": "..--.-", "\"": ".-..-.", "$": "...-..-", "&": ".-..."
 };
 const SHOP_ITEMS = [
   { id: "chat_midnight", category: "chatTheme", slot: "chatTheme", name: "Midnight", icon: "MID" },
@@ -395,7 +397,7 @@ function compareMorse(a, b) {
   return aKey < bKey ? -1 : aKey > bKey ? 1 : 0;
 }
 const MORSE_ORDER = [...LETTERS].sort(compareMorse);
-const REFERENCE_ITEMS = [...LETTERS, ..."0123456789", "10"];
+const REFERENCE_ITEMS = [...LETTERS, ..."0123456789", "10", ".", ",", "?", "!", "/", "@", "-", "'", "(", ")", ":", ";", "=", "+", "_", "\"", "$", "&"];
 const REVERSE_MORSE = Object.fromEntries(Object.entries(MORSE).map(([key, value]) => [value, key]));
 const SENTENCES = [
   "KEEP GOING",
@@ -506,6 +508,10 @@ const state = {
   friendRequests: [],
   sentFriendRequests: [],
   chats: JSON.parse(localStorage.getItem("morse-chats") || "{}"),
+  unreadDirect: JSON.parse(localStorage.getItem("morse-unread-direct") || "{}"),
+  unreadGroups: JSON.parse(localStorage.getItem("morse-unread-groups") || "{}"),
+  unreadRandom: Number(localStorage.getItem("morse-unread-random")) || 0,
+  unreadDaily: Number(localStorage.getItem("morse-unread-daily")) || 0,
   groups: [],
   activeGroup: null,
   groupMessages: [],
@@ -715,6 +721,7 @@ function connectServer() {
   }
   state.eventSource = stream;
   stream.addEventListener("ready", () => {
+    clearTimeout(state.serverReconnectTimer);
     state.serverConnected = true;
     renderSettings();
     syncDirectInbox();
@@ -724,10 +731,15 @@ function connectServer() {
   stream.onerror = () => {
     state.serverConnected = false;
     renderSettings();
+    clearTimeout(state.serverReconnectTimer);
+    state.serverReconnectTimer = setTimeout(() => {
+      if (state.authToken && !state.serverConnected) connectServer();
+    }, 4000);
   };
   stream.addEventListener("direct-message", event => receiveDirectMessage(JSON.parse(event.data)));
   stream.addEventListener("group-message", event => {
     const message = JSON.parse(event.data);
+    const group = state.groups.find(item => item.id === message.groupId);
     if (state.activeGroup?.id === message.groupId && !state.groupMessages.some(item => item.id === message.id)) {
       state.groupMessages.push(message);
       renderGroupMessages();
@@ -735,6 +747,22 @@ function connectServer() {
     if (state.dailyGroup?.id === message.groupId && !state.dailyGroupMessages.some(item => item.id === message.id)) {
       state.dailyGroupMessages.push(message);
       renderDailyGroup();
+    }
+    if (!message.mine && message.from !== state.userId) {
+      if (state.dailyGroup?.id === message.groupId) {
+        if (state.world !== "dailyGroup") state.unreadDaily += 1;
+      } else if (state.activeGroup?.id !== message.groupId) {
+        state.unreadGroups[message.groupId] = Number(state.unreadGroups[message.groupId] || 0) + 1;
+        if (group) group.lastMessageAt = message.createdAt || Date.now();
+        renderGroups();
+      }
+      saveUnread();
+      showNativeNotification(
+        state.dailyGroup?.id === message.groupId
+          ? (state.language === "en" ? "Daily Group Chat" : "데일리 그룹챗")
+          : (group?.name || (state.language === "en" ? "Group Chat" : "그룹챗")),
+        message.hidden ? "Morse Only" : (message.type === "ascii" ? "ASCII Art" : String(message.text || "").slice(0, 100))
+      );
     }
   });
   stream.addEventListener("group-updated", () => {
@@ -790,6 +818,10 @@ function connectServer() {
   });
   stream.addEventListener("random-message", event => {
     state.randomMessages.push({ mine: false, ...JSON.parse(event.data).message });
+    if (state.world !== "randomSignal") {
+      state.unreadRandom += 1;
+      saveUnread();
+    }
     renderRandomSignal();
     navigator.vibrate?.([state.unit, state.unit, state.unit]);
   });
@@ -802,6 +834,13 @@ function connectServer() {
     if (message.text && vibrationPattern(message.text).length) playMorse(message.text, null, message.text, message.senderSound || "");
   });
 }
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && state.authToken && !state.serverConnected) connectServer();
+});
+window.addEventListener("online", () => {
+  if (state.authToken && !state.serverConnected) connectServer();
+});
 
 function base64UrlToUint8Array(value) {
   const padding = "=".repeat((4 - value.length % 4) % 4);
@@ -1002,11 +1041,28 @@ function receiveDirectMessage(item, silent = false) {
   }
   const friend = item.from;
   state.chats[friend] ||= [];
-  state.chats[friend].push(taggedChatMessage(item.message, false));
+  state.chats[friend].push(taggedChatMessage(item.message, false, item.createdAt));
+  if (!silent && state.activeFriend !== friend) {
+    state.unreadDirect[friend] = Number(state.unreadDirect[friend] || 0) + 1;
+    saveUnread();
+  }
   saveChats();
   renderFriends();
   if (state.activeFriend === friend) renderChat();
-  if (!silent) navigator.vibrate?.([state.unit, state.unit, state.unit]);
+  if (!silent) {
+    navigator.vibrate?.([state.unit, state.unit, state.unit]);
+    const message = item.message || {};
+    showNativeNotification(
+      state.language === "en" ? `New message from ${item.fromNickname || "a friend"}` : `${item.fromNickname || "친구"}의 새 메시지`,
+      message.hidden ? "Morse Only" : (message.type === "ascii" ? "ASCII Art" : String(message.text || message).slice(0, 100))
+    );
+  }
+}
+
+function showNativeNotification(title, body) {
+  try {
+    globalThis.AndroidNotifications?.show(String(title || "MORSE CHAT"), String(body || ""));
+  } catch {}
 }
 
 function syncDirectInbox() {
@@ -1015,8 +1071,8 @@ function syncDirectInbox() {
     .catch(() => {});
 }
 
-function taggedChatMessage(message, mine) {
-  return typeof message === "object" ? { ...message, mine } : { text: message, mine };
+function taggedChatMessage(message, mine, createdAt = Date.now()) {
+  return typeof message === "object" ? { ...message, mine, createdAt: message.createdAt || createdAt } : { text: message, mine, createdAt };
 }
 
 function textToMorse(text) {
@@ -1063,7 +1119,7 @@ function playMorseAudio(pattern, soundId) {
       const endFrequency = soundId === "sound_drop" ? 310 : soundId === "sound_chime" ? 720 : startFrequency;
       oscillator.frequency.setValueAtTime(startFrequency, start);
       oscillator.frequency.exponentialRampToValueAtTime(endFrequency, end);
-      gain.gain.setValueAtTime(soundId === "sound_click" ? .025 : .055, start);
+      gain.gain.setValueAtTime(soundId === "sound_click" ? .08 : .16, start);
       gain.gain.exponentialRampToValueAtTime(.001, end);
       oscillator.connect(gain).connect(context.destination);
       oscillator.start(start);
@@ -1154,6 +1210,7 @@ function renderRandomSignal() {
       <div class="random-chat-row ${message.mine ? "mine" : ""}">
         <button type="button" class="random-chat-bubble${hidden ? " hidden-signal" : ""}${exhausted ? " exhausted" : ""}${ascii ? " ascii-message" : ""}" data-random-message="${index}">
           ${hidden ? "" : ascii ? `<pre data-no-i18n>${escapeHtml(message.text)}</pre>` : `<span data-no-i18n>${escapeHtml(message.text)}</span>`}
+          ${message.createdAt ? `<time>${new Date(message.createdAt).toLocaleString()}</time>` : ""}
         </button>
       </div>
     `}).join("")
@@ -1257,12 +1314,23 @@ function connectRandomSignal() {
 }
 
 function markRandomConnected(partner = "RANDOM SIGNAL") {
+  const wasConnected = state.randomSignalState === "connected";
   clearTimeout(state.randomSignalTimer);
   state.randomSignalState = "connected";
   state.randomPartner = partner;
   state.randomMessages = [];
   resetRandomChatInput();
   renderRandomSignal();
+  if (!wasConnected) {
+    if (state.world !== "randomSignal") {
+      state.unreadRandom += 1;
+      saveUnread();
+    }
+    showNativeNotification(
+      state.language === "en" ? "Random Signal connected" : "랜덤 시그널 연결",
+      state.language === "en" ? "A new signal has connected." : "새로운 시그널과 연결되었습니다."
+    );
+  }
   showToast(state.language === "en" ? "Signal connected." : "시그널이 연결되었습니다.");
 }
 
@@ -1325,8 +1393,8 @@ function sendRandomChat(text, hidden = false) {
   const cleanText = text.trim();
   if (!cleanText || state.randomSignalState !== "connected") return;
   const outgoing = hidden
-    ? { mine: true, text: cleanText, hidden: true, limit: state.randomHiddenLimit, views: 0, senderSound: equippedSound() }
-    : { mine: true, text: cleanText, senderSound: equippedSound() };
+    ? { mine: true, text: cleanText, hidden: true, limit: state.randomHiddenLimit, views: 0, senderSound: equippedSound(), createdAt: Date.now() }
+    : { mine: true, text: cleanText, senderSound: equippedSound(), createdAt: Date.now() };
   state.randomMessages.push(outgoing);
   resetRandomChatInput();
   renderRandomSignal();
@@ -1357,12 +1425,14 @@ function todayKey() {
 }
 
 function renderSpace() {
-  const sentToday = localStorage.getItem("morse-space-last-sent") === todayKey();
-  $("#spaceSendStatus").textContent = sentToday ? "오늘은 이미 시그널을 발신했습니다." : "오늘 아직 시그널을 발신하지 않았습니다.";
+  const countKey = `morse-space-sent-count-${todayKey()}`;
+  const sentCount = Number(localStorage.getItem(countKey) || 0);
+  const limitReached = sentCount >= 30;
+  $("#spaceSendStatus").textContent = state.language === "en" ? `Sent today: ${sentCount} / 30` : `오늘 발신: ${sentCount} / 30`;
   $("#spaceSendInput").value = state.spaceSendText;
-  $("#spaceSendInput").disabled = sentToday;
-  $("#spaceSendKeyer").disabled = sentToday;
-  $("#submitSpaceSignal").disabled = sentToday;
+  $("#spaceSendInput").disabled = limitReached;
+  $("#spaceSendKeyer").disabled = limitReached;
+  $("#submitSpaceSignal").disabled = limitReached;
   $("#spaceSendSignal").textContent = state.spaceSendSignal
     ? `현재 글자: ${prettyMorse(state.spaceSendSignal)}`
     : "현재 글자: 비어 있음";
@@ -1517,32 +1587,64 @@ function savePhrases() {
   renderPhrases();
 }
 
+function unreadLabel(count) {
+  return count > 9 ? "9+" : String(count || "");
+}
+
+function unreadBubble(count) {
+  return count ? `<span class="unread-badge">${unreadLabel(count)}</span>` : "";
+}
+
+function saveUnread() {
+  localStorage.setItem("morse-unread-direct", JSON.stringify(state.unreadDirect));
+  localStorage.setItem("morse-unread-groups", JSON.stringify(state.unreadGroups));
+  localStorage.setItem("morse-unread-random", state.unreadRandom);
+  localStorage.setItem("morse-unread-daily", state.unreadDaily);
+  updateWorldUnreadBadges();
+}
+
+function updateWorldUnreadBadges() {
+  const direct = Object.values(state.unreadDirect).reduce((sum, value) => sum + Number(value || 0), 0);
+  const groups = Object.values(state.unreadGroups).reduce((sum, value) => sum + Number(value || 0), 0);
+  const values = { friends: direct + groups, randomSignal: state.unreadRandom, dailyGroup: state.unreadDaily };
+  Object.entries(values).forEach(([world, count]) => {
+    const tab = document.querySelector(`.world-tab[data-world="${world}"]`);
+    if (tab) tab.dataset.unread = unreadLabel(count);
+  });
+}
+
 function renderFriends() {
-  $("#friendList").innerHTML = state.friends.length
-    ? state.friends.map((friend, index) => `
-      <article class="friend-card" data-friend-index="${index}">
+  const sortedFriends = [...state.friends].sort((a, b) =>
+    Number(state.chats[b]?.at(-1)?.createdAt || 0) - Number(state.chats[a]?.at(-1)?.createdAt || 0)
+  );
+  $("#friendList").innerHTML = sortedFriends.length
+    ? sortedFriends.map(friend => `
+      <article class="friend-card" data-friend-id="${escapeHtml(friend)}">
         <button type="button" class="friend-profile-button" data-profile-friend="${escapeHtml(friend)}" aria-label="친구 프로필 보기">
           ${profileAvatarHtml(state.profileCache[friend], friend)}
         </button>
-        <button type="button" class="friend-conversation-button" data-open-friend="${index}">
+        <button type="button" class="friend-conversation-button" data-open-friend-id="${escapeHtml(friend)}">
         <div class="friend-info">
           <strong data-no-i18n>${escapeHtml(state.profileCache[friend]?.nickname || friend)}</strong>
           <small>${state.chats[friend]?.length ? chatPreview(state.chats[friend][state.chats[friend].length - 1]) : "신호 받을 준비 완료"}</small>
         </div>
         </button>
+        ${unreadBubble(Number(state.unreadDirect[friend] || 0))}
       </article>`).join("")
     : '<article class="record-item"><strong>아직 친구가 없습니다.</strong><span>이름을 입력해 친구를 추가하세요.</span></article>';
 }
 
 function renderGroups() {
-  $("#groupList").innerHTML = state.groups.length
-    ? state.groups.map(group => `
+  const sortedGroups = [...state.groups].sort((a, b) => Number(b.lastMessageAt || 0) - Number(a.lastMessageAt || 0));
+  $("#groupList").innerHTML = sortedGroups.length
+    ? sortedGroups.map(group => `
       <button type="button" class="friend-card" data-open-group="${escapeHtml(group.id)}">
         ${group.profileAscii ? `<span class="friend-avatar"><span class="ascii-avatar" data-no-i18n>${escapeHtml(group.profileAscii)}</span></span>` : `<span class="friend-avatar">#</span>`}
         <span class="friend-info">
           <strong data-no-i18n>${escapeHtml(group.name)}</strong>
           <small>${group.members.length}명 참여 중</small>
         </span>
+        ${unreadBubble(Number(state.unreadGroups[group.id] || 0))}
       </button>
     `).join("")
     : '<article class="record-item"><strong>아직 그룹챗이 없습니다.</strong><span>그룹챗 만들기로 친구들과 시작하세요.</span></article>';
@@ -1601,6 +1703,8 @@ function openGroupChat(groupId) {
   const group = state.groups.find(item => item.id === groupId);
   if (!group) return;
   state.activeGroup = group;
+  state.unreadGroups[groupId] = 0;
+  saveUnread();
   state.groupMessages = [];
   document.body.classList.add("chat-open");
   $("#conversationList").hidden = true;
@@ -1636,6 +1740,7 @@ function renderGroupFriendChoices(target, addMode = false) {
 
 function renderDailyGroup() {
   if (!state.dailyGroup) return;
+  $("#dailyGroupForm").hidden = false;
   $("#dailyGroupStatus").textContent = `${state.dailyGroup.members.length}/10명`;
   renderGroupMessageList($("#dailyGroupMessages"), state.dailyGroupMessages, state.dailyGroup);
   renderGroupComposer(true);
@@ -1643,7 +1748,15 @@ function renderDailyGroup() {
 
 function loadDailyGroup() {
   if (!state.authToken) return;
-  api("/api/daily-group").then(({ group, messages }) => {
+  api("/api/daily-group").then(({ left, group, messages }) => {
+    if (left) {
+      state.dailyGroup = null;
+      state.dailyGroupMessages = [];
+      $("#dailyGroupStatus").textContent = state.language === "en" ? "You left today's group chat." : "오늘의 데일리 그룹챗에서 나갔습니다.";
+      $("#dailyGroupMessages").innerHTML = `<p class="chat-empty">${state.language === "en" ? "You can join a new Daily Group Chat tomorrow." : "내일 새로운 데일리 그룹챗에 참여할 수 있습니다."}</p>`;
+      $("#dailyGroupForm").hidden = true;
+      return;
+    }
     state.dailyGroup = group;
     state.dailyGroupMessages = messages;
     renderDailyGroup();
@@ -1817,7 +1930,7 @@ function profileVisualHtml(profile, fallback = "?") {
 
 function profileCosmeticClasses(profile) {
   const equipped = profile?.equipped || {};
-  return [equipped.profileBorder, equipped.profileBackground].filter(Boolean).map(value => `cosmetic-${value}`).join(" ");
+  return [equipped.profileBorder, equipped.profileBackground, ...(profile?.specials || [])].filter(Boolean).map(value => `cosmetic-${value}`).join(" ");
 }
 
 function applyProfileCosmetics(target, profile) {
@@ -1825,7 +1938,7 @@ function applyProfileCosmetics(target, profile) {
 }
 
 function profileAvatarHtml(profile, fallback = "?") {
-  return `<span class="friend-avatar">${profile?.profileAscii
+  return `<span class="friend-avatar ${profileCosmeticClasses(profile)}">${profile?.profileAscii
     ? `<span class="ascii-avatar" data-no-i18n>${escapeHtml(profile.profileAscii)}</span>`
     : escapeHtml(profile?.nickname || fallback).charAt(0).toUpperCase()}</span>`;
 }
@@ -1849,6 +1962,10 @@ function renderMyProfile() {
   applyProfileCosmetics($("#myProfileVisual"), profile);
   $("#myProfileNickname").textContent = state.account.nickname;
   $("#myProfileSignalId").textContent = state.account.signalId;
+  $("#myProfileBadges").innerHTML = [
+    `<span>${state.language === "en" ? `${state.account.loginStreak || 0} day streak` : `${state.account.loginStreak || 0}일 연속 출석`}</span>`,
+    ...(state.account.badges || []).map(badge => `<span>${badge === "shop_master" ? (state.language === "en" ? "Shop Master" : "상점 컬렉터") : escapeHtml(badge)}</span>`)
+  ].join("");
   $("#myProfileDescription").value = state.account.description || "";
   $("#removeProfilePhoto").disabled = !profile.profileAscii;
 }
@@ -1862,6 +1979,10 @@ async function openFriendProfile(signalId) {
     applyProfileCosmetics($("#friendProfileVisual"), profile);
     $("#friendProfileNickname").textContent = profile.nickname;
     $("#friendProfileSignalId").textContent = profile.signalId;
+    $("#friendProfileBadges").innerHTML = [
+      `<span>${state.language === "en" ? `${profile.loginStreak || 0} day streak` : `${profile.loginStreak || 0}일 연속 출석`}</span>`,
+      ...(profile.badges || []).map(badge => `<span>${badge === "shop_master" ? (state.language === "en" ? "Shop Master" : "상점 컬렉터") : escapeHtml(badge)}</span>`)
+    ].join("");
     $("#friendProfileDescription").textContent = profile.description || "아직 자기소개가 없습니다.";
     $("#chatFromProfile").hidden = !state.friends.includes(signalId);
     $("#removeFriend").hidden = !state.friends.includes(signalId);
@@ -1915,6 +2036,7 @@ function renderChat() {
   $("#chatAvatar").innerHTML = profile?.profileAscii
     ? `<span class="ascii-avatar" data-no-i18n>${escapeHtml(profile.profileAscii)}</span>`
     : escapeHtml(profile?.nickname || friend).charAt(0).toUpperCase();
+  applyProfileCosmetics($("#chatAvatar"), profile);
   $("#openSecretComm").classList.toggle("invited", state.pendingSecretPartner === friend);
   $("#chatMessages").innerHTML = messages.length
     ? messages.map((message, index) => {
@@ -2230,6 +2352,8 @@ function deleteChatInputCharacter() {
 
 function openChat(friend) {
   state.activeFriend = friend;
+  state.unreadDirect[friend] = 0;
+  saveUnread();
   document.body.classList.add("chat-open");
   $("#hiddenViewPicker").hidden = true;
   resetChatMorse();
@@ -2241,7 +2365,7 @@ function openChat(friend) {
   renderChatComposer();
   api(`/api/direct/history?user=${encodeURIComponent(state.userId)}&friend=${encodeURIComponent(friend)}`)
     .then(({ messages }) => {
-      state.chats[friend] = messages.map(item => taggedChatMessage(item.message, item.from === state.userId));
+      state.chats[friend] = messages.map(item => taggedChatMessage(item.message, item.from === state.userId, item.createdAt));
       saveChats();
       renderChat();
     })
@@ -2670,6 +2794,19 @@ function renderShop() {
     return `<article class="shop-inventory-item"><span>${item.icon}</span><div><strong>${item.name}</strong><small>${categoryNames[item.category] || item.category}</small></div><button type="button" ${equipped ? `data-shop-unequip="${item.slot}"` : `data-shop-equip="${item.id}"`}>${equipped ? (ko ? "장착 해제" : "Unequip") : (ko ? "장착" : "Equip")}</button></article>`;
   }).join("") : `<p class="shop-empty">${ko ? "아직 아이템이 없습니다. 랜덤 뽑기를 해보세요." : "No items yet. Try a random draw."}</p>`;
   if (state.shopInventoryCategory === "profile" && categoryOwned.length) renderProfileInventorySections(categoryOwned, ko);
+  if (state.shopInventoryCategory !== "profile") {
+    [...$("#shopInventory").querySelectorAll(".shop-inventory-item")].forEach((element, index) => {
+      const item = categoryOwned[index];
+      if (item && item.category !== "morseSound") {
+        element.firstElementChild?.remove();
+        element.insertAdjacentHTML("afterbegin", `<div class="shop-mini-preview">${shopPreviewVisual(item)}</div>`);
+        element.dataset.ownedPreview = item.id;
+      }
+    });
+  }
+  if ((state.account?.specials || []).includes("collector_badge")) {
+    $("#shopInventory").insertAdjacentHTML("beforeend", `<article class="collector-reward"><strong>${ko ? "컬렉션 완성 보상" : "Collection Complete Reward"}</strong><span>${ko ? "상점 컬렉터 배지 · 황금 왕관 프로필 효과" : "Shop Master badge · Golden Crown profile effect"}</span></article>`);
+  }
 }
 
 function renderProfileInventorySections(items, ko) {
@@ -2686,11 +2823,12 @@ function renderProfileInventorySections(items, ko) {
 
 function loadShop() {
   if (!state.authToken) return;
-  api("/api/shop").then(({ inventory, equipped, coins, drawCost }) => {
+  api("/api/shop").then(({ inventory, equipped, coins, drawCost, account }) => {
     state.shopInventory = inventory || [];
     state.shopEquipped = equipped || {};
     state.shopCoins = Number(coins || 0);
     state.shopDrawCost = Number(drawCost || 50);
+    if (account) applyAccountUpdate(account);
     renderShop();
     if (!$("#groupManagePanel").hidden) renderGroupThemeChoices();
   }).catch(error => showApiFailure(error));
@@ -2716,6 +2854,9 @@ function switchWorld(world) {
     world = "hall";
   }
   state.world = world;
+  if (world === "randomSignal") state.unreadRandom = 0;
+  if (world === "dailyGroup") state.unreadDaily = 0;
+  saveUnread();
   localStorage.setItem("morse-world", world);
   $("#friendsWorld").hidden = world !== "friends";
   $("#trainingHall").hidden = world !== "hall";
@@ -3442,10 +3583,10 @@ $("#closeFriendRequests").addEventListener("click", () => $("#friendRequestPanel
 $("#friendList").addEventListener("click", event => {
   const profile = event.target.closest("[data-profile-friend]");
   if (profile) return openFriendProfile(profile.dataset.profileFriend);
-  const conversation = event.target.closest("[data-open-friend]");
-  const card = event.target.closest("[data-friend-index]");
-  if (conversation) openChat(state.friends[Number(conversation.dataset.openFriend)]);
-  else if (card) openChat(state.friends[Number(card.dataset.friendIndex)]);
+  const conversation = event.target.closest("[data-open-friend-id]");
+  const card = event.target.closest("[data-friend-id]");
+  if (conversation) openChat(conversation.dataset.openFriendId);
+  else if (card) openChat(card.dataset.friendId);
 });
 $("#groupList").addEventListener("click", event => {
   const button = event.target.closest("[data-open-group]");
@@ -3652,6 +3793,8 @@ $("#leaveDailyGroup").addEventListener("click", () => {
   api("/api/groups/leave", { method: "POST", body: JSON.stringify({ groupId: state.dailyGroup.id }) }).then(() => {
     state.dailyGroup = null;
     state.dailyGroupMessages = [];
+    $("#dailyGroupStatus").textContent = state.language === "en" ? "You left today's group chat." : "오늘의 데일리 그룹챗에서 나갔습니다.";
+    $("#dailyGroupForm").hidden = true;
     $("#dailyGroupMessages").innerHTML = '<p class="chat-empty">오늘의 그룹챗에서 나갔습니다.</p>';
   }).catch(error => showApiFailure(error, "그룹챗에서 나가지 못했습니다."));
 });
@@ -4163,11 +4306,12 @@ $("#sendAscii").addEventListener("click", () => {
       method: "POST",
       body: JSON.stringify({ text: state.asciiDraft, type: "ascii", day: todayKey() })
     }).then(() => {
-      localStorage.setItem("morse-space-last-sent", todayKey());
+      const countKey = `morse-space-sent-count-${todayKey()}`;
+      localStorage.setItem(countKey, Number(localStorage.getItem(countKey) || 0) + 1);
       playSpaceTransmitAnimation();
       renderSpace();
     }).catch(error => {
-      if (error.status === 409) showToast(state.language === "en" ? "Today's signal was already sent." : "오늘은 이미 시그널을 발신했습니다.");
+      if (error.status === 409) showToast(state.language === "en" ? "You reached today's 30 signal limit." : "오늘의 시그널 발신 30회를 모두 사용했습니다.");
       else showApiFailure(error);
     });
   } else if (state.asciiTarget === "group-profile" && state.activeGroup) {
@@ -4581,14 +4725,15 @@ $("#spaceSendForm").addEventListener("submit", event => {
     method: "POST",
     body: JSON.stringify({ sender: state.userId, text, day: todayKey() })
   }).then(() => {
-    localStorage.setItem("morse-space-last-sent", todayKey());
+    const countKey = `morse-space-sent-count-${todayKey()}`;
+    localStorage.setItem(countKey, Number(localStorage.getItem(countKey) || 0) + 1);
     state.spaceSendText = "";
     state.spaceSendSignal = "";
     playSpaceTransmitAnimation();
     renderSpace();
     showToast("우주로 시그널을 발신했습니다.");
   }).catch(error => {
-    if (error.status === 409) showToast("오늘은 이미 시그널을 발신했습니다.");
+    if (error.status === 409) showToast(state.language === "en" ? "You reached today's 30 signal limit." : "오늘의 시그널 발신 30회를 모두 사용했습니다.");
     else showApiFailure(error);
   });
 });
@@ -4613,6 +4758,7 @@ $("#receiveSpaceSignal").addEventListener("click", () => {
     state.spaceReceivedText = signal.text;
     state.spaceReceivedMorse = signal.type === "ascii" ? "" : signal.text;
     $("#spaceReceivedSignal").hidden = false;
+    $("#spaceSignalDate").textContent = new Date(signal.createdAt).toLocaleString();
     $("#spaceReceiveStatus").textContent = "우주 시그널을 수신했습니다.";
     if (signal.type === "ascii") {
       clearSpaceDecode();
@@ -4756,6 +4902,7 @@ $("#shopWorld").addEventListener("click", event => {
       state.shopEquipped = result.equipped || {};
       state.shopCoins = Number(result.coins || 0);
       state.shopLastDraw = { item: shopItem(result.item.id), duplicate: result.duplicate };
+      if (result.account) applyAccountUpdate(result.account);
       renderShop();
     }).catch(error => {
       if (error.status === 409 && error.body?.error === "all-items-owned") {
@@ -4954,6 +5101,7 @@ renderPhrases();
 renderFriends();
 renderGroups();
 renderFriendRequests();
+updateWorldUnreadBadges();
 nextTrainingItem(false);
 renderQuiz();
 renderQuizRecords();

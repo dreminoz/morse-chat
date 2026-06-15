@@ -86,7 +86,6 @@ class FileStore {
   async friendIds(user) { return this.data.friendships.filter(item => item.a === user || item.b === user).map(item => item.a === user ? item.b : item.a); }
   async areFriends(a, b) { return this.data.friendships.some(item => (item.a === a && item.b === b) || (item.a === b && item.b === a)); }
   async createSession(session) {
-    this.data.sessions = this.data.sessions.filter(item => item.googleSub !== session.googleSub);
     this.data.sessions.push(session);
     this.save();
   }
@@ -167,7 +166,7 @@ class FileStore {
     this.save();
   }
   async addSpace(signal) {
-    if (this.data.space.some(item => item.sender === signal.sender && item.day === signal.day)) return false;
+    if (this.data.space.filter(item => item.sender === signal.sender && item.day === signal.day).length >= 30) return false;
     this.data.space.push(signal);
     this.data.space = this.data.space.slice(-5000);
     this.save();
@@ -250,12 +249,14 @@ class MongoStore {
     this.gameScores = this.db.collection("game_scores");
     this.shopPurchases = this.db.collection("shop_purchases");
     this.suggestions = this.db.collection("suggestions");
+    await this.sessions.dropIndex("googleSub_1").catch(() => {});
+    await this.space.dropIndex("sender_1_day_1").catch(() => {});
     await Promise.all([
       this.accounts.createIndex({ googleSub: 1 }, { unique: true }),
       this.accounts.createIndex({ signalId: 1 }, { unique: true }),
       this.accounts.createIndex({ nicknameLower: 1 }, { unique: true }),
       this.sessions.createIndex({ token: 1 }, { unique: true }),
-      this.sessions.createIndex({ googleSub: 1 }, { unique: true }),
+      this.sessions.createIndex({ googleSub: 1 }),
       this.direct.createIndex({ from: 1, to: 1, createdAt: -1 }),
       this.direct.createIndex({ to: 1, createdAt: -1 }),
       this.groupChats.createIndex({ members: 1, createdAt: -1 }),
@@ -272,7 +273,7 @@ class MongoStore {
         { sessionId: 1, from: 1, action: 1 },
         { unique: true, partialFilterExpression: { action: "decoded" } }
       ),
-      this.space.createIndex({ sender: 1, day: 1 }, { unique: true }),
+      this.space.createIndex({ sender: 1, day: 1 }),
       this.space.createIndex({ createdAt: -1 })
       ,this.diaryVaults.createIndex({ owner: 1 }, { unique: true })
       ,this.diaryEntries.createIndex({ owner: 1, createdAt: 1 })
@@ -397,7 +398,7 @@ class MongoStore {
   }
   async areFriends(a, b) { return Boolean(await this.friendships.findOne({ key: this.friendshipKey(a, b) }, { projection: { _id: 1 } })); }
   async createSession(session) {
-    await this.sessions.replaceOne({ googleSub: session.googleSub }, session, { upsert: true });
+    await this.sessions.insertOne(session);
   }
   async accountFromSession(token) {
     const session = await this.sessions.findOne({ token });
@@ -479,8 +480,9 @@ class MongoStore {
     );
   }
   async addSpace(signal) {
-    try { await this.space.insertOne(signal); return true; }
-    catch (error) { if (error.code === 11000) return false; throw error; }
+    if (await this.space.countDocuments({ sender: signal.sender, day: signal.day }) >= 30) return false;
+    await this.space.insertOne(signal);
+    return true;
   }
   async randomSpace(exclude, received = []) {
     const account = await this.findAccountBySignalId(exclude);

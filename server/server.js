@@ -32,7 +32,10 @@ const SECRET_MORSE = {
   "..": "I", ".---": "J", "-.-": "K", ".-..": "L", "--": "M", "-.": "N", "---": "O", ".--.": "P",
   "--.-": "Q", ".-.": "R", "...": "S", "-": "T", "..-": "U", "...-": "V", ".--": "W", "-..-": "X",
   "-.--": "Y", "--..": "Z", "-----": "0", ".----": "1", "..---": "2", "...--": "3", "....-": "4",
-  ".....": "5", "-....": "6", "--...": "7", "---..": "8", "----.": "9"
+  ".....": "5", "-....": "6", "--...": "7", "---..": "8", "----.": "9",
+  ".-.-.-": ".", "--..--": ",", "..--..": "?", "-.-.--": "!", "-..-.": "/", ".--.-.": "@",
+  "-....-": "-", ".----.": "'", "-.--.": "(", "-.--.-": ")", "---...": ":", "-.-.-.": ";",
+  "-...-": "=", ".-.-.": "+", "..--.-": "_", ".-..-.": "\"", "...-..-": "$", ".-...": "&"
 };
 const SHOP_ITEMS = [
   { id: "chat_midnight", category: "chatTheme", slot: "chatTheme" },
@@ -56,6 +59,31 @@ const SHOP_ITEMS = [
   { id: "profile_sunset", category: "profile", slot: "profileBackground" },
   { id: "profile_cream", category: "profile", slot: "profileBackground" }
 ];
+const COLLECTOR_SPECIALS = ["collector_badge", "collector_crown"];
+
+function dayDifference(from, to) {
+  return Math.round((new Date(`${to}T00:00:00Z`) - new Date(`${from}T00:00:00Z`)) / 86400000);
+}
+
+async function applyDailyLogin(account) {
+  const today = localDay();
+  if (account.lastLoginRewardDay === today) return account;
+  const consecutive = account.lastLoginRewardDay && dayDifference(account.lastLoginRewardDay, today) === 1;
+  account.loginStreak = consecutive ? Number(account.loginStreak || 0) + 1 : 1;
+  account.lastLoginRewardDay = today;
+  account.coins = Number(account.coins || 0) + 50;
+  await store.updateAccount(account);
+  return account;
+}
+
+async function applyCollectorRewards(account) {
+  const owned = new Set(account.inventory || []);
+  if (!SHOP_ITEMS.every(item => owned.has(item.id))) return account;
+  account.badges = [...new Set([...(account.badges || []), "shop_master"])];
+  account.specials = [...new Set([...(account.specials || []), ...COLLECTOR_SPECIALS])];
+  await store.updateAccount(account);
+  return account;
+}
 
 async function verifyGooglePlayPurchase(productId, purchaseToken) {
   if (productId !== SHOP_COIN_PRODUCT || !purchaseToken) throw new Error("invalid-purchase");
@@ -152,7 +180,10 @@ function publicAccount(account) {
     description: account.description || "",
     profileAscii: account.profileAscii || "",
     equipped: account.equipped || {},
-    coins: Number(account.coins || 0)
+    coins: Number(account.coins || 0),
+    loginStreak: Number(account.loginStreak || 0),
+    badges: account.badges || [],
+    specials: account.specials || []
   };
 }
 
@@ -192,6 +223,10 @@ function notificationText(kind, language, data = {}) {
     daily: {
       title: en ? "Daily Group Chat" : "데일리 그룹챗",
       body: en ? "A new anonymous message arrived." : "새 익명 메시지가 도착했습니다."
+    },
+    group: {
+      title: en ? `Group Chat · ${data.groupName || "MORSE CHAT"}` : `그룹챗 · ${data.groupName || "MORSE CHAT"}`,
+      body: preview || (en ? "A new group message arrived." : "새 그룹 메시지가 도착했습니다.")
     },
     space: {
       title: en ? "Space Signal received" : "우주 시그널 수신",
@@ -265,13 +300,22 @@ async function emitGroup(group, type, payload) {
   group?.members?.forEach(member => emit(member, type, payload));
 }
 
-function pairUsers(a, b) {
+async function pairUsers(a, b) {
   lastPartners.delete(a);
   lastPartners.delete(b);
   randomPairs.set(a, b);
   randomPairs.set(b, a);
   randomPartnerHistory.set(a, new Set([...(randomPartnerHistory.get(a) || []), b]));
   randomPartnerHistory.set(b, new Set([...(randomPartnerHistory.get(b) || []), a]));
+  const [accountA, accountB] = await Promise.all([store.findAccountBySignalId(a), store.findAccountBySignalId(b)]);
+  if (accountA) {
+    accountA.randomPartnerHistory = [...new Set([...(accountA.randomPartnerHistory || []), b])].slice(-5000);
+    await store.updateAccount(accountA);
+  }
+  if (accountB) {
+    accountB.randomPartnerHistory = [...new Set([...(accountB.randomPartnerHistory || []), a])].slice(-5000);
+    await store.updateAccount(accountB);
+  }
   emit(a, "random-connected", { partner: "RANDOM SIGNAL" });
   emit(b, "random-connected", { partner: "RANDOM SIGNAL" });
   pushToUser(a, "random-connected", { url: "/#random" }).catch(console.error);
@@ -344,7 +388,7 @@ const server = http.createServer(async (req, res) => {
       const existing = await store.findAccountByGoogleSub(google.sub);
       if (existing) {
         const token = await createSession(existing);
-        return json(res, 200, { token, account: publicAccount(existing) });
+        return json(res, 200, { token, account: publicAccount(await applyDailyLogin(existing)) });
       }
       if (!nickname?.trim() || nickname.trim().length < 2) return json(res, 409, { error: "nickname-required" });
       if (await store.nicknameTaken(nickname.trim())) return json(res, 409, { error: "nickname-taken" });
@@ -353,7 +397,9 @@ const server = http.createServer(async (req, res) => {
         email: google.email,
         nickname: nickname.trim(),
         nicknameHistory: [],
-        coins: 0,
+        coins: 50,
+        loginStreak: 1,
+        lastLoginRewardDay: localDay(),
         signalId: `SIGNAL-${crypto.randomBytes(4).toString("hex").toUpperCase()}`,
         createdAt: Date.now()
       };
@@ -366,7 +412,7 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method === "GET" && url.pathname === "/api/auth/me") {
     const account = await sessionAccount(req, url);
-    return account ? json(res, 200, { account: publicAccount(account) }) : json(res, 401, { error: "auth-required" });
+    return account ? json(res, 200, { account: publicAccount(await applyDailyLogin(account)) }) : json(res, 401, { error: "auth-required" });
   }
 
   const account = await sessionAccount(req, url);
@@ -545,10 +591,12 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { account: publicAccount(account) });
   }
   if (req.method === "GET" && url.pathname === "/api/shop") {
+    await applyCollectorRewards(account);
     return json(res, 200, {
       inventory: account.inventory || [], equipped: account.equipped || {},
       coins: Number(account.coins || 0), drawCost: SHOP_DRAW_COST,
-      coinProduct: { id: SHOP_COIN_PRODUCT, coins: 100, displayPrice: "₩500" }
+      coinProduct: { id: SHOP_COIN_PRODUCT, coins: 100, displayPrice: "₩500" },
+      account: publicAccount(account)
     });
   }
   if (req.method === "POST" && url.pathname === "/api/shop/draw") {
@@ -564,7 +612,8 @@ const server = http.createServer(async (req, res) => {
     const item = pool[crypto.randomInt(pool.length)];
     const updated = await store.spendCoinsAndAddInventory(account.googleSub, item.id, SHOP_DRAW_COST);
     if (!updated) return json(res, 409, { error: "draw-conflict" });
-    return json(res, 200, { item, duplicate: false, coins: updated.coins, inventory: updated.inventory, equipped: updated.equipped || {} });
+    await applyCollectorRewards(updated);
+    return json(res, 200, { item, duplicate: false, coins: updated.coins, inventory: updated.inventory, equipped: updated.equipped || {}, account: publicAccount(updated) });
   }
   if (req.method === "POST" && url.pathname === "/api/shop/google-play/verify") {
     try {
@@ -625,8 +674,8 @@ const server = http.createServer(async (req, res) => {
     if (!await store.areFriends(from, to)) return json(res, 403, { error: "friends-only" });
     const target = await store.findAccountBySignalId(to);
     const decoratedMessage = typeof message === "object"
-      ? { ...message, senderSound: account.equipped?.morseSound || "" }
-      : { text: String(message), senderSound: account.equipped?.morseSound || "" };
+      ? { ...message, senderSound: account.equipped?.morseSound || "", createdAt: Date.now() }
+      : { text: String(message), senderSound: account.equipped?.morseSound || "", createdAt: Date.now() };
     const item = {
       id: crypto.randomUUID(), from, fromNickname: account.nickname,
       to, toNickname: target?.nickname || to, message: decoratedMessage, createdAt: Date.now()
@@ -639,7 +688,10 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method === "GET" && url.pathname === "/api/groups") {
     const groups = await store.groupsForUser(account.signalId);
-    return json(res, 200, { groups: await Promise.all(groups.filter(group => group.type === "custom").map(group => publicGroup(group, account.signalId))) });
+    return json(res, 200, { groups: await Promise.all(groups.filter(group => group.type === "custom").map(async group => {
+      const history = await store.groupHistory(group.id);
+      return { ...(await publicGroup(group, account.signalId)), lastMessageAt: history.at(-1)?.createdAt || group.createdAt };
+    })) });
   }
   if (req.method === "POST" && url.pathname === "/api/groups/create") {
     const { name, members = [], profileAscii = "" } = await readBody(req);
@@ -698,6 +750,10 @@ const server = http.createServer(async (req, res) => {
     const group = await store.groupById(groupId);
     if (!group || !group.members.includes(account.signalId)) return json(res, 404, { error: "group-not-found" });
     const updated = await store.removeGroupMember(groupId, account.signalId);
+    if (group.type === "daily") {
+      account.dailyGroupLeftDay = group.day;
+      await store.updateAccount(account);
+    }
     await emitGroup(updated, "group-updated", { groupId });
     return json(res, 200, { ok: true });
   }
@@ -734,13 +790,19 @@ const server = http.createServer(async (req, res) => {
     };
     await store.addGroupMessage(item);
     group.members.forEach(member => emit(member, "group-message", publicGroupMessage(group, item, member)));
-    if (group.type === "daily") {
-      group.members.filter(member => member !== account.signalId)
-        .forEach(member => pushToUser(member, "daily", { url: "/#daily" }).catch(console.error));
-    }
+    group.members.filter(member => member !== account.signalId).forEach(member =>
+      pushToUser(member, group.type === "daily" ? "daily" : "group", {
+        groupName: group.name,
+        ...messagePushData(item),
+        url: group.type === "daily" ? "/#daily" : "/#friends"
+      }).catch(console.error)
+    );
     return json(res, 200, publicGroupMessage(group, item, account.signalId));
   }
   if (req.method === "GET" && url.pathname === "/api/daily-group") {
+    if (account.dailyGroupLeftDay === localDay()) {
+      return json(res, 200, { left: true, day: localDay(), group: null, messages: [] });
+    }
     const group = await store.ensureDailyGroup(account.signalId, localDay(), crypto.randomUUID());
     const blocked = account.blockedDailyMembers || [];
     return json(res, 200, {
@@ -824,9 +886,15 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method === "GET" && url.pathname === "/api/space/random") {
     const exclude = account.signalId;
-    const received = String(url.searchParams.get("received") || "").split(",").filter(Boolean).slice(-1000);
+    const received = [...new Set([
+      ...(account.receivedSpaceIds || []),
+      ...String(url.searchParams.get("received") || "").split(",").filter(Boolean)
+    ])].slice(-5000);
     const signal = await store.randomSpace(exclude, received);
-    return signal ? json(res, 200, signal) : json(res, 404, { error: "no-signals" });
+    if (!signal) return json(res, 404, { error: "no-signals" });
+    account.receivedSpaceIds = [...received, signal.id].slice(-5000);
+    await store.updateAccount(account);
+    return json(res, 200, signal);
   }
   if (req.method === "POST" && url.pathname === "/api/space/report") {
     const { signalId, sender, reason = "user-report" } = await readBody(req);
@@ -845,17 +913,16 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "POST" && url.pathname === "/api/random/join") {
     const userId = account.signalId;
     leaveRandom(userId, false);
-    const seen = randomPartnerHistory.get(userId) || new Set();
+    const seen = new Set([...(randomPartnerHistory.get(userId) || []), ...(account.randomPartnerHistory || [])]);
     const unseenPartner = randomQueue.find(id =>
       id !== userId &&
       !seen.has(id) &&
       !(randomPartnerHistory.get(id) || new Set()).has(userId)
     );
-    // Prefer a new person, but do not leave two waiting users disconnected forever.
-    const partner = unseenPartner || randomQueue.find(id => id !== userId);
+    const partner = unseenPartner;
     if (partner) {
       randomQueue.splice(randomQueue.indexOf(partner), 1);
-      pairUsers(userId, partner);
+      await pairUsers(userId, partner);
       return json(res, 200, { status: "connected" });
     }
     if (!randomQueue.includes(userId)) randomQueue.push(userId);
@@ -876,8 +943,8 @@ const server = http.createServer(async (req, res) => {
     const partner = randomPairs.get(userId);
     if (!partner) return json(res, 409, { error: "not-connected" });
     const decoratedMessage = typeof message === "object"
-      ? { ...message, senderSound: account.equipped?.morseSound || "" }
-      : { text: String(message), senderSound: account.equipped?.morseSound || "" };
+      ? { ...message, senderSound: account.equipped?.morseSound || "", createdAt: Date.now() }
+      : { text: String(message), senderSound: account.equipped?.morseSound || "", createdAt: Date.now() };
     emit(partner, "random-message", { message: decoratedMessage });
     pushToUser(partner, "random", { ...messagePushData(decoratedMessage), url: "/#random" }).catch(console.error);
     return json(res, 200, { ok: true });

@@ -351,6 +351,7 @@
         <article id="spaceReceivedSignal" class="space-received" hidden>
           <p class="label">RECEIVED FROM SPACE</p>
           <strong data-no-i18n></strong>
+          <time id="spaceSignalDate" class="space-signal-date"></time>
           <small id="spaceDecodeStatus">모스 진동에 맞춰 해석 중</small>
           <div class="space-received-actions">
             <button id="redecodeSpaceSignal" type="button">다시 해석하기</button>
@@ -441,6 +442,7 @@
         <div id="myProfileVisual" class="profile-visual"></div>
         <strong id="myProfileNickname" class="profile-nickname"></strong>
         <small id="myProfileSignalId" class="profile-signal-id" data-no-i18n></small>
+        <div id="myProfileBadges" class="profile-badges"></div>
         <label class="profile-description-field">
           <span>자기소개</span>
           <textarea id="myProfileDescription" maxlength="240" placeholder="자신을 소개해보세요"></textarea>
@@ -578,6 +580,7 @@
       <div id="friendProfileVisual" class="profile-visual"></div>
       <strong id="friendProfileNickname" class="profile-nickname"></strong>
       <small id="friendProfileSignalId" class="profile-signal-id" data-no-i18n></small>
+      <div id="friendProfileBadges" class="profile-badges"></div>
       <p id="friendProfileDescription" class="profile-description"></p>
       <button id="chatFromProfile" class="primary-button" type="button">대화하기</button>
       <button id="removeFriend" class="danger-button" type="button">친구 끊기</button>
