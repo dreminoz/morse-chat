@@ -26,9 +26,13 @@ class FileStore {
   async findAccountByGoogleSub(googleSub) { return this.data.accounts.find(item => item.googleSub === googleSub) || null; }
   async findAccountBySignalId(signalId) { return this.data.accounts.find(item => item.signalId === signalId) || null; }
   async findAccountByNickname(nickname) { return this.data.accounts.find(item => item.nickname.toLowerCase() === nickname.toLowerCase()) || null; }
+  async findAccountByUsername(username) { return this.data.accounts.find(item => item.usernameLower === username.toLowerCase()) || null; }
   async allAccounts() { return this.data.accounts; }
   async nicknameTaken(nickname, excludeGoogleSub = "") {
     return this.data.accounts.some(item => item.googleSub !== excludeGoogleSub && item.nickname.toLowerCase() === nickname.toLowerCase());
+  }
+  async usernameTaken(username) {
+    return this.data.accounts.some(item => item.usernameLower === username.toLowerCase());
   }
   async insertAccount(account) { this.data.accounts.push(account); this.save(); return account; }
   async updateAccount(account) {
@@ -255,6 +259,7 @@ class MongoStore {
       this.accounts.createIndex({ googleSub: 1 }, { unique: true }),
       this.accounts.createIndex({ signalId: 1 }, { unique: true }),
       this.accounts.createIndex({ nicknameLower: 1 }, { unique: true }),
+      this.accounts.createIndex({ usernameLower: 1 }, { unique: true, sparse: true }),
       this.sessions.createIndex({ token: 1 }, { unique: true }),
       this.sessions.createIndex({ googleSub: 1 }),
       this.direct.createIndex({ from: 1, to: 1, createdAt: -1 }),
@@ -323,18 +328,28 @@ class MongoStore {
   async findAccountByGoogleSub(googleSub) { return this.clean(await this.accounts.findOne({ googleSub })); }
   async findAccountBySignalId(signalId) { return this.clean(await this.accounts.findOne({ signalId })); }
   async findAccountByNickname(nickname) { return this.clean(await this.accounts.findOne({ nicknameLower: nickname.toLowerCase() })); }
+  async findAccountByUsername(username) { return this.clean(await this.accounts.findOne({ usernameLower: username.toLowerCase() })); }
   async allAccounts() { return this.accounts.find({}, { projection: { _id: 0, nicknameLower: 0 } }).toArray(); }
   async nicknameTaken(nickname, excludeGoogleSub = "") {
     return Boolean(await this.accounts.findOne({ nicknameLower: nickname.toLowerCase(), googleSub: { $ne: excludeGoogleSub } }, { projection: { _id: 1 } }));
   }
+  async usernameTaken(username) {
+    return Boolean(await this.accounts.findOne({ usernameLower: username.toLowerCase() }, { projection: { _id: 1 } }));
+  }
   async insertAccount(account) {
-    await this.accounts.insertOne({ ...account, nicknameLower: account.nickname.toLowerCase() });
+    const document = { ...account, nicknameLower: account.nickname.toLowerCase() };
+    const usernameLower = account.usernameLower || account.username?.toLowerCase();
+    if (usernameLower) document.usernameLower = usernameLower;
+    await this.accounts.insertOne(document);
     return account;
   }
   async updateAccount(account) {
+    const document = { ...account, nicknameLower: account.nickname.toLowerCase() };
+    const usernameLower = account.usernameLower || account.username?.toLowerCase();
+    if (usernameLower) document.usernameLower = usernameLower;
     await this.accounts.replaceOne(
       { googleSub: account.googleSub },
-      { ...account, nicknameLower: account.nickname.toLowerCase() },
+      document,
       { upsert: true }
     );
     return account;

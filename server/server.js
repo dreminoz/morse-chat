@@ -161,6 +161,28 @@ async function verifyGoogleCredential(credential) {
   return payload;
 }
 
+function normalizeUsername(username) {
+  return String(username || "").trim().toLowerCase();
+}
+
+function validUsername(username) {
+  return /^[a-z0-9_.-]{3,24}$/.test(username);
+}
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.scryptSync(String(password), salt, 64).toString("hex");
+  return `scrypt:${salt}:${hash}`;
+}
+
+function verifyPassword(password, stored) {
+  const [method, salt, expected] = String(stored || "").split(":");
+  if (method !== "scrypt" || !salt || !expected) return false;
+  const actual = crypto.scryptSync(String(password), salt, 64);
+  const expectedBuffer = Buffer.from(expected, "hex");
+  return actual.length === expectedBuffer.length && crypto.timingSafeEqual(actual, expectedBuffer);
+}
+
 async function createSession(account) {
   const token = crypto.randomBytes(32).toString("hex");
   await store.createSession({ token, googleSub: account.googleSub, createdAt: Date.now() });
@@ -409,6 +431,52 @@ const server = http.createServer(async (req, res) => {
     } catch (error) {
       return json(res, 401, { error: error.message || "google-verification-failed" });
     }
+  }
+  if (req.method === "GET" && url.pathname === "/api/auth/username") {
+    const username = normalizeUsername(url.searchParams.get("username"));
+    if (!validUsername(username)) return json(res, 400, { error: "invalid-username", available: false });
+    return json(res, 200, { available: !(await store.usernameTaken(username)) });
+  }
+  if (req.method === "POST" && url.pathname === "/api/auth/register") {
+    try {
+      const { username: rawUsername, nickname: rawNickname, password, passwordConfirm } = await readBody(req);
+      const username = normalizeUsername(rawUsername);
+      const nickname = String(rawNickname || username).trim();
+      if (!validUsername(username)) return json(res, 400, { error: "invalid-username" });
+      if (nickname.length < 2 || nickname.length > 24) return json(res, 400, { error: "invalid-nickname" });
+      if (String(password || "").length < 6) return json(res, 400, { error: "weak-password" });
+      if (password !== passwordConfirm) return json(res, 400, { error: "password-mismatch" });
+      if (await store.usernameTaken(username)) return json(res, 409, { error: "username-taken" });
+      if (await store.nicknameTaken(nickname)) return json(res, 409, { error: "nickname-taken" });
+      const account = {
+        googleSub: `local:${username}`,
+        authProvider: "local",
+        username,
+        usernameLower: username,
+        passwordHash: hashPassword(password),
+        nickname,
+        nicknameHistory: [],
+        coins: 50,
+        loginStreak: 1,
+        lastLoginRewardDay: localDay(),
+        signalId: `SIGNAL-${crypto.randomBytes(4).toString("hex").toUpperCase()}`,
+        createdAt: Date.now()
+      };
+      await store.insertAccount(account);
+      const token = await createSession(account);
+      return json(res, 200, { token, account: publicAccount(account) });
+    } catch (error) {
+      return json(res, 500, { error: "register-failed" });
+    }
+  }
+  if (req.method === "POST" && url.pathname === "/api/auth/login") {
+    const { username: rawUsername, password } = await readBody(req);
+    const username = normalizeUsername(rawUsername);
+    if (!validUsername(username)) return json(res, 400, { error: "invalid-username" });
+    const existing = await store.findAccountByUsername(username);
+    if (!existing || !verifyPassword(password, existing.passwordHash)) return json(res, 401, { error: "invalid-login" });
+    const token = await createSession(existing);
+    return json(res, 200, { token, account: publicAccount(await applyDailyLogin(existing)) });
   }
   if (req.method === "GET" && url.pathname === "/api/auth/me") {
     const account = await sessionAccount(req, url);

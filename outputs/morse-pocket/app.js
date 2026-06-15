@@ -668,6 +668,8 @@ const state = {
   account: JSON.parse(localStorage.getItem("morse-account") || "null"),
   googleCredential: "",
   googleClientId: "",
+  authMode: "google",
+  usernameChecked: "",
   shopInventory: [],
   shopEquipped: {},
   shopCoins: 0,
@@ -924,23 +926,116 @@ function logoutAccount() {
   renderSettings();
 }
 
+function setAuthMode(mode) {
+  state.authMode = mode;
+  state.usernameChecked = "";
+  $("#authModeGoogle")?.classList.toggle("active", mode === "google");
+  $("#authModeLogin")?.classList.toggle("active", mode === "login");
+  $("#authModeRegister")?.classList.toggle("active", mode === "register");
+  $("#googleSignInButton").hidden = mode !== "google" || Boolean(window.AndroidAuth);
+  $("#androidGoogleSignIn").hidden = mode !== "google" || !window.AndroidAuth;
+  $("#authFields").hidden = true;
+  $("#localAuthFields").hidden = mode === "google";
+  $("#localNicknameLabel").hidden = mode !== "register";
+  $("#localPasswordConfirmLabel").hidden = mode !== "register";
+  $("#checkUsername").hidden = mode !== "register";
+  $("#localPassword").autocomplete = mode === "register" ? "new-password" : "current-password";
+  $("#submitLocalAuth").textContent = mode === "register" ? "Sign up" : "Log in";
+  $("#authStatus").textContent = mode === "google"
+    ? (state.googleClientId || window.AndroidAuth ? "Select a Google account." : "Google Sign-In is not configured.")
+    : mode === "register"
+      ? "Check your ID, then sign up."
+      : "Enter your ID and password.";
+}
+
 function openAuthPanel() {
   $("#authPanel").hidden = false;
-  $("#authFields").hidden = true;
   $("#authNickname").value = "";
+  $("#localUsername").value = "";
+  $("#localNickname").value = "";
+  $("#localPassword").value = "";
+  $("#localPasswordConfirm").value = "";
   state.googleCredential = "";
-  $("#authStatus").textContent = state.googleClientId ? "Google 계정을 먼저 선택하세요." : "Google 로그인이 설정되지 않았습니다.";
+  setAuthMode(state.authMode || "google");
+}
+
+function normalizeLocalUsername() {
+  const username = $("#localUsername").value.trim().toLowerCase();
+  $("#localUsername").value = username;
+  return username;
+}
+
+function validLocalUsername(username) {
+  return /^[a-z0-9_.-]{3,24}$/.test(username);
+}
+
+async function checkLocalUsername() {
+  const username = normalizeLocalUsername();
+  if (!validLocalUsername(username)) {
+    state.usernameChecked = "";
+    $("#authStatus").textContent = "ID must be 3-24 chars: a-z, 0-9, _, ., -";
+    return false;
+  }
+  try {
+    const result = await api(`/api/auth/username?username=${encodeURIComponent(username)}`);
+    if (result.available) {
+      state.usernameChecked = username;
+      $("#authStatus").textContent = "This ID is available.";
+      return true;
+    }
+    state.usernameChecked = "";
+    $("#authStatus").textContent = "This ID is already taken.";
+    return false;
+  } catch (error) {
+    state.usernameChecked = "";
+    $("#authStatus").textContent = "Could not check this ID.";
+    return false;
+  }
+}
+
+async function submitLocalAuth() {
+  const username = normalizeLocalUsername();
+  const password = $("#localPassword").value;
+  if (!validLocalUsername(username)) return showToast("ID must be 3-24 chars.");
+  if (password.length < 6) return showToast("Password must be at least 6 chars.");
+  const body = { username, password };
+  let endpoint = "/api/auth/login";
+  if (state.authMode === "register") {
+    const nickname = $("#localNickname").value.trim();
+    const passwordConfirm = $("#localPasswordConfirm").value;
+    if (state.usernameChecked !== username && !(await checkLocalUsername())) return;
+    if (nickname.length < 2) return showToast("Nickname must be at least 2 chars.");
+    if (password !== passwordConfirm) return showToast("Passwords do not match.");
+    endpoint = "/api/auth/register";
+    body.nickname = nickname;
+    body.passwordConfirm = passwordConfirm;
+  }
+  try {
+    const result = await api(endpoint, { method: "POST", body: JSON.stringify(body) });
+    setAccount(result.token, result.account);
+    showToast(state.authMode === "register" ? "Account created." : "Signed in.");
+  } catch (error) {
+    const messages = {
+      "username-taken": "This ID is already taken.",
+      "nickname-taken": "That nickname is already in use.",
+      "invalid-login": "ID or password is wrong.",
+      "password-mismatch": "Passwords do not match.",
+      "weak-password": "Password must be at least 6 chars.",
+      "invalid-username": "ID must be 3-24 chars."
+    };
+    showToast(messages[error.body?.error] || "Account action failed.");
+  }
 }
 
 function renderGoogleButton() {
   if (window.AndroidAuth) {
-    $("#androidGoogleSignIn").hidden = false;
+    $("#androidGoogleSignIn").hidden = state.authMode !== "google";
     $("#googleSignInButton").hidden = true;
     return;
   }
   if (!state.googleClientId || !globalThis.google?.accounts?.id) return;
   $("#androidGoogleSignIn").hidden = true;
-  $("#googleSignInButton").hidden = false;
+  $("#googleSignInButton").hidden = state.authMode !== "google";
   google.accounts.id.initialize({
     client_id: state.googleClientId,
     callback: async response => {
@@ -4339,6 +4434,17 @@ $("#openSettings").addEventListener("click", () => {
 });
 $("#closeSettings").addEventListener("click", () => $("#settingsPanel").hidden = true);
 $("#androidGoogleSignIn").addEventListener("click", () => window.AndroidAuth?.signIn());
+$("#authModeGoogle").addEventListener("click", () => {
+  setAuthMode("google");
+  renderGoogleButton();
+});
+$("#authModeLogin").addEventListener("click", () => setAuthMode("login"));
+$("#authModeRegister").addEventListener("click", () => setAuthMode("register"));
+$("#localUsername").addEventListener("input", () => {
+  if (state.usernameChecked && state.usernameChecked !== $("#localUsername").value.trim().toLowerCase()) state.usernameChecked = "";
+});
+$("#checkUsername").addEventListener("click", checkLocalUsername);
+$("#submitLocalAuth").addEventListener("click", submitLocalAuth);
 $("#openAuthSettings").addEventListener("click", openAuthPanel);
 $("#logoutAccount").addEventListener("click", logoutAccount);
 $("#saveNickname").addEventListener("click", async () => {
