@@ -841,9 +841,17 @@ async function api(path, options = {}) {
   return body;
 }
 
-function showApiFailure(error, fallback = "서버 연결에 실패했습니다.") {
+function serverFailureMessage() {
+  return uiText(
+    "\uc11c\ubc84 \uc5f0\uacb0\uc5d0 \uc2e4\ud328\ud588\uc2b5\ub2c8\ub2e4. \ub2e4\uc2dc \ub85c\uadf8\uc778 \ud574\uc8fc\uc138\uc694.",
+    "Failed to connect to the server. Please sign in again.",
+    "\u30b5\u30fc\u30d0\u30fc\u63a5\u7d9a\u306b\u5931\u6557\u3057\u307e\u3057\u305f\u3002\u3082\u3046\u4e00\u5ea6\u30ed\u30b0\u30a4\u30f3\u3057\u3066\u304f\u3060\u3055\u3044\u3002"
+  );
+}
+
+function showApiFailure(error, fallback = "") {
   if (error?.handled) return;
-  showToast(fallback);
+  showToast(fallback || serverFailureMessage());
 }
 
 function connectServer() {
@@ -855,7 +863,7 @@ function connectServer() {
     if (!state.authToken) return;
     stream = new EventSource(`${state.serverUrl}/api/events?token=${encodeURIComponent(state.authToken)}`);
   } catch {
-    showToast("서버 연결에 실패했습니다.");
+    showToast(serverFailureMessage());
     return;
   }
   state.eventSource = stream;
@@ -1269,12 +1277,25 @@ async function initializeAuth() {
       }
     }, 200);
     if (state.authToken) {
-      const { account } = await api("/api/auth/me");
-      setAccount(state.authToken, account);
+      try {
+        const { account } = await api("/api/auth/me");
+        setAccount(state.authToken, account);
+      } catch (error) {
+        if (state.account) {
+          setAccount(state.authToken, state.account);
+        } else {
+          renderSettings();
+          showApiFailure(error);
+        }
+      }
     } else {
       renderSettings();
     }
   } catch (error) {
+    if (state.authToken && state.account) {
+      setAccount(state.authToken, state.account);
+      return;
+    }
     renderSettings();
   }
 }
@@ -1618,7 +1639,7 @@ function beginLastSignal(notifyServer = true) {
   if (notifyServer) api("/api/random/leave", {
     method: "POST",
     body: JSON.stringify({ userId: state.userId })
-  }).catch(() => showToast("서버 연결에 실패했습니다."));
+  }).catch(() => showToast(serverFailureMessage()));
   clearTimeout(state.randomReplyTimer);
   clearLastSignalTimers();
   state.randomSignalState = "last";
@@ -1633,7 +1654,7 @@ function sendLastSignal(text) {
   api("/api/random/last", {
     method: "POST",
     body: JSON.stringify({ userId: state.userId, message: { text: cleanText } })
-  }).catch(() => showToast("서버 연결에 실패했습니다."));
+  }).catch(() => showToast(serverFailureMessage()));
   stopRandomSignal("라스트 시그널을 보냈습니다.");
   showPostRandomSignalAd();
 }
@@ -1654,7 +1675,7 @@ function sendRandomChat(text, hidden = false) {
   api("/api/random/send", {
     method: "POST",
     body: JSON.stringify({ userId: state.userId, message: { ...outgoing, mine: false } })
-  }).catch(() => showToast("서버 연결에 실패했습니다."));
+  }).catch(() => showToast(serverFailureMessage()));
 }
 
 const SPACE_SAMPLE_SIGNALS = {
@@ -2553,7 +2574,7 @@ function sendChatMessage(message, hidden = false) {
   api("/api/direct/send", {
     method: "POST",
     body: JSON.stringify({ from: state.userId, to: state.activeFriend, message: wireMessage })
-  }).catch(() => showToast("서버 연결에 실패했습니다."));
+  }).catch(() => showToast(serverFailureMessage()));
 }
 
 function imageToAscii(image) {
@@ -4600,7 +4621,7 @@ $("#sendAscii").addEventListener("click", () => {
     api("/api/random/send", {
       method: "POST",
       body: JSON.stringify({ userId: state.userId, message: { ...outgoing, mine: false } })
-    }).catch(() => showToast("서버 연결에 실패했습니다."));
+    }).catch(() => showToast(serverFailureMessage()));
   } else if (state.asciiTarget === "group-message" && state.activeGroup) {
     sendGroupMessage(state.activeGroup, state.asciiDraft, false, { type: "ascii" });
   } else if (state.asciiTarget === "daily-group-message" && state.dailyGroup) {
@@ -4823,8 +4844,6 @@ document.querySelectorAll("[data-chat-keyer-mode]").forEach(button => button.add
 document.querySelectorAll("[data-language]").forEach(button => button.addEventListener("click", () => {
   const language = button.dataset.language;
   if (language === state.language) return;
-  state.language = language;
-  refreshLocalizedViews();
   applyLanguage(language);
 }));
 $("#reverseChatSwipe").addEventListener("change", event => {
