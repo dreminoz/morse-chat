@@ -1835,15 +1835,32 @@ function renderGroupFriendChoices(target, addMode = false) {
 
 function renderDailyGroup() {
   if (!state.dailyGroup) return;
+  renderDailyGroupToggle();
   $("#dailyGroupForm").hidden = false;
-  $("#dailyGroupStatus").textContent = `${state.dailyGroup.members.length}/10명`;
+  $("#dailyGroupStatus").textContent = `${state.dailyGroup.members.length}/10명 · ${state.account?.dailyGroupEnabled === false ? "내일 OFF" : "내일 ON"}`;
   renderGroupMessageList($("#dailyGroupMessages"), state.dailyGroupMessages, state.dailyGroup);
   renderGroupComposer(true);
 }
 
+function renderDailyGroupToggle() {
+  const enabled = state.account?.dailyGroupEnabled !== false;
+  $("#toggleDailyGroupJoin").textContent = enabled ? "ON" : "OFF";
+  $("#toggleDailyGroupJoin").classList.toggle("off", !enabled);
+}
+
 function loadDailyGroup() {
   if (!state.authToken) return;
-  api("/api/daily-group").then(({ left, group, messages }) => {
+  renderDailyGroupToggle();
+  api("/api/daily-group").then(({ disabled, left, group, messages }) => {
+    if (disabled) {
+      state.dailyGroup = null;
+      state.dailyGroupMessages = [];
+      renderDailyGroupToggle();
+      $("#dailyGroupStatus").textContent = state.language === "en" ? "Daily Group Chat is OFF." : "데일리 그룹챗 참여가 꺼져 있습니다.";
+      $("#dailyGroupMessages").innerHTML = `<p class="chat-empty">${state.language === "en" ? "Turn it ON to join at midnight." : "ON으로 바꾸면 00시 이후 설정값에 따라 참여합니다."}</p>`;
+      $("#dailyGroupForm").hidden = true;
+      return;
+    }
     if (left) {
       state.dailyGroup = null;
       state.dailyGroupMessages = [];
@@ -1855,6 +1872,15 @@ function loadDailyGroup() {
     state.dailyGroup = group;
     state.dailyGroupMessages = messages;
     renderDailyGroup();
+  }).catch(error => showApiFailure(error));
+}
+
+function toggleDailyGroupJoin() {
+  const enabled = state.account?.dailyGroupEnabled === false;
+  api("/api/daily-group/settings", { method: "POST", body: JSON.stringify({ enabled }) }).then(({ account }) => {
+    applyAccountUpdate(account);
+    loadDailyGroup();
+    showToast(enabled ? "Daily Group Chat ON." : "Daily Group Chat OFF.");
   }).catch(error => showApiFailure(error));
 }
 
@@ -2025,7 +2051,8 @@ function profileVisualHtml(profile, fallback = "?") {
 
 function profileCosmeticClasses(profile) {
   const equipped = profile?.equipped || {};
-  return [equipped.profileBorder, equipped.profileBackground, ...(profile?.specials || [])].filter(Boolean).map(value => `cosmetic-${value}`).join(" ");
+  const specials = (profile?.specials || []).filter(value => value !== "collector_crown" || equipped.collectorCrown !== false);
+  return [equipped.profileBorder, equipped.profileBackground, ...specials].filter(Boolean).map(value => `cosmetic-${value}`).join(" ");
 }
 
 function applyProfileCosmetics(target, profile) {
@@ -2844,6 +2871,17 @@ function unequipShopSlot(slot) {
   });
 }
 
+function setCollectorCrown(enabled) {
+  return api("/api/shop/collector-crown", { method: "POST", body: JSON.stringify({ enabled }) }).then(result => {
+    state.shopInventory = result.inventory || [];
+    state.shopEquipped = result.equipped || {};
+    applyAccountUpdate(result.account);
+    renderShop();
+    showToast(enabled ? "Golden crown border enabled." : "Golden crown border disabled.");
+    return result;
+  });
+}
+
 function renderShop() {
   const ko = state.language !== "en";
   const categoryNames = ko
@@ -2900,7 +2938,8 @@ function renderShop() {
     });
   }
   if ((state.account?.specials || []).includes("collector_badge")) {
-    $("#shopInventory").insertAdjacentHTML("beforeend", `<article class="collector-reward"><strong>${ko ? "컬렉션 완성 보상" : "Collection Complete Reward"}</strong><span>${ko ? "상점 컬렉터 배지 · 황금 왕관 프로필 효과" : "Shop Master badge · Golden Crown profile effect"}</span></article>`);
+    const crownOn = state.shopEquipped?.collectorCrown !== false;
+    $("#shopInventory").insertAdjacentHTML("beforeend", `<article class="collector-reward"><strong>${ko ? "컬렉션 완성 보상" : "Collection Complete Reward"}</strong><span>${ko ? "상점 컬렉터 배지 · 황금 왕관 프로필 효과" : "Shop Master badge · Golden Crown profile effect"}</span><button type="button" data-collector-crown="${crownOn ? "off" : "on"}">${crownOn ? (ko ? "왕관 테두리 끄기" : "Disable crown border") : (ko ? "왕관 테두리 켜기" : "Enable crown border")}</button></article>`);
   }
 }
 
@@ -3883,6 +3922,7 @@ $("#dailyGroupMessages").addEventListener("click", event => {
     playMorse(message?.text || "", null, message?.text || "", message?.senderSound || "");
   }
 });
+$("#toggleDailyGroupJoin").addEventListener("click", toggleDailyGroupJoin);
 $("#leaveDailyGroup").addEventListener("click", () => {
   if (!state.dailyGroup || !confirm("오늘의 데일리 그룹챗에서 나갈까요?")) return;
   api("/api/groups/leave", { method: "POST", body: JSON.stringify({ groupId: state.dailyGroup.id }) }).then(() => {
@@ -5000,6 +5040,11 @@ $("#trainingCard").addEventListener("pointerup", event => {
 $("#showAnswer").addEventListener("change", event => $("#trainingMorse").style.visibility = event.target.checked ? "visible" : "hidden");
 $("#stopPlayer").addEventListener("click", () => stopMorse());
 $("#shopWorld").addEventListener("click", event => {
+  const crown = event.target.closest("[data-collector-crown]");
+  if (crown) {
+    setCollectorCrown(crown.dataset.collectorCrown === "on").catch(error => showApiFailure(error));
+    return;
+  }
   const draw = event.target.closest("[data-shop-draw]");
   if (draw) {
     draw.disabled = true;

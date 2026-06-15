@@ -470,7 +470,13 @@
     </section>
 
     <section id="dailyGroupWorld" class="world-view daily-group-world" hidden>
-      <header class="daily-group-header"><strong id="dailyGroupStatus">멤버를 불러오는 중입니다.</strong><button id="leaveDailyGroup" type="button">나가기</button></header>
+      <header class="daily-group-header">
+        <strong id="dailyGroupStatus">멤버를 불러오는 중입니다.</strong>
+        <div class="daily-group-controls">
+          <button id="toggleDailyGroupJoin" type="button">ON</button>
+          <button id="leaveDailyGroup" type="button">나가기</button>
+        </div>
+      </header>
       <div id="dailyGroupMessages" class="chat-messages daily-group-messages"></div>
       <form id="dailyGroupForm" class="chat-morse-composer group-chat-composer">
         <div class="chat-morse-display"><textarea id="dailyGroupInput" rows="1" maxlength="1000" placeholder="모스코드를 입력하세요"></textarea><small id="dailyGroupSignal">현재 글자: 비어 있음</small></div>

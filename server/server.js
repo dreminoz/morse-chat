@@ -205,7 +205,8 @@ function publicAccount(account) {
     coins: Number(account.coins || 0),
     loginStreak: Number(account.loginStreak || 0),
     badges: account.badges || [],
-    specials: account.specials || []
+    specials: account.specials || [],
+    dailyGroupEnabled: account.dailyGroupEnabled !== false
   };
 }
 
@@ -331,11 +332,11 @@ async function pairUsers(a, b) {
   randomPartnerHistory.set(b, new Set([...(randomPartnerHistory.get(b) || []), a]));
   const [accountA, accountB] = await Promise.all([store.findAccountBySignalId(a), store.findAccountBySignalId(b)]);
   if (accountA) {
-    accountA.randomPartnerHistory = [...new Set([...(accountA.randomPartnerHistory || []), b])].slice(-5000);
+    accountA.randomPartnerHistory = [...new Set([...(accountA.randomPartnerHistory || []), b])];
     await store.updateAccount(accountA);
   }
   if (accountB) {
-    accountB.randomPartnerHistory = [...new Set([...(accountB.randomPartnerHistory || []), a])].slice(-5000);
+    accountB.randomPartnerHistory = [...new Set([...(accountB.randomPartnerHistory || []), a])];
     await store.updateAccount(accountB);
   }
   emit(a, "random-connected", { partner: "RANDOM SIGNAL" });
@@ -707,11 +708,19 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method === "POST" && url.pathname === "/api/shop/unequip") {
     const { slot } = await readBody(req);
-    if (!["chatTheme", "randomTheme", "morseSound", "profileBorder", "profileBackground"].includes(slot)) {
+    if (!["chatTheme", "randomTheme", "morseSound", "profileBorder", "profileBackground", "collectorCrown"].includes(slot)) {
       return json(res, 400, { error: "invalid-shop-slot" });
     }
     account.equipped = { ...(account.equipped || {}) };
-    delete account.equipped[slot];
+    if (slot === "collectorCrown") account.equipped.collectorCrown = false;
+    else delete account.equipped[slot];
+    await store.updateAccount(account);
+    return json(res, 200, { account: publicAccount(account), inventory: account.inventory || [], equipped: account.equipped });
+  }
+  if (req.method === "POST" && url.pathname === "/api/shop/collector-crown") {
+    const { enabled } = await readBody(req);
+    if (!(account.specials || []).includes("collector_crown")) return json(res, 403, { error: "collector-crown-not-owned" });
+    account.equipped = { ...(account.equipped || {}), collectorCrown: Boolean(enabled) };
     await store.updateAccount(account);
     return json(res, 200, { account: publicAccount(account), inventory: account.inventory || [], equipped: account.equipped });
   }
@@ -868,6 +877,9 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, publicGroupMessage(group, item, account.signalId));
   }
   if (req.method === "GET" && url.pathname === "/api/daily-group") {
+    if (account.dailyGroupEnabled === false) {
+      return json(res, 200, { disabled: true, day: localDay(), group: null, messages: [] });
+    }
     if (account.dailyGroupLeftDay === localDay()) {
       return json(res, 200, { left: true, day: localDay(), group: null, messages: [] });
     }
@@ -877,6 +889,12 @@ const server = http.createServer(async (req, res) => {
       group: await publicGroup(group, account.signalId),
       messages: (await store.groupHistory(group.id)).filter(item => !blocked.includes(item.from)).map(item => publicGroupMessage(group, item, account.signalId))
     });
+  }
+  if (req.method === "POST" && url.pathname === "/api/daily-group/settings") {
+    const { enabled } = await readBody(req);
+    account.dailyGroupEnabled = Boolean(enabled);
+    await store.updateAccount(account);
+    return json(res, 200, { account: publicAccount(account) });
   }
   if (req.method === "GET" && url.pathname === "/api/direct/history") {
     const user = account.signalId;
@@ -957,10 +975,10 @@ const server = http.createServer(async (req, res) => {
     const received = [...new Set([
       ...(account.receivedSpaceIds || []),
       ...String(url.searchParams.get("received") || "").split(",").filter(Boolean)
-    ])].slice(-5000);
+    ])];
     const signal = await store.randomSpace(exclude, received);
     if (!signal) return json(res, 404, { error: "no-signals" });
-    account.receivedSpaceIds = [...received, signal.id].slice(-5000);
+    account.receivedSpaceIds = [...new Set([...received, signal.id])];
     await store.updateAccount(account);
     return json(res, 200, signal);
   }
