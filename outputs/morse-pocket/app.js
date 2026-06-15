@@ -46,6 +46,14 @@ const SHOP_CATEGORIES = [
   { id: "profile", name: "Profile Style", description: "Profile borders and backgrounds" }
 ];
 
+const DEFAULT_LANGUAGE_MIGRATION = "2026-06-default-en";
+if (localStorage.getItem("morse-language-default-en-applied") !== DEFAULT_LANGUAGE_MIGRATION) {
+  if (!localStorage.getItem("morse-language") || localStorage.getItem("morse-language") === "ko") {
+    localStorage.setItem("morse-language", "en");
+  }
+  localStorage.setItem("morse-language-default-en-applied", DEFAULT_LANGUAGE_MIGRATION);
+}
+
 const $ = (selector) => document.querySelector(selector);
 const I18N_PAIRS = [
   ["비밀일기", "Secret Diary"],
@@ -1068,6 +1076,7 @@ function setAuthMode(mode) {
   $("#localNicknameLabel").hidden = mode !== "register";
   $("#localPasswordConfirmLabel").hidden = mode !== "register";
   $("#checkUsername").hidden = mode !== "register";
+  setUsernameCheckStatus();
   $("#localPassword").autocomplete = mode === "register" ? "new-password" : "current-password";
   $("#submitLocalAuth").textContent = mode === "register"
     ? uiText("회원가입", "Sign up", "新規登録")
@@ -1102,26 +1111,35 @@ function validLocalUsername(username) {
   return /^[a-z0-9_.-]{3,24}$/.test(username);
 }
 
+function setUsernameCheckStatus(message = "", kind = "") {
+  const status = $("#usernameCheckStatus");
+  if (!status) return;
+  status.hidden = !message;
+  status.textContent = message;
+  status.classList.remove("available", "taken", "error");
+  if (kind) status.classList.add(kind);
+}
+
 async function checkLocalUsername() {
   const username = normalizeLocalUsername();
   if (!validLocalUsername(username)) {
     state.usernameChecked = "";
-    $("#authStatus").textContent = uiText("ID는 3-24자여야 합니다: a-z, 0-9, _, ., -", "ID must be 3-24 chars: a-z, 0-9, _, ., -", "IDは3〜24文字で入力してください: a-z, 0-9, _, ., -");
+    setUsernameCheckStatus("ID must be 3-24 chars: a-z, 0-9, _, ., -", "error");
     return false;
   }
   try {
     const result = await api(`/api/auth/username?username=${encodeURIComponent(username)}`);
     if (result.available) {
       state.usernameChecked = username;
-      $("#authStatus").textContent = uiText("사용 가능한 아이디입니다.", "This ID is available.", "このIDは使用できます。");
+      setUsernameCheckStatus("This ID is available.", "available");
       return true;
     }
     state.usernameChecked = "";
-    $("#authStatus").textContent = uiText("이미 사용 중인 아이디입니다.", "This ID is already taken.", "このIDはすでに使用されています。");
+    setUsernameCheckStatus("This ID is already taken.", "taken");
     return false;
   } catch (error) {
     state.usernameChecked = "";
-    $("#authStatus").textContent = uiText("아이디를 확인할 수 없습니다.", "Could not check this ID.", "このIDを確認できませんでした。");
+    setUsernameCheckStatus("Could not check this ID.", "error");
     return false;
   }
 }
@@ -1129,16 +1147,16 @@ async function checkLocalUsername() {
 async function submitLocalAuth() {
   const username = normalizeLocalUsername();
   const password = $("#localPassword").value;
-  if (!validLocalUsername(username)) return showToast(uiText("ID는 3-24자여야 합니다.", "ID must be 3-24 chars.", "IDは3〜24文字で入力してください。"));
-  if (password.length < 6) return showToast(uiText("비밀번호는 6자 이상이어야 합니다.", "Password must be at least 6 chars.", "パスワードは6文字以上必要です。"));
+  if (!validLocalUsername(username)) return showToast("ID must be 3-24 chars.");
+  if (password.length < 6) return showToast("Password must be at least 6 chars.");
   const body = { username, password };
   let endpoint = "/api/auth/login";
   if (state.authMode === "register") {
     const nickname = $("#localNickname").value.trim();
     const passwordConfirm = $("#localPasswordConfirm").value;
     if (state.usernameChecked !== username && !(await checkLocalUsername())) return;
-    if (nickname.length < 2) return showToast(uiText("닉네임은 2자 이상 입력하세요.", "Nickname must be at least 2 chars.", "ニックネームは2文字以上入力してください。"));
-    if (password !== passwordConfirm) return showToast(uiText("비밀번호가 일치하지 않습니다.", "Passwords do not match.", "パスワードが一致しません。"));
+    if (nickname.length < 2) return showToast("Nickname must be at least 2 chars.");
+    if (password !== passwordConfirm) return showToast("Passwords do not match.");
     endpoint = "/api/auth/register";
     body.nickname = nickname;
     body.passwordConfirm = passwordConfirm;
@@ -1146,19 +1164,17 @@ async function submitLocalAuth() {
   try {
     const result = await api(endpoint, { method: "POST", body: JSON.stringify(body) });
     setAccount(result.token, result.account);
-    showToast(state.authMode === "register"
-      ? uiText("계정이 생성되었습니다.", "Account created.", "アカウントを作成しました。")
-      : uiText("로그인되었습니다.", "Signed in.", "ログインしました。"));
+    showToast(state.authMode === "register" ? "Account created." : "Signed in.");
   } catch (error) {
     const messages = {
-      "username-taken": uiText("이미 사용 중인 아이디입니다.", "This ID is already taken.", "このIDはすでに使用されています。"),
-      "nickname-taken": uiText("이미 사용 중인 닉네임입니다.", "That nickname is already in use.", "このニックネームはすでに使用されています。"),
-      "invalid-login": uiText("ID 또는 비밀번호가 틀렸습니다.", "ID or password is wrong.", "IDまたはパスワードが違います。"),
-      "password-mismatch": uiText("비밀번호가 일치하지 않습니다.", "Passwords do not match.", "パスワードが一致しません。"),
-      "weak-password": uiText("비밀번호는 6자 이상이어야 합니다.", "Password must be at least 6 chars.", "パスワードは6文字以上必要です。"),
-      "invalid-username": uiText("ID는 3-24자여야 합니다.", "ID must be 3-24 chars.", "IDは3〜24文字で入力してください。")
+      "username-taken": "This ID is already taken.",
+      "nickname-taken": "That nickname is already in use.",
+      "invalid-login": "ID or password is wrong.",
+      "password-mismatch": "Passwords do not match.",
+      "weak-password": "Password must be at least 6 chars.",
+      "invalid-username": "ID must be 3-24 chars."
     };
-    showToast(messages[error.body?.error] || uiText("계정 처리에 실패했습니다.", "Account action failed.", "アカウント処理に失敗しました。"));
+    showToast(messages[error.body?.error] || "Account action failed.");
   }
 }
 
@@ -2428,9 +2444,11 @@ function refreshLocalizedViews() {
 function applyLanguage(language) {
   state.language = language;
   localStorage.setItem("morse-language", language);
+  localStorage.setItem("morse-language-default-en-applied", DEFAULT_LANGUAGE_MIGRATION);
   document.documentElement.lang = language;
-  translateElement(document.body, language);
   document.title = "morsiq";
+  refreshLocalizedViews();
+  translateElement(document.body, language);
   if (!$("#shopWorld").hidden) renderShop();
   if (state.authToken) {
     api("/api/push/language", { method: "POST", body: JSON.stringify({ language }) }).catch(() => {});
@@ -4633,6 +4651,7 @@ $("#authModeLogin").addEventListener("click", () => setAuthMode("login"));
 $("#authModeRegister").addEventListener("click", () => setAuthMode("register"));
 $("#localUsername").addEventListener("input", () => {
   if (state.usernameChecked && state.usernameChecked !== $("#localUsername").value.trim().toLowerCase()) state.usernameChecked = "";
+  setUsernameCheckStatus();
 });
 $("#checkUsername").addEventListener("click", checkLocalUsername);
 $("#submitLocalAuth").addEventListener("click", submitLocalAuth);

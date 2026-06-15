@@ -27,6 +27,9 @@ button { cursor: pointer; }
 .auth-tabs button.active { color: white; background: var(--ink); }
 .local-auth-fields { display: grid; gap: 8px; }
 .local-auth-fields[hidden] { display: none; }
+.username-check-status { margin: 4px 0 -2px !important; padding: 9px 11px; border: 1px solid var(--line); border-radius: 11px; color: var(--muted); background: white; font-size: 10px; font-weight: 850; }
+.username-check-status.available { color: #076b32; border-color: #8fd5a7; background: #ecfff3; }
+.username-check-status.taken, .username-check-status.error { color: #b00020; border-color: #f0a0aa; background: #fff0f2; }
 .auth-card label { display: grid; gap: 5px; margin-top: 10px; color: var(--muted); font-size: 9px; font-weight: 850; }
 .auth-card input { padding: 13px; border: 1px solid var(--line); border-radius: 12px; outline: none; background: white; }
 .auth-card .primary-button { margin-top: 12px; }
