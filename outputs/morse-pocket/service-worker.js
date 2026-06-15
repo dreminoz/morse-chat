@@ -1,4 +1,4 @@
-const CACHE = "morse-pocket-v105";
+const CACHE = "morse-pocket-v107";
 const FILES = ["./", "index.html", "styles.css", "app.js", "manifest.json", "icon.svg"];
 
 self.addEventListener("install", event => {
@@ -30,7 +30,7 @@ self.addEventListener("fetch", event => {
 self.addEventListener("push", event => {
   let data = {};
   try { data = event.data?.json() || {}; } catch {}
-  event.waitUntil(self.registration.showNotification(data.title || "MORSE CHAT", {
+  event.waitUntil(self.registration.showNotification(data.title || "morsiq", {
     body: data.body || "",
     icon: "icon.svg",
     badge: "icon.svg",

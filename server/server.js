@@ -37,6 +37,7 @@ const SECRET_MORSE = {
   "-....-": "-", ".----.": "'", "-.--.": "(", "-.--.-": ")", "---...": ":", "-.-.-.": ";",
   "-...-": "=", ".-.-.": "+", "..--.-": "_", ".-..-.": "\"", "...-..-": "$", ".-...": "&"
 };
+const SPACE_SIGNAL_ALLOWED_RE = /^[A-Za-z0-9 .,?!/@\-'\(\):;=+_"$&]+$/;
 const SHOP_ITEMS = [
   { id: "chat_midnight", category: "chatTheme", slot: "chatTheme" },
   { id: "chat_cream", category: "chatTheme", slot: "chatTheme" },
@@ -46,6 +47,7 @@ const SHOP_ITEMS = [
   { id: "random_radar", category: "randomTheme", slot: "randomTheme" },
   { id: "random_sunset", category: "randomTheme", slot: "randomTheme" },
   { id: "random_ice", category: "randomTheme", slot: "randomTheme" },
+  { id: "sound_basic", category: "morseSound", slot: "morseSound", free: true },
   { id: "sound_click", category: "morseSound", slot: "morseSound" },
   { id: "sound_drop", category: "morseSound", slot: "morseSound" },
   { id: "sound_beep", category: "morseSound", slot: "morseSound" },
@@ -78,7 +80,7 @@ async function applyDailyLogin(account) {
 
 async function applyCollectorRewards(account) {
   const owned = new Set(account.inventory || []);
-  if (!SHOP_ITEMS.every(item => owned.has(item.id))) return account;
+  if (!SHOP_ITEMS.filter(item => !item.free).every(item => owned.has(item.id))) return account;
   account.badges = [...new Set([...(account.badges || []), "shop_master"])];
   account.specials = [...new Set([...(account.specials || []), ...COLLECTOR_SPECIALS])];
   await store.updateAccount(account);
@@ -248,7 +250,7 @@ function notificationText(kind, language, data = {}) {
       body: en ? "A new anonymous message arrived." : "새 익명 메시지가 도착했습니다."
     },
     group: {
-      title: en ? `Group Chat · ${data.groupName || "MORSE CHAT"}` : `그룹챗 · ${data.groupName || "MORSE CHAT"}`,
+      title: en ? `Group Chat · ${data.groupName || "morsiq"}` : `그룹챗 · ${data.groupName || "morsiq"}`,
       body: preview || (en ? "A new group message arrived." : "새 그룹 메시지가 도착했습니다.")
     },
     space: {
@@ -256,7 +258,7 @@ function notificationText(kind, language, data = {}) {
       body: en ? "A new Space Signal arrived." : "새 우주 시그널이 도착했습니다."
     }
   };
-  return messages[kind] || { title: "MORSE CHAT", body: preview };
+  return messages[kind] || { title: "morsiq", body: preview };
 }
 
 async function pushToUser(signalId, kind, data = {}) {
@@ -670,7 +672,7 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method === "POST" && url.pathname === "/api/shop/draw") {
     const { category } = await readBody(req);
-    const categoryItems = SHOP_ITEMS.filter(item => item.category === category);
+    const categoryItems = SHOP_ITEMS.filter(item => item.category === category && !item.free);
     if (!categoryItems.length) return json(res, 400, { error: "invalid-shop-category" });
     const owned = new Set(account.inventory || []);
     const pool = categoryItems.filter(item => !owned.has(item.id));
@@ -701,7 +703,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "POST" && url.pathname === "/api/shop/equip") {
     const { itemId } = await readBody(req);
     const item = SHOP_ITEMS.find(candidate => candidate.id === itemId);
-    if (!item || !(account.inventory || []).includes(itemId)) return json(res, 403, { error: "item-not-owned" });
+    if (!item || (!item.free && !(account.inventory || []).includes(itemId))) return json(res, 403, { error: "item-not-owned" });
     account.equipped = { ...(account.equipped || {}), [item.slot]: item.id };
     await store.updateAccount(account);
     return json(res, 200, { account: publicAccount(account), inventory: account.inventory, equipped: account.equipped });
@@ -713,6 +715,7 @@ const server = http.createServer(async (req, res) => {
     }
     account.equipped = { ...(account.equipped || {}) };
     if (slot === "collectorCrown") account.equipped.collectorCrown = false;
+    else if (slot === "morseSound") account.equipped.morseSound = "sound_off";
     else delete account.equipped[slot];
     await store.updateAccount(account);
     return json(res, 200, { account: publicAccount(account), inventory: account.inventory || [], equipped: account.equipped });
@@ -960,8 +963,8 @@ const server = http.createServer(async (req, res) => {
     const sender = account.signalId;
     if (!text) return json(res, 400, { error: "text required" });
     const cleanText = String(text).trim();
-    if (type === "text" && !/^[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$/.test(cleanText)) {
-      return json(res, 400, { error: "space-english-numbers-only" });
+    if (type === "text" && !SPACE_SIGNAL_ALLOWED_RE.test(cleanText)) {
+      return json(res, 400, { error: "space-unsupported-character" });
     }
     if (!["text", "ascii"].includes(type)) return json(res, 400, { error: "invalid-space-type" });
     const signal = { id: crypto.randomUUID(), sender, text: cleanText, type, day, createdAt: Date.now() };
@@ -1060,11 +1063,11 @@ const server = http.createServer(async (req, res) => {
 async function start() {
   store = await createStore({ dataFile: DATA_FILE });
   server.listen(PORT, "0.0.0.0", () => {
-    console.log(`MORSE CHAT server running at http://0.0.0.0:${PORT}`);
+    console.log(`morsiq server running at http://0.0.0.0:${PORT}`);
   });
 }
 
 start().catch(error => {
-  console.error("Failed to start MORSE CHAT server:", error);
+  console.error("Failed to start morsiq server:", error);
   process.exitCode = 1;
 });

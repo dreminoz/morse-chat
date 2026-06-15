@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>MORSE CHAT</title>
+  <title>morsiq</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon.svg">
   <link rel="stylesheet" href="styles.css">
@@ -14,37 +14,37 @@
 <body>
   <div id="authPanel" class="auth-overlay" hidden>
     <section class="auth-card">
-      <p class="eyebrow">MORSE CHAT ACCOUNT</p>
-      <h2>?? ??</h2>
-      <p>Google ?? ?? ???? ???? ? ????.</p>
+      <p class="eyebrow">morsiq account</p>
+      <h2>Sign in</h2>
+      <p>Continue with Google, or sign in with your own ID.</p>
       <div class="auth-tabs">
         <button id="authModeGoogle" class="active" type="button">Google</button>
-        <button id="authModeLogin" type="button">???</button>
-        <button id="authModeRegister" type="button">????</button>
+        <button id="authModeLogin" type="button">Login</button>
+        <button id="authModeRegister" type="button">Sign up</button>
       </div>
       <div id="googleSignInButton" class="google-sign-in"></div>
-      <button id="androidGoogleSignIn" class="android-google-sign-in" type="button" hidden>Google ???? ????</button>
+      <button id="androidGoogleSignIn" class="android-google-sign-in" type="button" hidden>Continue with Google</button>
       <div id="localAuthFields" class="local-auth-fields" hidden>
-        <label><span>???</span><input id="localUsername" maxlength="24" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="??, ??, _, ., -"></label>
-        <button id="checkUsername" class="light-button" type="button">??? ?? ??</button>
-        <label id="localNicknameLabel" hidden><span>???</span><input id="localNickname" maxlength="24" autocomplete="nickname"></label>
-        <label><span>????</span><input id="localPassword" type="password" maxlength="72" autocomplete="current-password"></label>
-        <label id="localPasswordConfirmLabel" hidden><span>???? ??</span><input id="localPasswordConfirm" type="password" maxlength="72" autocomplete="new-password"></label>
-        <button id="submitLocalAuth" class="primary-button" type="button">???</button>
+        <label><span>ID</span><input id="localUsername" maxlength="24" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="letters, numbers, _, ., -"></label>
+        <button id="checkUsername" class="light-button" type="button">Check ID</button>
+        <label id="localNicknameLabel" hidden><span>Nickname</span><input id="localNickname" maxlength="24" autocomplete="nickname"></label>
+        <label><span>Password</span><input id="localPassword" type="password" maxlength="72" autocomplete="current-password"></label>
+        <label id="localPasswordConfirmLabel" hidden><span>Confirm password</span><input id="localPasswordConfirm" type="password" maxlength="72" autocomplete="new-password"></label>
+        <button id="submitLocalAuth" class="primary-button" type="button">Login</button>
       </div>
       <div id="authFields" hidden>
-        <label><span>???</span><input id="authNickname" maxlength="24" autocomplete="nickname"></label>
-        <button id="submitAuth" class="primary-button" type="button">??? ??</button>
+        <label><span>Nickname</span><input id="authNickname" maxlength="24" autocomplete="nickname"></label>
+        <button id="submitAuth" class="primary-button" type="button">Set nickname</button>
       </div>
-      <p id="authStatus" class="auth-status">??? ??? ?????.</p>
-      <button id="closeAuthPanel" class="light-button auth-close" type="button">????? ????</button>
+      <p id="authStatus" class="auth-status">Choose a sign-in method.</p>
+      <button id="closeAuthPanel" class="light-button auth-close" type="button">Back to training</button>
     </section>
   </div>
   <main class="app-shell">
     <header>
       <div>
-        <p class="eyebrow">MORSE CHAT</p>
-        <h1>MORSE<br><span>CHAT</span></h1>
+        <p class="eyebrow">morsiq</p>
+        <h1>morsiq</h1>
       </div>
       <button id="openSettings" class="round-button" type="button" aria-label="설정 열기">···</button>
     </header>
@@ -69,7 +69,7 @@
       <div id="conversationList">
         <section id="friendNativeAdSlot" class="friend-native-ad-slot" aria-label="광고">
           <span>AD</span>
-          <div><strong>MORSE CHAT</strong><small>네이티브 광고</small></div>
+          <div><strong>morsiq</strong><small>네이티브 광고</small></div>
         </section>
         <section id="friendRequestSection" class="friend-request-section">
           <button id="openReceivedRequests" type="button"><span>받은 요청</span><strong id="receivedRequestCount">0</strong></button>
@@ -322,7 +322,7 @@
 
     <section id="spaceWorld" class="world-view space-world" hidden>
       <div class="friends-hero space-hero">
-        <p class="eyebrow">MORSE CHAT</p>
+        <p class="eyebrow">morsiq</p>
         <h2>우주</h2>
         <p>하루에 하나의 시그널을 우주로 보내고, 누군가의 시그널을 수신합니다.</p>
       </div>
@@ -340,7 +340,7 @@
           <span class="space-signal-flight"></span>
         </div>
         <form id="spaceSendForm" class="space-send-form">
-          <textarea id="spaceSendInput" maxlength="300" inputmode="text" placeholder="영어와 숫자로 우주 시그널을 입력하세요"></textarea>
+          <textarea id="spaceSendInput" maxlength="300" inputmode="text" placeholder="Letters, numbers, and Morse symbols"></textarea>
           <small id="spaceSendSignal" class="space-send-signal">현재 글자: 비어 있음</small>
           <button id="spaceSendKeyer" class="morse-keyer space-keyer" type="button">
             <strong>PRESS & HOLD</strong>
@@ -379,7 +379,7 @@
       <div class="random-signal-shell">
         <header class="random-signal-header">
           <div>
-            <p class="eyebrow">MORSE CHAT</p>
+            <p class="eyebrow">morsiq</p>
             <h2>랜덤 시그널</h2>
           </div>
           <span id="randomSignalStatus" class="random-signal-status">연결 대기 중</span>
@@ -451,7 +451,7 @@
 
     <section id="profileWorld" class="world-view profile-world" hidden>
       <section class="profile-card">
-        <p class="eyebrow">MORSE CHAT PROFILE</p>
+        <p class="eyebrow">morsiq profile</p>
         <div id="myProfileVisual" class="profile-visual"></div>
         <strong id="myProfileNickname" class="profile-nickname"></strong>
         <small id="myProfileSignalId" class="profile-signal-id" data-no-i18n></small>
@@ -557,7 +557,7 @@
 
     <section id="shopWorld" class="world-view shop-world" hidden>
       <section class="shop-hero">
-        <p class="eyebrow">MORSE CHAT SHOP</p>
+        <p class="eyebrow">morsiq shop</p>
         <h2>상점</h2>
         <p>준비 중입니다.</p>
       </section>
@@ -595,7 +595,7 @@
   <div id="friendProfilePanel" class="profile-overlay" hidden>
     <section class="profile-card friend-profile-card">
       <button id="closeFriendProfile" class="profile-close" type="button" aria-label="프로필 닫기">×</button>
-      <p class="eyebrow">MORSE CHAT PROFILE</p>
+      <p class="eyebrow">morsiq profile</p>
       <div id="friendProfileVisual" class="profile-visual"></div>
       <strong id="friendProfileNickname" class="profile-nickname"></strong>
       <small id="friendProfileSignalId" class="profile-signal-id" data-no-i18n></small>
@@ -618,7 +618,7 @@
   <div id="friendRequestPanel" class="profile-overlay" hidden>
     <section class="request-panel-card">
       <button id="closeFriendRequests" class="profile-close" type="button" aria-label="친구 요청 닫기">×</button>
-      <p class="eyebrow">MORSE CHAT</p>
+      <p class="eyebrow">morsiq</p>
       <h2 id="friendRequestPanelTitle">받은 요청</h2>
       <div id="friendRequests" class="friend-requests"></div>
       <div id="sentFriendRequests" class="friend-requests" hidden></div>
@@ -641,7 +641,7 @@
   <div id="addFriendPanel" class="profile-overlay" hidden>
     <section class="request-panel-card">
       <button id="closeAddFriend" class="profile-close" type="button">×</button>
-      <p class="eyebrow">MORSE CHAT</p>
+      <p class="eyebrow">morsiq</p>
       <h2>친구 추가</h2>
       <form id="friendForm" class="group-create-form">
         <input id="friendInput" maxlength="24" placeholder="친구 닉네임" autocomplete="off">
@@ -694,7 +694,7 @@
     <section class="settings-card">
       <header class="settings-header">
         <div>
-          <p class="eyebrow">MORSE CHAT</p>
+          <p class="eyebrow">morsiq</p>
           <h2>설정</h2>
         </div>
         <button id="closeSettings" type="button" aria-label="설정 닫기">×</button>

@@ -14,6 +14,8 @@ const MORSE = {
   "'": ".----.", "(": "-.--.", ")": "-.--.-", ":": "---...", ";": "-.-.-.", "=": "-...-", "+": ".-.-.",
   "_": "..--.-", "\"": ".-..-.", "$": "...-..-", "&": ".-..."
 };
+const SPACE_SIGNAL_ALLOWED_RE = /^[A-Za-z0-9 .,?!/@\-'\(\):;=+_"$&]+$/;
+const SPACE_SIGNAL_FILTER_RE = /[^A-Za-z0-9 .,?!/@\-'\(\):;=+_"$&]+/g;
 const SHOP_ITEMS = [
   { id: "chat_midnight", category: "chatTheme", slot: "chatTheme", name: "Midnight", icon: "MID" },
   { id: "chat_cream", category: "chatTheme", slot: "chatTheme", name: "Soft Cream", icon: "CRM" },
@@ -23,6 +25,7 @@ const SHOP_ITEMS = [
   { id: "random_radar", category: "randomTheme", slot: "randomTheme", name: "Radar Grid", icon: "RAD" },
   { id: "random_sunset", category: "randomTheme", slot: "randomTheme", name: "Sunset Signal", icon: "SUN" },
   { id: "random_ice", category: "randomTheme", slot: "randomTheme", name: "Frozen Signal", icon: "ICE" },
+  { id: "sound_basic", category: "morseSound", slot: "morseSound", name: "Basic", icon: "BIP", free: true },
   { id: "sound_click", category: "morseSound", slot: "morseSound", name: "Radio Click", icon: "CLK" },
   { id: "sound_drop", category: "morseSound", slot: "morseSound", name: "Water Drop", icon: "DROP" },
   { id: "sound_beep", category: "morseSound", slot: "morseSound", name: "Classic Beep", icon: "BEEP" },
@@ -109,7 +112,7 @@ const I18N_PAIRS = [
   ["랜덤 시그널 수신", "Receive random signal"],
   ["모스 진동으로 읽기", "Read as Morse vibration"],
   ["우주로 보낼 문장을 입력하세요", "Enter a sentence to send into space"],
-  ["영어와 숫자로 우주 시그널을 입력하세요", "Enter a Space Signal using English letters and numbers"],
+  ["Letters, numbers, and Morse symbols", "Letters, numbers, and Morse symbols"],
   ["오늘은 이미 시그널을 발신했습니다.", "You already transmitted a signal today."],
   ["오늘 아직 시그널을 발신하지 않았습니다.", "You have not transmitted a signal today."],
   ["우주로 시그널을 발신했습니다.", "Signal transmitted into space."],
@@ -1156,7 +1159,7 @@ function receiveDirectMessage(item, silent = false) {
 
 function showNativeNotification(title, body) {
   try {
-    globalThis.AndroidNotifications?.show(String(title || "MORSE CHAT"), String(body || ""));
+    globalThis.AndroidNotifications?.show(String(title || "morsiq"), String(body || ""));
   } catch {}
 }
 
@@ -1198,7 +1201,8 @@ function vibrationPattern(text) {
 }
 
 function playMorseAudio(pattern, soundId) {
-  if (!soundId || !window.AudioContext && !window.webkitAudioContext) return;
+  if (soundId === "sound_off" || !window.AudioContext && !window.webkitAudioContext) return;
+  soundId ||= "sound_basic";
   const AudioEngine = window.AudioContext || window.webkitAudioContext;
   const context = playMorseAudio.context ||= new AudioEngine();
   context.resume?.();
@@ -1206,16 +1210,18 @@ function playMorseAudio(pattern, soundId) {
   pattern.forEach((duration, index) => {
     if (index % 2 === 0) {
       const start = context.currentTime + elapsed / 1000;
-      const end = start + Math.min(duration, 420) / 1000;
+      const end = start + duration / 1000;
       const oscillator = context.createOscillator();
       const gain = context.createGain();
       oscillator.type = soundId === "sound_chime" ? "triangle" : soundId === "sound_click" ? "square" : "sine";
-      const startFrequency = soundId === "sound_drop" ? 960 : soundId === "sound_chime" ? 1100 : soundId === "sound_click" ? 180 : 680;
+      const startFrequency = soundId === "sound_basic" ? 700 : soundId === "sound_drop" ? 960 : soundId === "sound_chime" ? 1100 : soundId === "sound_click" ? 180 : 680;
       const endFrequency = soundId === "sound_drop" ? 310 : soundId === "sound_chime" ? 720 : startFrequency;
       oscillator.frequency.setValueAtTime(startFrequency, start);
-      oscillator.frequency.exponentialRampToValueAtTime(endFrequency, end);
-      gain.gain.setValueAtTime(soundId === "sound_click" ? .08 : .16, start);
-      gain.gain.exponentialRampToValueAtTime(.001, end);
+      if (endFrequency !== startFrequency) oscillator.frequency.exponentialRampToValueAtTime(endFrequency, end);
+      gain.gain.setValueAtTime(.001, start);
+      gain.gain.linearRampToValueAtTime(soundId === "sound_click" ? .08 : .16, start + .006);
+      gain.gain.setValueAtTime(soundId === "sound_click" ? .08 : .16, Math.max(start + .006, end - .012));
+      gain.gain.linearRampToValueAtTime(.001, end);
       oscillator.connect(gain).connect(context.destination);
       oscillator.start(start);
       oscillator.stop(end);
@@ -1255,7 +1261,7 @@ function stopMorse(stopTraining = true) {
 }
 
 function equippedSound() {
-  return state.account?.equipped?.morseSound || state.shopEquipped?.morseSound || "";
+  return state.account?.equipped?.morseSound || state.shopEquipped?.morseSound || "sound_basic";
 }
 
 const RANDOM_REPLIES = {
@@ -2286,7 +2292,7 @@ function applyLanguage(language) {
   localStorage.setItem("morse-language", language);
   document.documentElement.lang = language;
   translateElement(document.body, language);
-  document.title = "MORSE CHAT";
+  document.title = "morsiq";
   if (!$("#shopWorld").hidden) renderShop();
   if (state.authToken) {
     api("/api/push/language", { method: "POST", body: JSON.stringify({ language }) }).catch(() => {});
@@ -2902,7 +2908,7 @@ function renderShop() {
       <strong>${categoryNames[category.id]}</strong>
       <small>${categoryDescriptions[category.id]}</small>
       ${(() => {
-        const allOwned = SHOP_ITEMS.filter(item => item.category === category.id).every(item => state.shopInventory.includes(item.id));
+        const allOwned = SHOP_ITEMS.filter(item => item.category === category.id && !item.free).every(item => state.shopInventory.includes(item.id));
         const insufficient = state.shopCoins < state.shopDrawCost;
         const label = allOwned
           ? (ko ? "모두 보유 중" : "All owned")
@@ -2921,11 +2927,18 @@ function renderShop() {
   $("#shopInventoryTabs").innerHTML = SHOP_CATEGORIES.map(category =>
     `<button type="button" data-shop-inventory-category="${category.id}" class="${state.shopInventoryCategory === category.id ? "active" : ""}">${categoryNames[category.id]}</button>`
   ).join("");
-  const categoryOwned = owned.filter(item => item.category === state.shopInventoryCategory);
+  const categoryOwned = state.shopInventoryCategory === "morseSound"
+    ? [shopItem("sound_basic"), ...owned.filter(item => item.category === "morseSound")]
+    : owned.filter(item => item.category === state.shopInventoryCategory);
   $("#shopInventory").innerHTML = categoryOwned.length ? categoryOwned.map(item => {
-    const equipped = state.shopEquipped?.[item.slot] === item.id;
-    return `<article class="shop-inventory-item"><span>${item.icon}</span><div><strong>${item.name}</strong><small>${categoryNames[item.category] || item.category}</small></div><button type="button" ${equipped ? `data-shop-unequip="${item.slot}"` : `data-shop-equip="${item.id}"`}>${equipped ? (ko ? "장착 해제" : "Unequip") : (ko ? "장착" : "Equip")}</button></article>`;
+    const equipped = item.id === "sound_basic"
+      ? !state.shopEquipped?.morseSound || state.shopEquipped?.morseSound === "sound_basic"
+      : state.shopEquipped?.[item.slot] === item.id;
+    return `<article class="shop-inventory-item"><span>${item.icon}</span><div><strong>${item.name}</strong><small>${item.free ? "Default" : (categoryNames[item.category] || item.category)}</small></div><button type="button" ${equipped ? `data-shop-unequip="${item.slot}"` : `data-shop-equip="${item.id}"`}>${equipped ? (ko ? "끄기" : "Turn off") : (ko ? "장착" : "Equip")}</button></article>`;
   }).join("") : `<p class="shop-empty">${ko ? "아직 아이템이 없습니다. 랜덤 뽑기를 해보세요." : "No items yet. Try a random draw."}</p>`;
+  if (state.shopInventoryCategory === "morseSound" && state.shopEquipped?.morseSound === "sound_off") {
+    $("#shopInventory").insertAdjacentHTML("afterbegin", `<article class="collector-reward"><strong>${ko ? "모스부호 소리 꺼짐" : "Morse sound is off"}</strong><span>${ko ? "Basic을 장착하면 기본 삐 소리로 돌아갑니다." : "Equip Basic to restore the default beep."}</span></article>`);
+  }
   if (state.shopInventoryCategory === "profile" && categoryOwned.length) renderProfileInventorySections(categoryOwned, ko);
   if (state.shopInventoryCategory !== "profile") {
     [...$("#shopInventory").querySelectorAll(".shop-inventory-item")].forEach((element, index) => {
@@ -4830,10 +4843,10 @@ $("#spaceSendInput").addEventListener("input", event => {
   clearTimeout(state.spaceSendLetterTimer);
   clearTimeout(state.spaceSendSpaceTimer);
   state.spaceSendSignal = "";
-  const filtered = event.target.value.replace(/[^A-Za-z0-9 ]+/g, "").replace(/ {2,}/g, " ");
+  const filtered = event.target.value.replace(SPACE_SIGNAL_FILTER_RE, "").replace(/ {2,}/g, " ");
   state.spaceSendText = filtered;
   if (event.target.value !== filtered) {
-    showToast(state.language === "en" ? "Space Signals only allow English letters and numbers." : "우주 시그널은 영어와 숫자만 입력할 수 있습니다.");
+    showToast("Space Signals allow letters, numbers, and Morse symbols.");
   }
   renderSpace();
 });
@@ -4863,8 +4876,8 @@ $("#spaceSendForm").addEventListener("submit", event => {
   commitSpaceSendLetter();
   const text = state.spaceSendText.trim();
   if (!text) return;
-  if (!/^[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$/.test(text)) {
-    showToast(state.language === "en" ? "Space Signals only allow English letters and numbers." : "우주 시그널은 영어와 숫자만 입력할 수 있습니다.");
+  if (!SPACE_SIGNAL_ALLOWED_RE.test(text)) {
+    showToast("Space Signals allow letters, numbers, and Morse symbols.");
     return;
   }
   api("/api/space/send", {
