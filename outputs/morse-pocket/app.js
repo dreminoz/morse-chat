@@ -478,6 +478,232 @@ function uiText(ko, en, ja = en) {
   return ko;
 }
 
+const SETTINGS_TEXT = {
+  ko: {
+    title: "설정",
+    close: "설정 닫기",
+    account: "계정",
+    notSignedIn: "로그인하지 않음",
+    auth: "로그인 / 회원가입",
+    logout: "로그아웃",
+    nickname: "닉네임 변경",
+    saveNickname: "닉네임 저장",
+    language: "언어",
+    korean: "한국어",
+    koreanHint: "앱 전체를 한국어로 표시",
+    english: "English",
+    englishHint: "Show the entire app in English",
+    japanese: "日本語",
+    japaneseHint: "アプリ全体を日本語で表示",
+    speed: "진동 속도",
+    speedAria: "설정 진동 속도",
+    faster: "빠르게",
+    slower: "느리게",
+    veryFast: "아주 빠름",
+    normal: "보통",
+    slow: "느림",
+    verySlow: "아주 느림",
+    morseSound: "모스부호 소리",
+    morseSoundHint: "끄면 진동은 유지되고 삐 소리만 나지 않습니다.",
+    confirmation: "대화 모스 입력 확정",
+    auto: "자동",
+    manual: "수동",
+    autoHint: "쉬는 시간으로 글자와 띄어쓰기를 확정",
+    manualHint: "상하좌우 스와이프로 직접 입력",
+    reverse: "좌우 방향 반전",
+    rightManual: "오른쪽: 글자 확정 · 왼쪽: 띄어쓰기 · 위: 대문자 · 아래: 엔터",
+    leftManual: "왼쪽: 글자 확정 · 오른쪽: 띄어쓰기 · 위: 대문자 · 아래: 엔터",
+    autocomplete: "자동완성",
+    autocompleteHint: "특정 모스부호를 단어·문장으로 입력",
+    autocompleteNote: "표준 모스부호와 겹치지 않는 점·선 조합만 사용할 수 있습니다.",
+    codePlaceholder: "모스부호 예: ......",
+    textPlaceholder: "입력할 단어 또는 문장",
+    pressHoldHint: "짧게 누르면 · 점 / 길게 누르면 – 선",
+    maxMarks: "최대 10개 입력",
+    backspace: "한 칸 지우기",
+    clear: "초기화",
+    addAutocomplete: "자동완성 추가",
+    suggestion: "건의하기",
+    suggestionPlaceholder: "추가했으면 하는 기능이나 불편한 점을 적어주세요",
+    sendSuggestion: "건의사항 보내기"
+  },
+  en: {
+    title: "Settings",
+    close: "Close settings",
+    account: "Account",
+    notSignedIn: "Not signed in",
+    auth: "Login / Sign up",
+    logout: "Sign out",
+    nickname: "Change nickname",
+    saveNickname: "Save nickname",
+    language: "Language",
+    korean: "Korean",
+    koreanHint: "Show the entire app in Korean",
+    english: "English",
+    englishHint: "Show the entire app in English",
+    japanese: "Japanese",
+    japaneseHint: "Show the entire app in Japanese",
+    speed: "Vibration speed",
+    speedAria: "Settings vibration speed",
+    faster: "Faster",
+    slower: "Slower",
+    veryFast: "Very fast",
+    normal: "Normal",
+    slow: "Slow",
+    verySlow: "Very slow",
+    morseSound: "Morse code sound",
+    morseSoundHint: "Turn this off to keep vibration without beep sounds.",
+    confirmation: "Chat Morse confirmation",
+    auto: "Auto",
+    manual: "Manual",
+    autoHint: "Confirm letters and spaces after a pause",
+    manualHint: "Enter manually with four-way swipes",
+    reverse: "Reverse left and right",
+    rightManual: "Right: confirm letter · Left: add space · Up: uppercase · Down: enter",
+    leftManual: "Left: confirm letter · Right: add space · Up: uppercase · Down: enter",
+    autocomplete: "Autocomplete",
+    autocompleteHint: "Turn custom Morse codes into words or sentences",
+    autocompleteNote: "Only dot/dash patterns that do not overlap standard Morse can be used.",
+    codePlaceholder: "Morse code example: ......",
+    textPlaceholder: "Word or sentence to insert",
+    pressHoldHint: "Short press: dot / Long press: dash",
+    maxMarks: "Up to 10 marks",
+    backspace: "Backspace",
+    clear: "Clear",
+    addAutocomplete: "Add autocomplete",
+    suggestion: "Suggestion",
+    suggestionPlaceholder: "Tell us what feature you want or what feels inconvenient",
+    sendSuggestion: "Send suggestion"
+  },
+  ja: {
+    title: "設定",
+    close: "設定を閉じる",
+    account: "アカウント",
+    notSignedIn: "ログインしていません",
+    auth: "ログイン / 登録",
+    logout: "ログアウト",
+    nickname: "ニックネーム変更",
+    saveNickname: "ニックネーム保存",
+    language: "言語",
+    korean: "韓国語",
+    koreanHint: "アプリ全体を韓国語で表示",
+    english: "English",
+    englishHint: "Show the entire app in English",
+    japanese: "日本語",
+    japaneseHint: "アプリ全体を日本語で表示",
+    speed: "振動速度",
+    speedAria: "設定の振動速度",
+    faster: "速く",
+    slower: "遅く",
+    veryFast: "とても速い",
+    normal: "普通",
+    slow: "遅い",
+    verySlow: "とても遅い",
+    morseSound: "モールス音",
+    morseSoundHint: "オフにすると振動だけ残り、ビープ音は鳴りません。",
+    confirmation: "チャットのモールス確定",
+    auto: "自動",
+    manual: "手動",
+    autoHint: "停止時間で文字とスペースを確定",
+    manualHint: "上下左右スワイプで直接入力",
+    reverse: "左右方向を反転",
+    rightManual: "右: 文字確定 · 左: スペース · 上: 大文字 · 下: 改行",
+    leftManual: "左: 文字確定 · 右: スペース · 上: 大文字 · 下: 改行",
+    autocomplete: "自動入力",
+    autocompleteHint: "特定のモールスを単語・文に変換",
+    autocompleteNote: "標準モールスと重ならない点・線の組み合わせだけ使えます。",
+    codePlaceholder: "モールス例: ......",
+    textPlaceholder: "入力する単語または文",
+    pressHoldHint: "短押し: 点 / 長押し: 線",
+    maxMarks: "最大10個まで入力",
+    backspace: "1つ削除",
+    clear: "リセット",
+    addAutocomplete: "自動入力を追加",
+    suggestion: "提案",
+    suggestionPlaceholder: "欲しい機能や不便な点を書いてください",
+    sendSuggestion: "提案を送信"
+  }
+};
+
+function settingsText(key) {
+  return (SETTINGS_TEXT[state.language] || SETTINGS_TEXT.en)[key] || SETTINGS_TEXT.en[key] || key;
+}
+
+function setElementText(selector, text) {
+  const element = document.querySelector(selector);
+  if (element) element.textContent = text;
+}
+
+function setElementPlaceholder(selector, text) {
+  const element = document.querySelector(selector);
+  if (element) element.placeholder = text;
+}
+
+function localizeSettingsPanel() {
+  const panel = $("#settingsPanel");
+  if (!panel) return;
+  setElementText("#settingsPanel .settings-header h2", settingsText("title"));
+  const close = $("#closeSettings");
+  if (close) close.setAttribute("aria-label", settingsText("close"));
+  setElementText("#settingsPanel .account-settings .label", settingsText("account"));
+  if (!state.account) setElementText("#accountStatus", settingsText("notSignedIn"));
+  setElementText("#openAuthSettings", settingsText("auth"));
+  setElementText("#logoutAccount", settingsText("logout"));
+  setElementText("#nicknameSettings .label", settingsText("nickname"));
+  setElementText("#saveNickname", settingsText("saveNickname"));
+  const languageSection = panel.querySelector(".language-options")?.closest(".settings-section");
+  if (languageSection) {
+    const label = languageSection.querySelector(".label");
+    if (label) label.textContent = settingsText("language");
+  }
+  setElementText("[data-language='ko'] strong", settingsText("korean"));
+  setElementText("[data-language='ko'] small", settingsText("koreanHint"));
+  setElementText("[data-language='en'] strong", settingsText("english"));
+  setElementText("[data-language='en'] small", settingsText("englishHint"));
+  setElementText("[data-language='ja'] strong", settingsText("japanese"));
+  setElementText("[data-language='ja'] small", settingsText("japaneseHint"));
+  setElementText("#settingsPanel .settings-speed .label", settingsText("speed"));
+  $("#settingsSpeed")?.setAttribute("aria-label", settingsText("speedAria"));
+  setElementText("#settingsPanel .settings-speed .range-labels span:first-child", settingsText("faster"));
+  setElementText("#settingsPanel .settings-speed .range-labels span:last-child", settingsText("slower"));
+  setElementText("#settingsSpeedLabel", `${localizedSpeedName(state.unit)} · ${state.unit}ms`);
+  const soundSwitch = $("#morseSoundEnabled")?.closest(".settings-switch");
+  if (soundSwitch) {
+    const strong = soundSwitch.querySelector("strong");
+    const small = soundSwitch.querySelector("small");
+    if (strong) strong.textContent = settingsText("morseSound");
+    if (small) small.textContent = settingsText("morseSoundHint");
+  }
+  const confirmationSection = panel.querySelector("[data-chat-keyer-mode]")?.closest(".settings-section");
+  if (confirmationSection) {
+    const label = confirmationSection.querySelector(".label");
+    if (label) label.textContent = settingsText("confirmation");
+  }
+  setElementText("[data-chat-keyer-mode='auto'] strong", settingsText("auto"));
+  setElementText("[data-chat-keyer-mode='auto'] small", settingsText("autoHint"));
+  setElementText("[data-chat-keyer-mode='manual'] strong", settingsText("manual"));
+  setElementText("[data-chat-keyer-mode='manual'] small", settingsText("manualHint"));
+  const reverseSwitch = $("#swipeReverseSetting");
+  if (reverseSwitch) {
+    const strong = reverseSwitch.querySelector("strong");
+    if (strong) strong.textContent = settingsText("reverse");
+  }
+  setElementText("#swipeDirectionHint", state.reverseChatSwipe ? settingsText("rightManual") : settingsText("leftManual"));
+  setElementText("#toggleAutocompleteSettings strong", settingsText("autocomplete"));
+  setElementText("#toggleAutocompleteSettings small", settingsText("autocompleteHint"));
+  setElementText("#autocompleteSettingsPanel .autocomplete-note", settingsText("autocompleteNote"));
+  setElementPlaceholder("#autocompleteCode", settingsText("codePlaceholder"));
+  setElementPlaceholder("#autocompleteText", settingsText("textPlaceholder"));
+  setElementText("#autocompleteKeyer span", settingsText("pressHoldHint"));
+  setElementText("#autocompleteKeyer small", settingsText("maxMarks"));
+  setElementText("#autocompleteBackspace", settingsText("backspace"));
+  setElementText("#autocompleteClear", settingsText("clear"));
+  setElementText("#autocompleteForm > button[type='submit']", settingsText("addAutocomplete"));
+  setElementText("#settingsPanel .suggestion-settings .label", settingsText("suggestion"));
+  setElementPlaceholder("#suggestionText", settingsText("suggestionPlaceholder"));
+  setElementText("#submitSuggestion", settingsText("sendSuggestion"));
+}
+
 function translateElement(root, language) {
   const elements = root.nodeType === Node.ELEMENT_NODE ? [root, ...root.querySelectorAll("*")] : [];
   elements.forEach(element => {
@@ -1882,6 +2108,13 @@ function speedName(value) {
   return "아주 느림";
 }
 
+function localizedSpeedName(value) {
+  if (value <= 90) return settingsText("veryFast");
+  if (value <= 140) return settingsText("normal");
+  if (value <= 210) return settingsText("slow");
+  return settingsText("verySlow");
+}
+
 function renderSpeed() {
   $("#speed").value = state.unit;
   $("#speedLabel").textContent = `${speedName(state.unit)} · ${state.unit}ms`;
@@ -2448,6 +2681,7 @@ function renderSettings() {
   $("#nicknameSettings").hidden = !state.account;
   if (state.account) $("#settingsNickname").value = state.account.nickname;
   renderAutocompletes();
+  localizeSettingsPanel();
 }
 
 function renderAutocompletes() {
@@ -4908,7 +5142,6 @@ document.querySelectorAll("[data-chat-keyer-mode]").forEach(button => button.add
 }));
 document.querySelectorAll("[data-language]").forEach(button => button.addEventListener("click", () => {
   const language = button.dataset.language;
-  if (language === state.language) return;
   applyLanguage(language);
 }));
 $("#reverseChatSwipe").addEventListener("change", event => {
