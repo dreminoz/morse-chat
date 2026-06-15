@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -15,11 +15,11 @@
   <div id="authPanel" class="auth-overlay" hidden>
     <section class="auth-card">
       <p class="eyebrow">morsiq account</p>
-      <h2>Sign in</h2>
-      <p>Continue with Google, or sign in with your own ID.</p>
+      <h2>Login / Sign up</h2>
+      <p>Sign in with your ID, create an account, or continue with Google.</p>
       <div class="auth-tabs">
-        <button id="authModeGoogle" class="active" type="button">Google</button>
-        <button id="authModeLogin" type="button">Login</button>
+        <button id="authModeGoogle" type="button">Google</button>
+        <button id="authModeLogin" class="active" type="button">Login</button>
         <button id="authModeRegister" type="button">Sign up</button>
       </div>
       <div id="googleSignInButton" class="google-sign-in"></div>
@@ -702,7 +702,7 @@
       <div class="settings-section account-settings">
         <p class="label">계정</p>
         <strong id="accountStatus">로그인하지 않음</strong>
-        <button id="openAuthSettings" type="button">Google 계정으로 계속하기</button>
+        <button id="openAuthSettings" type="button">로그인 / 회원가입</button>
         <button id="logoutAccount" class="light-button" type="button" hidden>로그아웃</button>
       </div>
       <div id="nicknameSettings" class="settings-section nickname-settings" hidden>
@@ -722,6 +722,10 @@
             <strong>English</strong>
             <small>Show the entire app in English</small>
           </button>
+          <button type="button" data-language="ja">
+            <strong>日本語</strong>
+            <small>アプリ全体を日本語で表示</small>
+          </button>
         </div>
       </div>
       <div class="settings-section settings-speed">
@@ -732,6 +736,13 @@
         <input id="settingsSpeed" type="range" min="60" max="300" step="10" value="120" aria-label="설정 진동 속도">
         <div class="range-labels"><span>빠르게</span><span>느리게</span></div>
       </div>
+      <label class="settings-switch">
+        <div>
+          <strong>모스부호 소리</strong>
+          <small>끄면 진동은 유지되고 삐 소리만 나지 않습니다.</small>
+        </div>
+        <input id="morseSoundEnabled" type="checkbox" checked>
+      </label>
       <div class="settings-section">
         <p class="label">대화 모스 입력 확정</p>
         <div class="settings-options">

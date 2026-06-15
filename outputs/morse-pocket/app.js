@@ -57,6 +57,8 @@ const I18N_PAIRS = [
   ["처음 사용할 비밀번호를 설정하세요. 잊으면 일기를 열 수 없습니다.", "Set your first password. A forgotten password cannot be recovered."],
   ["일기를 입력하세요", "Write your diary entry"],
   ["대화 입력 설정을 따릅니다", "Uses conversation input settings"],
+  ["모스부호 소리", "Morse code sound"],
+  ["끄면 진동은 유지되고 삐 소리만 나지 않습니다.", "Turn this off to keep vibration without beep sounds."],
   ["오른쪽 밀기: 진동 전용", "Swipe right: vibration only"],
   ["진동 전용 일기", "Vibration-only entry"],
   ["탭해서 모스 진동으로 듣기 · 무제한", "Tap to play Morse vibration · Unlimited"],
@@ -332,24 +334,147 @@ const I18N_PAIRS = [
   ["초", "s"],
   ["개", ""]
 ];
+const I18N_TRIPLES = [
+  { ko: "로그인 / 회원가입", en: "Login / Sign up", ja: "ログイン / 新規登録" },
+  { ko: "morsiq account", en: "morsiq account", ja: "morsiqアカウント" },
+  { ko: "ID로 로그인하거나 계정을 만들거나 Google로 계속하세요.", en: "Sign in with your ID, create an account, or continue with Google.", ja: "IDでログイン、新規登録、またはGoogleで続行できます。" },
+  { ko: "Google로 계속하기", en: "Continue with Google", ja: "Googleで続行" },
+  { ko: "ID 확인", en: "Check ID", ja: "ID確認" },
+  { ko: "비밀번호", en: "Password", ja: "パスワード" },
+  { ko: "비밀번호 확인", en: "Confirm password", ja: "パスワード確認" },
+  { ko: "닉네임 설정", en: "Set nickname", ja: "ニックネーム設定" },
+  { ko: "로그인 방법을 선택하세요.", en: "Choose a sign-in method.", ja: "ログイン方法を選択してください。" },
+  { ko: "훈련장으로 돌아가기", en: "Back to training", ja: "トレーニングに戻る" },
+  { ko: "로그인", en: "Login", ja: "ログイン" },
+  { ko: "회원가입", en: "Sign up", ja: "新規登録" },
+  { ko: "로그인하지 않음", en: "Not signed in", ja: "未ログイン" },
+  { ko: "로그아웃", en: "Sign out", ja: "ログアウト" },
+  { ko: "계정", en: "Account", ja: "アカウント" },
+  { ko: "닉네임", en: "Nickname", ja: "ニックネーム" },
+  { ko: "닉네임 변경", en: "Change nickname", ja: "ニックネーム変更" },
+  { ko: "닉네임 저장", en: "Save nickname", ja: "ニックネームを保存" },
+  { ko: "설정", en: "Settings", ja: "設定" },
+  { ko: "설정 열기", en: "Open settings", ja: "設定を開く" },
+  { ko: "설정 닫기", en: "Close settings", ja: "設定を閉じる" },
+  { ko: "언어", en: "Language", ja: "言語" },
+  { ko: "한국어", en: "Korean", ja: "韓国語" },
+  { ko: "앱 전체를 한국어로 표시", en: "Show the entire app in Korean", ja: "アプリ全体を韓国語で表示" },
+  { ko: "Show the entire app in English", en: "Show the entire app in English", ja: "アプリ全体を英語で表示" },
+  { ko: "アプリ全体を日本語で表示", en: "Show the entire app in Japanese", ja: "アプリ全体を日本語で表示" },
+  { ko: "진동 속도", en: "Vibration speed", ja: "振動速度" },
+  { ko: "빠르게", en: "Faster", ja: "速く" },
+  { ko: "느리게", en: "Slower", ja: "遅く" },
+  { ko: "보통", en: "Normal", ja: "普通" },
+  { ko: "모스부호 소리", en: "Morse code sound", ja: "モールス信号の音" },
+  { ko: "끄면 진동은 유지되고 삐 소리만 나지 않습니다.", en: "Turn this off to keep vibration without beep sounds.", ja: "オフにすると振動はそのままで、ビープ音だけ鳴りません。" },
+  { ko: "모스부호 소리를 켰습니다.", en: "Morse sound is on.", ja: "モールス音をオンにしました。" },
+  { ko: "모스부호 소리를 껐습니다.", en: "Morse sound is off.", ja: "モールス音をオフにしました。" },
+  { ko: "대화 모스 입력 확정", en: "Chat Morse confirmation", ja: "チャットのモールス入力確定" },
+  { ko: "자동", en: "Auto", ja: "自動" },
+  { ko: "수동", en: "Manual", ja: "手動" },
+  { ko: "쉬는 시간으로 글자·띄어쓰기 확정", en: "Confirm letters and spaces after a pause", ja: "休止時間で文字とスペースを確定" },
+  { ko: "상하좌우 스와이프로 직접 입력", en: "Enter manually with four-way swipes", ja: "上下左右スワイプで直接入力" },
+  { ko: "좌우 방향 반전", en: "Reverse left and right", ja: "左右方向を反転" },
+  { ko: "오른쪽: 글자 확정 · 왼쪽: 띄어쓰기 · 위: 대문자 · 아래: 엔터", en: "Right: confirm letter · Left: add space · Up: uppercase · Down: enter", ja: "右: 文字確定 · 左: スペース · 上: 大文字 · 下: 改行" },
+  { ko: "왼쪽: 글자 확정 · 오른쪽: 띄어쓰기 · 위: 대문자 · 아래: 엔터", en: "Left: confirm letter · Right: add space · Up: uppercase · Down: enter", ja: "左: 文字確定 · 右: スペース · 上: 大文字 · 下: 改行" },
+  { ko: "대화", en: "Conversations", ja: "会話" },
+  { ko: "훈련장", en: "Training", ja: "トレーニング" },
+  { ko: "우주", en: "Space", ja: "宇宙" },
+  { ko: "랜덤 시그널", en: "Random Signal", ja: "ランダムシグナル" },
+  { ko: "프로필", en: "Profile", ja: "プロフィール" },
+  { ko: "데일리 그룹챗", en: "Daily Group Chat", ja: "デイリーグループチャット" },
+  { ko: "게임", en: "Games", ja: "ゲーム" },
+  { ko: "비밀일기", en: "Secret Diary", ja: "秘密日記" },
+  { ko: "상점", en: "Shop", ja: "ショップ" },
+  { ko: "친구", en: "Friends", ja: "友だち" },
+  { ko: "받은 요청", en: "Received requests", ja: "受信リクエスト" },
+  { ko: "보낸 요청", en: "Sent requests", ja: "送信リクエスト" },
+  { ko: "친구 추가", en: "Add friend", ja: "友だち追加" },
+  { ko: "그룹챗 만들기", en: "Create group chat", ja: "グループチャット作成" },
+  { ko: "그룹챗", en: "Group Chat", ja: "グループチャット" },
+  { ko: "친구를 눌러 모스 메시지를 보내보세요.", en: "Tap a friend to send a Morse message.", ja: "友だちをタップしてモールスメッセージを送ってみましょう。" },
+  { ko: "로그인되었습니다.", en: "Signed in.", ja: "ログインしました。" },
+  { ko: "계정이 생성되었습니다.", en: "Account created.", ja: "アカウントを作成しました。" },
+  { ko: "아이디와 비밀번호를 입력하세요.", en: "Enter your ID and password.", ja: "IDとパスワードを入力してください。" },
+  { ko: "아이디를 확인한 뒤 회원가입하세요.", en: "Check your ID, then sign up.", ja: "IDを確認してから登録してください。" },
+  { ko: "아이디를 확인할 수 없습니다.", en: "Could not check this ID.", ja: "このIDを確認できませんでした。" },
+  { ko: "사용 가능한 아이디입니다.", en: "This ID is available.", ja: "このIDは使用できます。" },
+  { ko: "이미 사용 중인 아이디입니다.", en: "This ID is already taken.", ja: "このIDはすでに使用されています。" },
+  { ko: "비밀번호는 6자 이상이어야 합니다.", en: "Password must be at least 6 chars.", ja: "パスワードは6文字以上必要です。" },
+  { ko: "비밀번호가 일치하지 않습니다.", en: "Passwords do not match.", ja: "パスワードが一致しません。" },
+  { ko: "닉네임은 2자 이상 입력하세요.", en: "Nickname must be at least 2 chars.", ja: "ニックネームは2文字以上入力してください。" },
+  { ko: "서버 연결에 실패했습니다.", en: "Failed to connect to the server.", ja: "サーバー接続に失敗しました。" },
+  { ko: "시그널이 연결되었습니다.", en: "Signal connected.", ja: "シグナルに接続しました。" },
+  { ko: "랜덤 시그널 연결", en: "Random Signal connected", ja: "ランダムシグナル接続" },
+  { ko: "새로운 시그널과 연결되었습니다.", en: "A new signal has connected.", ja: "新しいシグナルに接続しました。" },
+  { ko: "새 친구 요청이 왔습니다.", en: "New friend request.", ja: "新しい友だちリクエストが届きました。" },
+  { ko: "친구 요청을 보냈습니다.", en: "Friend request sent.", ja: "友だちリクエストを送信しました。" },
+  { ko: "없는 닉네임입니다.", en: "Nickname not found.", ja: "ニックネームが見つかりません。" },
+  { ko: "메시지를 삭제했습니다.", en: "Message deleted.", ja: "メッセージを削除しました。" },
+  { ko: "알림", en: "Notifications", ja: "通知" },
+  { ko: "알림을 켰습니다.", en: "Notifications enabled.", ja: "通知をオンにしました。" },
+  { ko: "브라우저 설정에서 알림을 허용해 주세요.", en: "Please allow notifications in your browser settings.", ja: "ブラウザ設定で通知を許可してください。" },
+  { ko: "새 메시지", en: "New message", ja: "新しいメッセージ" },
+  { ko: "Morse Only", en: "Morse Only", ja: "Morse Only" },
+  { ko: "ASCII Art", en: "ASCII Art", ja: "ASCII Art" },
+  { ko: "랜덤 시그널 꾸미기", en: "Random Signal Style", ja: "ランダムシグナル装飾" },
+  { ko: "대화창 테마", en: "Chat Theme", ja: "チャットテーマ" },
+  { ko: "모스부호 소리", en: "Morse Sound", ja: "モールス音" },
+  { ko: "프로필 꾸미기", en: "Profile Style", ja: "プロフィール装飾" },
+  { ko: "랜덤 뽑기", en: "Random draw", ja: "ランダム抽選" },
+  { ko: "장착", en: "Equip", ja: "装着" },
+  { ko: "장착 해제", en: "Unequip", ja: "解除" },
+  { ko: "아이템을 장착했습니다.", en: "Item equipped.", ja: "アイテムを装着しました。" },
+  { ko: "아이템 장착을 해제했습니다.", en: "Item unequipped.", ja: "アイテムを解除しました。" }
+];
 const KO_TO_EN = [...I18N_PAIRS].sort((a, b) => b[0].length - a[0].length);
 const EN_TO_KO = I18N_PAIRS
   .filter(([, en]) => en.length >= 3)
   .map(([ko, en]) => [en, ko])
   .sort((a, b) => b[0].length - a[0].length);
+const I18N_CACHE = {};
+
+function i18nPairsFor(language) {
+  const target = ["ko", "en", "ja"].includes(language) ? language : "ko";
+  if (I18N_CACHE[target]) return I18N_CACHE[target];
+  const pairs = [];
+  I18N_TRIPLES.forEach(entry => {
+    ["ko", "en", "ja"].forEach(source => {
+      if (source !== target && entry[source] && entry[target]) pairs.push([entry[source], entry[target]]);
+    });
+  });
+  if (target === "en") pairs.push(...KO_TO_EN);
+  if (target === "ko") pairs.push(...EN_TO_KO);
+  if (target === "ja") {
+    I18N_PAIRS.forEach(([ko, en]) => {
+      const match = I18N_TRIPLES.find(entry => entry.ko === ko || entry.en === en);
+      if (match?.ja) {
+        pairs.push([ko, match.ja], [en, match.ja]);
+      }
+    });
+  }
+  I18N_CACHE[target] = pairs
+    .filter(([from, to]) => from && to && from !== to)
+    .sort((a, b) => b[0].length - a[0].length);
+  return I18N_CACHE[target];
+}
 
 function translateString(value, language) {
-  const pairs = language === "en" ? KO_TO_EN : EN_TO_KO;
+  const pairs = i18nPairsFor(language);
   return pairs.reduce((result, [from, to]) => result.includes(from) ? result.replaceAll(from, to) : result, value);
+}
+
+function uiText(ko, en, ja = en) {
+  if (state?.language === "ja") return ja;
+  if (state?.language === "en") return en;
+  return ko;
 }
 
 function translateElement(root, language) {
   const elements = root.nodeType === Node.ELEMENT_NODE ? [root, ...root.querySelectorAll("*")] : [];
   elements.forEach(element => {
     if (element.closest("[data-no-i18n]")) return;
-    if (element.matches("#chatMorseText, #friendInput, #phraseInput, #quizLetterInput, #randomChatInput, #lastSignalInput, #spaceSendInput")) {
-      if (element.placeholder) element.placeholder = translateString(element.placeholder, language);
-    }
+    if (element.placeholder) element.placeholder = translateString(element.placeholder, language);
     ["aria-label", "title"].forEach(attribute => {
       if (element.hasAttribute(attribute)) element.setAttribute(attribute, translateString(element.getAttribute(attribute), language));
     });
@@ -593,7 +718,8 @@ const state = {
   profileDraftAscii: null,
   profileCache: {},
   viewingProfileSignalId: "",
-  language: localStorage.getItem("morse-language") || "ko",
+  language: localStorage.getItem("morse-language") || "en",
+  morseSoundEnabled: localStorage.getItem("morse-sound-enabled") !== "false",
   world: localStorage.getItem("morse-world") || "hall",
   unit: Number(localStorage.getItem("morse-speed")) || 120,
   trainingMode: localStorage.getItem("morse-mode") || "auto",
@@ -671,7 +797,7 @@ const state = {
   account: JSON.parse(localStorage.getItem("morse-account") || "null"),
   googleCredential: "",
   googleClientId: "",
-  authMode: "google",
+  authMode: "login",
   usernameChecked: "",
   shopInventory: [],
   shopEquipped: {},
@@ -943,12 +1069,16 @@ function setAuthMode(mode) {
   $("#localPasswordConfirmLabel").hidden = mode !== "register";
   $("#checkUsername").hidden = mode !== "register";
   $("#localPassword").autocomplete = mode === "register" ? "new-password" : "current-password";
-  $("#submitLocalAuth").textContent = mode === "register" ? "Sign up" : "Log in";
+  $("#submitLocalAuth").textContent = mode === "register"
+    ? uiText("회원가입", "Sign up", "新規登録")
+    : uiText("로그인", "Log in", "ログイン");
   $("#authStatus").textContent = mode === "google"
-    ? (state.googleClientId || window.AndroidAuth ? "Select a Google account." : "Google Sign-In is not configured.")
+    ? (state.googleClientId || window.AndroidAuth
+      ? uiText("Google 계정을 선택하세요.", "Select a Google account.", "Googleアカウントを選択してください。")
+      : uiText("Google 로그인이 설정되지 않았습니다.", "Google Sign-In is not configured.", "Googleログインが設定されていません。"))
     : mode === "register"
-      ? "Check your ID, then sign up."
-      : "Enter your ID and password.";
+      ? uiText("아이디를 확인한 뒤 회원가입하세요.", "Check your ID, then sign up.", "IDを確認してから登録してください。")
+      : uiText("아이디와 비밀번호를 입력하세요.", "Enter your ID and password.", "IDとパスワードを入力してください。");
 }
 
 function openAuthPanel() {
@@ -959,7 +1089,7 @@ function openAuthPanel() {
   $("#localPassword").value = "";
   $("#localPasswordConfirm").value = "";
   state.googleCredential = "";
-  setAuthMode(state.authMode || "google");
+  setAuthMode("login");
 }
 
 function normalizeLocalUsername() {
@@ -976,22 +1106,22 @@ async function checkLocalUsername() {
   const username = normalizeLocalUsername();
   if (!validLocalUsername(username)) {
     state.usernameChecked = "";
-    $("#authStatus").textContent = "ID must be 3-24 chars: a-z, 0-9, _, ., -";
+    $("#authStatus").textContent = uiText("ID는 3-24자여야 합니다: a-z, 0-9, _, ., -", "ID must be 3-24 chars: a-z, 0-9, _, ., -", "IDは3〜24文字で入力してください: a-z, 0-9, _, ., -");
     return false;
   }
   try {
     const result = await api(`/api/auth/username?username=${encodeURIComponent(username)}`);
     if (result.available) {
       state.usernameChecked = username;
-      $("#authStatus").textContent = "This ID is available.";
+      $("#authStatus").textContent = uiText("사용 가능한 아이디입니다.", "This ID is available.", "このIDは使用できます。");
       return true;
     }
     state.usernameChecked = "";
-    $("#authStatus").textContent = "This ID is already taken.";
+    $("#authStatus").textContent = uiText("이미 사용 중인 아이디입니다.", "This ID is already taken.", "このIDはすでに使用されています。");
     return false;
   } catch (error) {
     state.usernameChecked = "";
-    $("#authStatus").textContent = "Could not check this ID.";
+    $("#authStatus").textContent = uiText("아이디를 확인할 수 없습니다.", "Could not check this ID.", "このIDを確認できませんでした。");
     return false;
   }
 }
@@ -999,16 +1129,16 @@ async function checkLocalUsername() {
 async function submitLocalAuth() {
   const username = normalizeLocalUsername();
   const password = $("#localPassword").value;
-  if (!validLocalUsername(username)) return showToast("ID must be 3-24 chars.");
-  if (password.length < 6) return showToast("Password must be at least 6 chars.");
+  if (!validLocalUsername(username)) return showToast(uiText("ID는 3-24자여야 합니다.", "ID must be 3-24 chars.", "IDは3〜24文字で入力してください。"));
+  if (password.length < 6) return showToast(uiText("비밀번호는 6자 이상이어야 합니다.", "Password must be at least 6 chars.", "パスワードは6文字以上必要です。"));
   const body = { username, password };
   let endpoint = "/api/auth/login";
   if (state.authMode === "register") {
     const nickname = $("#localNickname").value.trim();
     const passwordConfirm = $("#localPasswordConfirm").value;
     if (state.usernameChecked !== username && !(await checkLocalUsername())) return;
-    if (nickname.length < 2) return showToast("Nickname must be at least 2 chars.");
-    if (password !== passwordConfirm) return showToast("Passwords do not match.");
+    if (nickname.length < 2) return showToast(uiText("닉네임은 2자 이상 입력하세요.", "Nickname must be at least 2 chars.", "ニックネームは2文字以上入力してください。"));
+    if (password !== passwordConfirm) return showToast(uiText("비밀번호가 일치하지 않습니다.", "Passwords do not match.", "パスワードが一致しません。"));
     endpoint = "/api/auth/register";
     body.nickname = nickname;
     body.passwordConfirm = passwordConfirm;
@@ -1016,17 +1146,19 @@ async function submitLocalAuth() {
   try {
     const result = await api(endpoint, { method: "POST", body: JSON.stringify(body) });
     setAccount(result.token, result.account);
-    showToast(state.authMode === "register" ? "Account created." : "Signed in.");
+    showToast(state.authMode === "register"
+      ? uiText("계정이 생성되었습니다.", "Account created.", "アカウントを作成しました。")
+      : uiText("로그인되었습니다.", "Signed in.", "ログインしました。"));
   } catch (error) {
     const messages = {
-      "username-taken": "This ID is already taken.",
-      "nickname-taken": "That nickname is already in use.",
-      "invalid-login": "ID or password is wrong.",
-      "password-mismatch": "Passwords do not match.",
-      "weak-password": "Password must be at least 6 chars.",
-      "invalid-username": "ID must be 3-24 chars."
+      "username-taken": uiText("이미 사용 중인 아이디입니다.", "This ID is already taken.", "このIDはすでに使用されています。"),
+      "nickname-taken": uiText("이미 사용 중인 닉네임입니다.", "That nickname is already in use.", "このニックネームはすでに使用されています。"),
+      "invalid-login": uiText("ID 또는 비밀번호가 틀렸습니다.", "ID or password is wrong.", "IDまたはパスワードが違います。"),
+      "password-mismatch": uiText("비밀번호가 일치하지 않습니다.", "Passwords do not match.", "パスワードが一致しません。"),
+      "weak-password": uiText("비밀번호는 6자 이상이어야 합니다.", "Password must be at least 6 chars.", "パスワードは6文字以上必要です。"),
+      "invalid-username": uiText("ID는 3-24자여야 합니다.", "ID must be 3-24 chars.", "IDは3〜24文字で入力してください。")
     };
-    showToast(messages[error.body?.error] || "Account action failed.");
+    showToast(messages[error.body?.error] || uiText("계정 처리에 실패했습니다.", "Account action failed.", "アカウント処理に失敗しました。"));
   }
 }
 
@@ -1159,7 +1291,10 @@ function receiveDirectMessage(item, silent = false) {
 
 function showNativeNotification(title, body) {
   try {
-    globalThis.AndroidNotifications?.show(String(title || "morsiq"), String(body || ""));
+    globalThis.AndroidNotifications?.show(
+      translateString(String(title || "morsiq"), state.language),
+      translateString(String(body || ""), state.language)
+    );
   } catch {}
 }
 
@@ -1201,6 +1336,7 @@ function vibrationPattern(text) {
 }
 
 function playMorseAudio(pattern, soundId) {
+  if (!state.morseSoundEnabled) return;
   if (soundId === "sound_off" || !window.AudioContext && !window.webkitAudioContext) return;
   soundId ||= "sound_basic";
   const AudioEngine = window.AudioContext || window.webkitAudioContext;
@@ -2214,9 +2350,11 @@ function renderSettings() {
   document.querySelectorAll("[data-language]").forEach(button =>
     button.classList.toggle("active", button.dataset.language === state.language)
   );
+  $("#morseSoundEnabled").checked = state.morseSoundEnabled;
   $("#settingsSpeed").value = state.unit;
   $("#settingsSpeedLabel").textContent = `${speedName(state.unit)} · ${state.unit}ms`;
-  $("#accountStatus").textContent = state.account ? `${state.account.nickname} · ${state.account.signalId}` : "로그인하지 않음";
+  $("#accountStatus").textContent = state.account ? `${state.account.nickname} · ${state.account.signalId}` : uiText("로그인하지 않음", "Not signed in", "未ログイン");
+  $("#openAuthSettings").textContent = uiText("로그인 / 회원가입", "Login / Sign up", "ログイン / 新規登録");
   $("#openAuthSettings").hidden = Boolean(state.account);
   $("#logoutAccount").hidden = !state.account;
   $("#nicknameSettings").hidden = !state.account;
@@ -3171,7 +3309,7 @@ function installBackNavigation() {
 }
 
 function showToast(message) {
-  $("#toast").textContent = message;
+  $("#toast").textContent = translateString(String(message), state.language);
   $("#toast").classList.add("show");
   clearTimeout(showToast.timer);
   showToast.timer = setTimeout(() => $("#toast").classList.remove("show"), 2200);
@@ -4684,6 +4822,13 @@ $("#settingsSpeed").addEventListener("input", event => {
   localStorage.setItem("morse-speed", state.unit);
   renderSpeed();
   renderSettings();
+});
+$("#morseSoundEnabled").addEventListener("change", event => {
+  state.morseSoundEnabled = event.target.checked;
+  localStorage.setItem("morse-sound-enabled", String(state.morseSoundEnabled));
+  showToast(state.morseSoundEnabled
+    ? (state.language === "en" ? "Morse sound is on." : "모스부호 소리를 켰습니다.")
+    : (state.language === "en" ? "Morse sound is off." : "모스부호 소리를 껐습니다."));
 });
 $("#chatKeyer").addEventListener("pointerdown", event => {
   clearTimeout(state.chatLetterTimer);
