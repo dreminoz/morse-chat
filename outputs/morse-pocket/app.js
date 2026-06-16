@@ -3520,6 +3520,8 @@ function applyLanguage(language) {
   document.title = "morsiq";
   refreshLocalizedViews();
   translateElement(document.body, language);
+  renderSettings();
+  localizeSettingsPanel();
   localizeMainUI();
   if (!$("#shopWorld").hidden) renderShop();
   if (state.authToken) {
@@ -5941,6 +5943,16 @@ document.querySelectorAll("[data-chat-keyer-mode]").forEach(button => button.add
 document.querySelectorAll("[data-language]").forEach(button => button.addEventListener("click", () => {
   const language = button.dataset.language;
   applyLanguage(language);
+  renderSettings();
+  localizeSettingsPanel();
+  localizeMainUI();
+  const settingsPanel = $("#settingsPanel");
+  if (settingsPanel) translateElement(settingsPanel, language);
+  requestAnimationFrame(() => {
+    renderSettings();
+    localizeSettingsPanel();
+    localizeMainUI();
+  });
 }));
 $("#reverseChatSwipe").addEventListener("change", event => {
   state.reverseChatSwipe = event.target.checked;
