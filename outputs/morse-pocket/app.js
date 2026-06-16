@@ -1130,6 +1130,7 @@ const EXTRA_TEXT = {
     refresh: "새로고침",
     noRanking: "아직 등록된 기록이 없습니다.",
     fullRankingMineNone: "아직 내 기록이 없습니다.",
+    rankingMine: (rank, time) => `내 순위: ${rank}등 · ${time}`,
     diaryEnterPassword: "비밀번호 입력",
     diarySetPassword: "비밀번호 설정",
     diaryEnterHint: "비밀일기를 열려면 비밀번호를 입력하세요.",
@@ -1185,6 +1186,7 @@ const EXTRA_TEXT = {
     refresh: "Refresh",
     noRanking: "No scores yet.",
     fullRankingMineNone: "You do not have a record yet.",
+    rankingMine: (rank, time) => `My rank: #${rank} · ${time}`,
     diaryEnterPassword: "Enter password",
     diarySetPassword: "Set password",
     diaryEnterHint: "Enter your password to open the Secret Diary.",
@@ -1240,6 +1242,7 @@ const EXTRA_TEXT = {
     refresh: "更新",
     noRanking: "まだ記録がありません。",
     fullRankingMineNone: "自分の記録はまだありません。",
+    rankingMine: (rank, time) => `自分の順位: ${rank}位 · ${time}`,
     diaryEnterPassword: "パスワード入力",
     diarySetPassword: "パスワード設定",
     diaryEnterHint: "秘密日記を開くにはパスワードを入力してください。",
@@ -1276,13 +1279,15 @@ function localizeRemainingDynamicText() {
     morse: extraText("trainingNameMorse"),
     sentence: extraText("trainingNameSentence")
   };
-  const seqTotal = Array.isArray(state.sequence) && state.sequence.length ? state.sequence.length : 26;
+  const currentTrainingSequence = typeof trainingSequence === "function" ? trainingSequence() : [];
+  const seqTotal = currentTrainingSequence.length || 26;
   setElementText("#trainingKicker", `${trainingNames[state.trainingType] || trainingNames.random} · ${state.sequenceIndex + 1}/${seqTotal}`);
   setElementText("#trainingHint", state.trainingMode === "loop"
     ? extraText("trainingHintLoop")
     : state.trainingMode === "tap" ? extraText("trainingHintTap") : extraText("trainingHintAuto"));
 
   const spaceHeroText = document.querySelectorAll("#spaceWorld .space-hero p");
+  if (spaceHeroText[0]) spaceHeroText[0].textContent = "morsiq";
   if (spaceHeroText[1]) spaceHeroText[1].textContent = mainText("spaceIntro");
   setElementText("[data-space-view='transmit']", mainText("transmit"));
   setElementText("[data-space-view='receive']", mainText("receive"));
@@ -1323,6 +1328,7 @@ function localizeRemainingDynamicText() {
   if (gameStats[0]) gameStats[0].textContent = extraText("progress");
   if (gameStats[1]) gameStats[1].textContent = extraText("time");
   if (gameStats[2]) gameStats[2].textContent = extraText("myRank");
+  if (!state.gameRunning) setElementText("#gameTimer", extraText("seconds", "0.00"));
   if ($("#gameMyRank") && !state.gameMyRank) $("#gameMyRank").textContent = extraText("noRecord");
   if (!state.gameRunning) setElementText("#gameWordNumber", extraText("ready"));
   setElementPlaceholder("#gameInput", extraText("wordInput"));
@@ -3759,8 +3765,7 @@ async function openSecretDiary() {
   try {
     state.diaryHasServerPassword = (await api("/api/diary/status")).hasPassword;
   } catch (error) {
-    showApiFailure(error);
-    return;
+    state.diaryHasServerPassword = false;
   }
   $("#diaryPasswordConfirm").hidden = state.diaryHasServerPassword;
   $("#diaryLockTitle").textContent = state.diaryHasServerPassword ? "비밀번호 입력" : "비밀번호 설정";
@@ -3768,6 +3773,7 @@ async function openSecretDiary() {
     ? "비밀일기를 열려면 비밀번호를 입력하세요."
     : "처음 사용할 비밀번호를 설정하세요. 잊으면 일기를 열 수 없습니다.";
   $("#unlockDiary").textContent = state.diaryHasServerPassword ? "비밀일기 열기" : "비밀번호 설정";
+  localizeMainUI();
 }
 
 function lockSecretDiary() {
@@ -5216,7 +5222,7 @@ $("#unlockDiary").addEventListener("click", async () => {
   const hash = await diaryPasswordHash(password);
   try {
     if (!state.diaryHasServerPassword) {
-      if (password !== $("#diaryPasswordConfirm").value) return showToast("비밀번호 확인이 일치하지 않습니다.");
+      if (password !== $("#diaryPasswordConfirm").value) return showToast(extraText("mismatchPassword"));
       await api("/api/diary/setup", { method: "POST", body: JSON.stringify({ passwordHash: hash }) });
       state.diaryHasServerPassword = true;
     }
