@@ -2009,6 +2009,7 @@ async function setupPushNotifications() {
 }
 
 function setAccount(token, account) {
+  state.googleSignInSucceededAt = Date.now();
   state.authToken = token;
   state.account = account;
   state.shopEquipped = account.equipped || {};
@@ -2257,6 +2258,7 @@ function renderGoogleButton() {
         setAccount(result.token, result.account);
         showToast("로그인되었습니다.");
       } catch (error) {
+        if (state.account || Date.now() - Number(state.googleSignInSucceededAt || 0) < 5000) return;
         if (error.body?.error === "nickname-required") {
           $("#authFields").hidden = false;
           $("#authStatus").textContent = "처음 로그인입니다. 사용할 닉네임을 설정하세요.";
@@ -2281,6 +2283,7 @@ window.handleAndroidGoogleCredential = async credential => {
     setAccount(result.token, result.account);
     showToast(state.language === "en" ? "Signed in." : "로그인되었습니다.");
   } catch (error) {
+    if (state.account || Date.now() - Number(state.googleSignInSucceededAt || 0) < 5000) return;
     if (error.body?.error === "nickname-required") {
       $("#authFields").hidden = false;
       $("#authStatus").textContent = state.language === "en"
@@ -2297,6 +2300,7 @@ window.handleAndroidGoogleCredential = async credential => {
 };
 
 window.handleAndroidGoogleError = statusCode => {
+  if (state.account || Date.now() - Number(state.googleSignInSucceededAt || 0) < 5000) return;
   const labels = {
     7: "NETWORK_ERROR",
     10: "DEVELOPER_ERROR",
@@ -2309,6 +2313,7 @@ window.handleAndroidGoogleError = statusCode => {
 };
 
 window.handleAndroidGoogleException = detail => {
+  if (state.account || Date.now() - Number(state.googleSignInSucceededAt || 0) < 5000) return;
   showToast(state.language === "en" ? `Could not open Google sign-in: ${detail}` : `Google 로그인 열기 실패: ${detail}`);
 };
 
@@ -6077,17 +6082,9 @@ document.querySelectorAll("[data-chat-keyer-mode]").forEach(button => button.add
 }));
 document.querySelectorAll("[data-language]").forEach(button => button.addEventListener("click", () => {
   const language = button.dataset.language;
-  applyLanguage(language);
-  renderSettings();
-  localizeSettingsPanel();
-  localizeMainUI();
-  const settingsPanel = $("#settingsPanel");
-  if (settingsPanel) translateElement(settingsPanel, language);
-  requestAnimationFrame(() => {
-    renderSettings();
-    localizeSettingsPanel();
-    localizeMainUI();
-  });
+  localStorage.setItem("morse-language", language);
+  localStorage.setItem("morse-language-default-en-applied", DEFAULT_LANGUAGE_MIGRATION);
+  location.reload();
 }));
 $("#reverseChatSwipe").addEventListener("change", event => {
   state.reverseChatSwipe = event.target.checked;
@@ -6463,11 +6460,11 @@ $("#toggleTraining").addEventListener("click", () => {
 });
 
 $("#trainingCard").addEventListener("click", () => {
-  if (state.didSwipe) {
+  if (state.didSwipe || Date.now() < Number(state.ignoreTrainingClickUntil || 0)) {
     state.didSwipe = false;
     return;
   }
-  if (state.trainingMode === "tap" || !state.training) playTrainingItem();
+  playTrainingItem();
 });
 $("#trainingCard").addEventListener("pointerdown", event => {
   state.swipeStartX = event.clientX;
@@ -6478,7 +6475,13 @@ $("#trainingCard").addEventListener("pointerup", event => {
   const deltaX = event.clientX - state.swipeStartX;
   const deltaY = event.clientY - state.swipeStartY;
   if (Math.abs(deltaX) < 45 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) return;
+  event.preventDefault();
+  event.stopPropagation();
   state.didSwipe = true;
+  state.ignoreTrainingClickUntil = Date.now() + 250;
+  setTimeout(() => {
+    state.didSwipe = false;
+  }, 260);
   stopMorse(false);
   moveTrainingItem(deltaX < 0 ? 1 : -1, state.training);
 });

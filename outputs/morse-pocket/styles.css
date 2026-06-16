@@ -471,11 +471,13 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 .autocomplete-item code { font-weight: 850; letter-spacing: .08em; }
 .autocomplete-item span { overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .autocomplete-item button { width: 28px; height: 28px; border: 0; border-radius: 8px; color: white; background: var(--ink); }
-.secret-comm { position: fixed; z-index: 200; inset: 0; overflow: hidden; background: #000; touch-action: none; }
-.secret-comm-surface { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; touch-action: none; }
-.secret-comm-surface.pressed { background: #000; }
-.secret-comm-exit { position: absolute; z-index: 1; top: max(12px, env(safe-area-inset-top)); right: 12px; width: 38px; height: 38px; border: 1px solid #090909; border-radius: 50%; color: #111; background: #000; font-size: 18px; }
-.secret-comm-exit.armed { color: #333; border-color: #222; }
+.secret-comm { position: fixed; z-index: 200; inset: 0; overflow: hidden; background: #000; touch-action: none; -webkit-tap-highlight-color: transparent; }
+.secret-comm-surface { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; outline: 0; background: #000; touch-action: none; -webkit-tap-highlight-color: transparent; }
+.secret-comm-surface:active,
+.secret-comm-surface:focus,
+.secret-comm-surface.pressed { color: transparent; background: #000; box-shadow: none; filter: none; animation: none; }
+.secret-comm-exit { position: absolute; z-index: 2; top: max(14px, env(safe-area-inset-top)); right: 14px; width: 54px; height: 54px; border: 2px solid rgba(255,255,255,.9); border-radius: 50%; color: white; background: rgba(0,0,0,.92); box-shadow: 0 0 0 4px rgba(255,255,255,.16); font-size: 34px; font-weight: 900; line-height: 1; -webkit-tap-highlight-color: transparent; }
+.secret-comm-exit.armed { color: #fff; border-color: #fff; background: #1a1a1a; box-shadow: 0 0 0 5px rgba(255,255,255,.28); }
 
 .profile-world { padding-bottom: 20px; }
 .profile-card { position: relative; width: min(100%, 480px); margin: 0 auto; padding: 22px; border: 1px solid var(--line); border-radius: 22px; background: white; box-shadow: 0 16px 34px rgba(0,0,0,.08); }
