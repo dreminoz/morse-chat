@@ -528,7 +528,8 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { suggestion: { id: suggestion.id, status: suggestion.status, createdAt: suggestion.createdAt } });
   }
   if (req.method === "GET" && url.pathname === "/api/diary/status") {
-    return json(res, 200, { hasPassword: Boolean(await store.diaryVault(account.signalId)) });
+    const vault = await store.diaryVault(account.signalId);
+    return json(res, 200, { hasPassword: Boolean(vault?.passwordHash) });
   }
   if (req.method === "POST" && url.pathname === "/api/diary/setup") {
     const { passwordHash } = await readBody(req);

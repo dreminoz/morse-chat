@@ -1342,6 +1342,8 @@ function localizeRemainingDynamicText() {
   setElementText("#diaryLockHint", state.diaryHasServerPassword ? extraText("diaryEnterHint") : extraText("diarySetHint"));
   setElementPlaceholder("#diaryPassword", extraText("password"));
   setElementPlaceholder("#diaryPasswordConfirm", extraText("confirmPassword"));
+  const diaryConfirm = $("#diaryPasswordConfirm");
+  if (diaryConfirm) diaryConfirm.hidden = Boolean(state.diaryHasServerPassword);
   if (!state.diaryUnlocked) setElementText("#unlockDiary", state.diaryHasServerPassword ? mainText("openDiary") : extraText("diarySetPassword"));
   setElementPlaceholder("#diaryText", extraText("diaryPlaceholder"));
   setElementText("#appendDiaryText", extraText("appendText"));
@@ -5920,6 +5922,101 @@ $("#autocompleteList").addEventListener("click", event => {
     return result;
   };
 });
+
+renderShop = function renderShop() {
+  const lang = state.language;
+  const ko = lang === "ko";
+  const ja = lang === "ja";
+  const categoryNames = {
+    randomTheme: ko ? "랜덤 시그널 꾸미기" : ja ? "ランダムシグナル装飾" : "Random Signal",
+    chatTheme: ko ? "대화창 테마" : ja ? "チャットテーマ" : "Chat Theme",
+    morseSound: ko ? "모스부호 소리" : ja ? "モールス音" : "Morse Sound",
+    profile: ko ? "프로필 꾸미기" : ja ? "プロフィール装飾" : "Profile Style"
+  };
+  const categoryDescriptions = {
+    randomTheme: ko ? "랜덤 시그널 대화창을 꾸밉니다." : ja ? "ランダムシグナル画面を飾ります。" : "Decorate Random Signal chats.",
+    chatTheme: ko ? "개인 대화와 방장 그룹챗에 적용합니다." : ja ? "個人チャットとオーナーのグループに適用します。" : "Themes for direct chats and owner-controlled groups.",
+    morseSound: ko ? "메시지를 재생할 때 발신자의 소리가 납니다." : ja ? "メッセージ再生時に送信者の音が鳴ります。" : "Sounds heard when Morse messages are played.",
+    profile: ko ? "프로필 테두리와 배경을 꾸밉니다." : ja ? "プロフィールの枠と背景を飾ります。" : "Profile borders and backgrounds."
+  };
+  const text = {
+    allOwned: ko ? "모두 보유 중" : ja ? "すべて所持" : "All owned",
+    need: amount => ko ? `재화 ${amount}개 필요` : ja ? `${amount}コイン必要` : `Need ${amount} coins`,
+    draw: amount => ko ? `랜덤 뽑기 · ${amount}` : ja ? `ランダムガチャ · ${amount}` : `Random Draw · ${amount}`,
+    inventory: ko ? "보유 아이템" : ja ? "所持アイテム" : "Inventory",
+    inventoryHint: ko ? "장착을 눌러 아이템을 적용합니다." : ja ? "装着を押すと適用されます。" : "Tap Equip to use an item.",
+    noItems: ko ? "아직 아이템이 없습니다. 랜덤 뽑기를 해보세요." : ja ? "まだアイテムがありません。ランダムガチャを試してください。" : "No items yet. Try a random draw.",
+    equip: ko ? "장착" : ja ? "装着" : "Equip",
+    unequip: ko ? "해제" : ja ? "解除" : "Unequip",
+    defaultItem: ko ? "기본" : ja ? "基本" : "Default",
+    newItem: ko ? "새 아이템" : ja ? "新アイテム" : "New item",
+    duplicate: ko ? "이미 보유한 아이템" : ja ? "重複アイテム" : "Duplicate item",
+    coins100: ko ? "재화 100개" : ja ? "100コイン" : "100 coins"
+  };
+
+  setElementText(".shop-inventory-card .section-heading strong", text.inventory);
+  setElementText(".shop-inventory-card .section-heading small", text.inventoryHint);
+  setElementText("#shopCoinBalance", Number(state.shopCoins || 0).toLocaleString());
+  setElementText("#buyCoins100 strong", text.coins100);
+
+  const drawGrid = $("#shopDrawCategories");
+  if (drawGrid) {
+    drawGrid.innerHTML = SHOP_CATEGORIES.map(category => {
+      const categoryItems = SHOP_ITEMS.filter(item => item.category === category.id && !item.free);
+      const allOwned = categoryItems.length > 0 && categoryItems.every(item => state.shopInventory.includes(item.id));
+      const insufficient = Number(state.shopCoins || 0) < Number(state.shopDrawCost || 50);
+      const label = allOwned ? text.allOwned : insufficient ? text.need(state.shopDrawCost || 50) : text.draw(state.shopDrawCost || 50);
+      return `
+        <article class="shop-category-card" data-shop-preview="${category.id}">
+          <span>${category.name.slice(0, 3).toUpperCase()}</span>
+          <strong>${categoryNames[category.id] || category.name}</strong>
+          <small>${categoryDescriptions[category.id] || category.description}</small>
+          <button type="button" data-shop-draw="${category.id}" ${allOwned || insufficient ? "disabled" : ""}>${label}</button>
+        </article>`;
+    }).join("");
+  }
+
+  const result = state.shopLastDraw;
+  $("#shopResult").hidden = !result;
+  if (result) {
+    $("#shopResult").innerHTML = `<span>${result.item.icon}</span><div><small>${result.duplicate ? text.duplicate : text.newItem}</small><strong>${result.item.name}</strong></div>`;
+  }
+
+  const owned = (state.shopInventory || []).map(shopItem).filter(Boolean);
+  $("#shopInventoryTabs").innerHTML = SHOP_CATEGORIES.map(category =>
+    `<button type="button" data-shop-inventory-category="${category.id}" class="${state.shopInventoryCategory === category.id ? "active" : ""}">${categoryNames[category.id] || category.name}</button>`
+  ).join("");
+  const categoryOwned = state.shopInventoryCategory === "morseSound"
+    ? [shopItem("sound_basic"), ...owned.filter(item => item.category === "morseSound" && item.id !== "sound_basic")].filter(Boolean)
+    : owned.filter(item => item.category === state.shopInventoryCategory);
+  $("#shopInventory").innerHTML = categoryOwned.length ? categoryOwned.map(item => {
+    const equipped = item.id === "sound_basic"
+      ? !state.shopEquipped?.morseSound || state.shopEquipped?.morseSound === "sound_basic"
+      : state.shopEquipped?.[item.slot] === item.id;
+    return `<article class="shop-inventory-item" data-owned-preview="${item.id}">
+      <span>${item.icon}</span>
+      <div><strong>${item.name}</strong><small>${item.free ? text.defaultItem : (categoryNames[item.category] || item.category)}</small></div>
+      <button type="button" ${equipped ? `data-shop-unequip="${item.slot}"` : `data-shop-equip="${item.id}"`}>${equipped ? text.unequip : text.equip}</button>
+    </article>`;
+  }).join("") : `<p class="shop-empty">${text.noItems}</p>`;
+  if (state.shopInventoryCategory === "profile" && categoryOwned.length) renderProfileInventorySections(categoryOwned, ko);
+  if (state.shopInventoryCategory !== "profile") {
+    [...$("#shopInventory").querySelectorAll(".shop-inventory-item")].forEach(element => {
+      const item = shopItem(element.dataset.ownedPreview);
+      if (item && item.category !== "morseSound") {
+        element.firstElementChild?.remove();
+        element.insertAdjacentHTML("afterbegin", `<div class="shop-mini-preview">${shopPreviewVisual(item)}</div>`);
+      }
+    });
+  }
+  if ((state.account?.specials || []).includes("collector_badge")) {
+    const crownOn = state.shopEquipped?.collectorCrown !== false;
+    const rewardTitle = ko ? "컬렉션 완성 보상" : ja ? "コレクション完成報酬" : "Collection Complete Reward";
+    const rewardBody = ko ? "상점 컬렉터 배지 · 황금 왕관 프로필 효과" : ja ? "ショップマスターバッジ · 金の王冠効果" : "Shop Master badge · Golden Crown profile effect";
+    const crownText = crownOn ? (ko ? "왕관 테두리 끄기" : ja ? "王冠枠を外す" : "Disable crown border") : (ko ? "왕관 테두리 켜기" : ja ? "王冠枠を付ける" : "Enable crown border");
+    $("#shopInventory").insertAdjacentHTML("beforeend", `<article class="collector-reward"><strong>${rewardTitle}</strong><span>${rewardBody}</span><button type="button" data-collector-crown="${crownOn ? "off" : "on"}">${crownText}</button></article>`);
+  }
+};
 
 document.querySelectorAll("[data-chat-keyer-mode]").forEach(button => button.addEventListener("click", () => {
   state.chatKeyerMode = button.dataset.chatKeyerMode;
