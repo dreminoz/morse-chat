@@ -6613,7 +6613,7 @@ $("#quizLetterInput").addEventListener("keydown", event => {
   if (event.key === "Enter") gradeQuiz(event.target.value.trim().toUpperCase());
 });
 $("#quizCard").addEventListener("click", () => {
-  if (state.quizDidSwipe) {
+  if (state.quizDidSwipe || Date.now() < Number(state.ignoreQuizClickUntil || 0)) {
     state.quizDidSwipe = false;
     return;
   }
@@ -6628,7 +6628,11 @@ $("#quizCard").addEventListener("pointerup", event => {
   const deltaX = event.clientX - state.quizSwipeX;
   const deltaY = event.clientY - state.quizSwipeY;
   if (Math.abs(deltaX) < 45 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) return;
+  event.preventDefault();
+  event.stopPropagation();
   state.quizDidSwipe = true;
+  state.ignoreQuizClickUntil = Date.now() + 250;
+  setTimeout(() => { state.quizDidSwipe = false; }, 260);
   moveQuiz(deltaX < 0 ? 1 : -1);
 });
 $("#toggleExam").addEventListener("click", () => {

@@ -563,7 +563,7 @@ input[type="range"] { width: 100%; accent-color: var(--lime); margin: 20px 0 2px
 .auto-settings strong { color: var(--ink); }
 .auto-settings select { width: 100%; padding: 7px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink); background: white; }
 .auto-settings input[type="range"] { width: 100%; margin: 2px 0 0; accent-color: var(--ink); }
-.training-card { width: 100%; min-height: 300px; padding: 28px; overflow: hidden; touch-action: pan-y; user-select: none; border: 0; border-radius: 22px; color: white; background: var(--ink); box-shadow: 0 16px 32px rgba(0,0,0,.18); }
+.training-card { width: 100%; min-height: 300px; max-height: 70dvh; padding: 28px; overflow: hidden; touch-action: pan-y; user-select: none; border: 0; border-radius: 22px; color: white; background: var(--ink); box-shadow: 0 16px 32px rgba(0,0,0,.18); }
 .training-card.swipe-next { animation: swipeNext .22s ease; }
 .training-card.swipe-prev { animation: swipePrev .22s ease; }
 @keyframes swipeNext { from { opacity: .4; transform: translateX(22px); } }
@@ -571,7 +571,7 @@ input[type="range"] { width: 100%; accent-color: var(--lime); margin: 20px 0 2px
 .training-card > span, .training-card strong { display: block; }
 .card-kicker { color: #aaaaaa; font-size: 11px; font-weight: 800; letter-spacing: .16em; }
 .training-card strong { margin: 23px 0 7px; font-family: Georgia, serif; font-size: 112px; line-height: 1; font-weight: 500; }
-.training-card.sentence-card strong { margin: 45px 0 20px; font-family: inherit; font-size: 34px; line-height: 1.18; font-weight: 800; letter-spacing: -.04em; }
+.training-card.sentence-card strong { margin: 20px 0 12px; font-family: inherit; font-size: 28px; line-height: 1.25; font-weight: 800; letter-spacing: -.04em; overflow-wrap: break-word; }
 .training-card.sentence-card .training-morse { max-height: 74px; overflow: auto; font-size: 17px; line-height: 1.6; letter-spacing: .12em; }
 .training-morse { min-height: 33px; color: white; font: 28px Georgia, serif; letter-spacing: .25em; }
 .training-hint { margin-top: 30px; font-size: 11px; opacity: .62; }
