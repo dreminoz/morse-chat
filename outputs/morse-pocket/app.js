@@ -1,4 +1,5 @@
 const MORSE_CHAT_SERVER = "https://morse-chat.up.railway.app";
+const DEFAULT_GOOGLE_CLIENT_ID = "148956469120-55ab1h1lmo0c0g34dq065ak7okgq3d1b.apps.googleusercontent.com";
 const savedServerUrl = localStorage.getItem("morse-server-url");
 if (!savedServerUrl || /localhost:8787|127\.0\.0\.1:8787/.test(savedServerUrl)) {
   localStorage.setItem("morse-server-url", MORSE_CHAT_SERVER);
@@ -1083,6 +1084,261 @@ function localizeMainUI() {
   $("#openChatProfile")?.setAttribute("aria-label", mainText("viewProfile"));
   $("#openSecretComm")?.setAttribute("aria-label", mainText("secretComm"));
   setElementText("#openChatProfileInfo small", mainText("chatProfileHint"));
+  localizeRemainingDynamicText();
+}
+
+const EXTRA_TEXT = {
+  ko: {
+    nativeAd: "네이티브 광고",
+    noGroupsTitle: "아직 그룹챗이 없습니다.",
+    noGroupsBody: "그룹챗 만들기로 친구들과 시작하세요.",
+    noFriendsTitle: "아직 친구가 없습니다.",
+    noFriendsBody: "이름을 입력해 친구를 추가하세요.",
+    loopDelay: "반복 간격",
+    seconds: value => `${value}초`,
+    repeatOption: value => `${value}회`,
+    trainingHintAuto: "좌우 스와이프 · 재생 후 자동 이동",
+    trainingHintTap: "탭하면 다시 재생 · 좌우 스와이프 이동",
+    trainingHintLoop: "슬라이드하기 전까지 반복 재생",
+    trainingNameRandom: "랜덤 알파벳",
+    trainingNameAlphabet: "알파벳순",
+    trainingNameMorse: "모스부호순",
+    trainingNameSentence: "문장 훈련",
+    randomIdleTitle: "랜덤한 상대와 연결합니다",
+    randomSearchingTitle: "상대를 찾는 중...",
+    randomSearchingBody: "새로운 시그널을 찾고 있습니다.",
+    randomLastTitle: "라스트 시그널",
+    randomLastBody: "연결이 끊겼습니다. 마지막 문장을 보낼지 선택하세요.",
+    randomStatusIdle: "연결 대기 중",
+    randomStatusSearching: "연결 대기 중",
+    randomStatusLast: "라스트 시그널",
+    profileBio: "자기소개",
+    profileBioPlaceholder: "자신을 소개해보세요",
+    removePhoto: "사진 지우기",
+    dailyLoading: "멤버를 불러오는 중입니다.",
+    dailyOff: "데일리 그룹챗 참여가 꺼져 있습니다.",
+    dailyLeft: "오늘의 데일리 그룹챗에서 나갔습니다.",
+    gameTitle: "10단어 스피드",
+    gameIntro: "모스부호로 10개의 단어를 가장 빠르게 입력하세요.",
+    progress: "진행",
+    time: "시간",
+    myRank: "내 순위",
+    noRecord: "기록 없음",
+    ready: "시작 준비",
+    wordInput: "단어 입력",
+    gameKeyerManual: "오른쪽: 글자 확정 · 위: 대문자",
+    refresh: "새로고침",
+    noRanking: "아직 등록된 기록이 없습니다.",
+    fullRankingMineNone: "아직 내 기록이 없습니다.",
+    diaryEnterPassword: "비밀번호 입력",
+    diarySetPassword: "비밀번호 설정",
+    diaryEnterHint: "비밀일기를 열려면 비밀번호를 입력하세요.",
+    diarySetHint: "처음 사용할 비밀번호를 설정하세요. 잊으면 일기를 열 수 없습니다.",
+    password: "비밀번호",
+    confirmPassword: "비밀번호 확인",
+    diaryPlaceholder: "일기를 입력하세요",
+    appendText: "보내기",
+    mismatchPassword: "비밀번호 확인이 일치하지 않습니다.",
+    spaceSentToday: count => `오늘 발신: ${count} / 30`,
+    currentLetter: value => `현재 글자: ${value}`,
+    currentEmpty: "현재 글자: 비어 있음"
+  },
+  en: {
+    nativeAd: "Native ad",
+    noGroupsTitle: "No group chats yet.",
+    noGroupsBody: "Create a group chat to start with friends.",
+    noFriendsTitle: "No friends yet.",
+    noFriendsBody: "Enter a name to add a friend.",
+    loopDelay: "Loop interval",
+    seconds: value => `${value}s`,
+    repeatOption: value => `${value}x`,
+    trainingHintAuto: "Swipe left/right · auto move after playback",
+    trainingHintTap: "Tap to replay · swipe left/right to move",
+    trainingHintLoop: "Repeats until you swipe",
+    trainingNameRandom: "Random alphabet",
+    trainingNameAlphabet: "Alphabetical",
+    trainingNameMorse: "Morse order",
+    trainingNameSentence: "Sentence training",
+    randomIdleTitle: "Connect with a random person",
+    randomSearchingTitle: "Searching for someone...",
+    randomSearchingBody: "Searching for a new signal.",
+    randomLastTitle: "Last Signal",
+    randomLastBody: "The signal disconnected. Choose whether to send one last sentence.",
+    randomStatusIdle: "Waiting",
+    randomStatusSearching: "Searching",
+    randomStatusLast: "Last Signal",
+    profileBio: "Bio",
+    profileBioPlaceholder: "Introduce yourself",
+    removePhoto: "Remove photo",
+    dailyLoading: "Loading members.",
+    dailyOff: "Daily Group Chat is OFF.",
+    dailyLeft: "You left today's group chat.",
+    gameTitle: "10-word speed",
+    gameIntro: "Enter 10 words with Morse code as fast as you can.",
+    progress: "Progress",
+    time: "Time",
+    myRank: "My rank",
+    noRecord: "No record",
+    ready: "Ready",
+    wordInput: "Word input",
+    gameKeyerManual: "Right: confirm letter · Up: uppercase",
+    refresh: "Refresh",
+    noRanking: "No scores yet.",
+    fullRankingMineNone: "You do not have a record yet.",
+    diaryEnterPassword: "Enter password",
+    diarySetPassword: "Set password",
+    diaryEnterHint: "Enter your password to open the Secret Diary.",
+    diarySetHint: "Set your first password. A forgotten password cannot be recovered.",
+    password: "Password",
+    confirmPassword: "Confirm password",
+    diaryPlaceholder: "Write your diary",
+    appendText: "Add text",
+    mismatchPassword: "Password confirmation does not match.",
+    spaceSentToday: count => `Sent today: ${count} / 30`,
+    currentLetter: value => `Current letter: ${value}`,
+    currentEmpty: "Current letter: empty"
+  },
+  ja: {
+    nativeAd: "ネイティブ広告",
+    noGroupsTitle: "グループチャットはまだありません。",
+    noGroupsBody: "グループチャットを作成して友達と始めましょう。",
+    noFriendsTitle: "友達はまだいません。",
+    noFriendsBody: "名前を入力して友達を追加してください。",
+    loopDelay: "繰り返し間隔",
+    seconds: value => `${value}秒`,
+    repeatOption: value => `${value}回`,
+    trainingHintAuto: "左右スワイプ · 再生後に自動移動",
+    trainingHintTap: "タップで再生 · 左右スワイプで移動",
+    trainingHintLoop: "スワイプするまで繰り返し再生",
+    trainingNameRandom: "ランダム英字",
+    trainingNameAlphabet: "アルファベット順",
+    trainingNameMorse: "モールス順",
+    trainingNameSentence: "文章練習",
+    randomIdleTitle: "ランダムな相手と接続します",
+    randomSearchingTitle: "相手を探しています...",
+    randomSearchingBody: "新しいシグナルを探しています。",
+    randomLastTitle: "ラストシグナル",
+    randomLastBody: "接続が切れました。最後の文章を送るか選んでください。",
+    randomStatusIdle: "待機中",
+    randomStatusSearching: "検索中",
+    randomStatusLast: "ラストシグナル",
+    profileBio: "自己紹介",
+    profileBioPlaceholder: "自己紹介を書いてください",
+    removePhoto: "写真を削除",
+    dailyLoading: "メンバーを読み込み中です。",
+    dailyOff: "デイリーグループチャットはOFFです。",
+    dailyLeft: "今日のグループチャットから退出しました。",
+    gameTitle: "10単語スピード",
+    gameIntro: "モールスで10個の単語をできるだけ速く入力してください。",
+    progress: "進行",
+    time: "時間",
+    myRank: "自分の順位",
+    noRecord: "記録なし",
+    ready: "準備中",
+    wordInput: "単語入力",
+    gameKeyerManual: "右: 文字確定 · 上: 大文字",
+    refresh: "更新",
+    noRanking: "まだ記録がありません。",
+    fullRankingMineNone: "自分の記録はまだありません。",
+    diaryEnterPassword: "パスワード入力",
+    diarySetPassword: "パスワード設定",
+    diaryEnterHint: "秘密日記を開くにはパスワードを入力してください。",
+    diarySetHint: "最初に使うパスワードを設定してください。忘れると復元できません。",
+    password: "パスワード",
+    confirmPassword: "パスワード確認",
+    diaryPlaceholder: "日記を入力してください",
+    appendText: "追加",
+    mismatchPassword: "パスワード確認が一致しません。",
+    spaceSentToday: count => `今日の送信: ${count} / 30`,
+    currentLetter: value => `現在の文字: ${value}`,
+    currentEmpty: "現在の文字: 空"
+  }
+};
+
+function extraText(key, ...args) {
+  const table = EXTRA_TEXT[state.language] || EXTRA_TEXT.en;
+  const value = table[key] ?? EXTRA_TEXT.en[key] ?? key;
+  return typeof value === "function" ? value(...args) : value;
+}
+
+function localizeRemainingDynamicText() {
+  setElementText("#friendNativeAdSlot small", extraText("nativeAd"));
+  if (!state.groups?.length) setElementHtml("#groupList", `<article class="record-item"><strong>${extraText("noGroupsTitle")}</strong><span>${extraText("noGroupsBody")}</span></article>`);
+  if (!state.friends?.length) setElementHtml("#friendList", `<article class="record-item"><strong>${extraText("noFriendsTitle")}</strong><span>${extraText("noFriendsBody")}</span></article>`);
+
+  document.querySelectorAll("#repeatCount option").forEach(option => { option.textContent = extraText("repeatOption", option.value); });
+  const delaySeconds = (Number(state.nextDelay || 1000) / 1000).toFixed(1);
+  setElementText("#nextDelayTitle", state.trainingMode === "loop" ? extraText("loopDelay") : mainText("delay"));
+  setElementText("#nextDelayLabel", extraText("seconds", delaySeconds));
+  const trainingNames = {
+    random: extraText("trainingNameRandom"),
+    alphabet: extraText("trainingNameAlphabet"),
+    morse: extraText("trainingNameMorse"),
+    sentence: extraText("trainingNameSentence")
+  };
+  const seqTotal = Array.isArray(state.sequence) && state.sequence.length ? state.sequence.length : 26;
+  setElementText("#trainingKicker", `${trainingNames[state.trainingType] || trainingNames.random} · ${state.sequenceIndex + 1}/${seqTotal}`);
+  setElementText("#trainingHint", state.trainingMode === "loop"
+    ? extraText("trainingHintLoop")
+    : state.trainingMode === "tap" ? extraText("trainingHintTap") : extraText("trainingHintAuto"));
+
+  const spaceHeroText = document.querySelectorAll("#spaceWorld .space-hero p");
+  if (spaceHeroText[1]) spaceHeroText[1].textContent = mainText("spaceIntro");
+  setElementText("[data-space-view='transmit']", mainText("transmit"));
+  setElementText("[data-space-view='receive']", mainText("receive"));
+  setElementText("#submitSpaceSignal", mainText("sendToday"));
+  const sentMatch = $("#spaceSendStatus")?.textContent.match(/(\d+)\s*\/\s*30/);
+  if (sentMatch) setElementText("#spaceSendStatus", extraText("spaceSentToday", sentMatch[1]));
+  if ($("#spaceSendSignal")) {
+    $("#spaceSendSignal").textContent = state.spaceSendSignal
+      ? extraText("currentLetter", prettyMorse(state.spaceSendSignal))
+      : extraText("currentEmpty");
+  }
+
+  setElementText("#randomSignalIdle strong", extraText("randomIdleTitle"));
+  setElementText("#randomSignalIdle p", mainText("randomIntro"));
+  setElementText("#randomSignalSearching strong", extraText("randomSearchingTitle"));
+  setElementText("#randomSignalSearching p", extraText("randomSearchingBody"));
+  setElementText("#randomSignalLast strong", extraText("randomLastTitle"));
+  setElementText("#randomSignalLast p", extraText("randomLastBody"));
+  const randomStatus = state.randomSignalState === "connected"
+    ? `${mainText("connectSignal")} · ${state.randomPartner || ""}`.trim()
+    : state.randomSignalState === "searching" ? extraText("randomStatusSearching")
+    : state.randomSignalState === "last" ? extraText("randomStatusLast")
+    : extraText("randomStatusIdle");
+  setElementText("#randomSignalStatus", randomStatus);
+
+  setElementText(".profile-description-field span", extraText("profileBio"));
+  setElementPlaceholder("#myProfileDescription", extraText("profileBioPlaceholder"));
+  setElementText("#removeProfilePhoto", extraText("removePhoto"));
+
+  const dailyText = $("#dailyGroupStatus")?.textContent || "";
+  if (/불러|Loading|読み/.test(dailyText)) setElementText("#dailyGroupStatus", extraText("dailyLoading"));
+  if (/OFF|꺼져|オフ/.test(dailyText)) setElementText("#dailyGroupStatus", extraText("dailyOff"));
+  if (/left|나갔|退出/.test(dailyText)) setElementText("#dailyGroupStatus", extraText("dailyLeft"));
+
+  setElementText("#gamesWorld .game-header h2", extraText("gameTitle"));
+  setElementText("#gamesWorld .game-header p", extraText("gameIntro"));
+  const gameStats = document.querySelectorAll("#gamesWorld .game-status-card small");
+  if (gameStats[0]) gameStats[0].textContent = extraText("progress");
+  if (gameStats[1]) gameStats[1].textContent = extraText("time");
+  if (gameStats[2]) gameStats[2].textContent = extraText("myRank");
+  if ($("#gameMyRank") && !state.gameMyRank) $("#gameMyRank").textContent = extraText("noRecord");
+  if (!state.gameRunning) setElementText("#gameWordNumber", extraText("ready"));
+  setElementPlaceholder("#gameInput", extraText("wordInput"));
+  if ($("#gameSignal")) {
+    $("#gameSignal").textContent = state.gameSignal ? extraText("currentLetter", prettyMorse(state.gameSignal)) : extraText("currentEmpty");
+  }
+  if (state.chatKeyerMode !== "auto") setElementText("#gameKeyer small", extraText("gameKeyerManual"));
+  setElementText("#refreshGameRanking", extraText("refresh"));
+
+  setElementText("#diaryLockTitle", state.diaryHasServerPassword ? extraText("diaryEnterPassword") : extraText("diarySetPassword"));
+  setElementText("#diaryLockHint", state.diaryHasServerPassword ? extraText("diaryEnterHint") : extraText("diarySetHint"));
+  setElementPlaceholder("#diaryPassword", extraText("password"));
+  setElementPlaceholder("#diaryPasswordConfirm", extraText("confirmPassword"));
+  if (!state.diaryUnlocked) setElementText("#unlockDiary", state.diaryHasServerPassword ? mainText("openDiary") : extraText("diarySetPassword"));
+  setElementPlaceholder("#diaryText", extraText("diaryPlaceholder"));
+  setElementText("#appendDiaryText", extraText("appendText"));
 }
 
 let mainLocalizationQueued = false;
@@ -1494,7 +1750,7 @@ const state = {
   authToken: localStorage.getItem("morse-auth-token") || "",
   account: JSON.parse(localStorage.getItem("morse-account") || "null"),
   googleCredential: "",
-  googleClientId: "",
+  googleClientId: DEFAULT_GOOGLE_CLIENT_ID,
   authMode: "login",
   usernameChecked: "",
   localNicknameChecked: "",
@@ -1792,6 +2048,10 @@ function setAuthMode(mode) {
       : uiText("아이디와 비밀번호를 입력하세요.", "Enter your ID and password.", "IDとパスワードを入力してください。");
 }
 
+function normalizeGoogleAuthStatus() {
+  if (state.authMode === "google") $("#authStatus").textContent = uiText("Google 계정을 선택하세요.", "Select a Google account.", "Googleアカウントを選択してください。");
+}
+
 function openAuthPanel() {
   $("#authPanel").hidden = false;
   $("#authNickname").value = "";
@@ -1807,6 +2067,7 @@ function openAuthPanel() {
   setNicknameCheckStatus("#localNicknameCheckStatus");
   setNicknameCheckStatus("#authNicknameCheckStatus");
   setAuthMode("google");
+  normalizeGoogleAuthStatus();
   renderGoogleButton();
 }
 
@@ -1929,12 +2190,20 @@ async function submitLocalAuth() {
 }
 
 function renderGoogleButton() {
+  state.googleClientId ||= DEFAULT_GOOGLE_CLIENT_ID;
   if (window.AndroidAuth) {
     $("#androidGoogleSignIn").hidden = state.authMode !== "google";
+    $("#androidGoogleSignIn").textContent = uiText("Google로 계속하기", "Continue with Google", "Googleで続行");
     $("#googleSignInButton").hidden = true;
     return;
   }
-  if (!state.googleClientId || !globalThis.google?.accounts?.id) return;
+  if (!globalThis.google?.accounts?.id) {
+    $("#googleSignInButton").hidden = true;
+    $("#androidGoogleSignIn").hidden = state.authMode !== "google";
+    $("#androidGoogleSignIn").textContent = uiText("Google로 계속하기", "Continue with Google", "Googleで続行");
+    $("#authStatus").textContent = uiText("Google 로그인을 준비하고 있습니다.", "Google Sign-In is loading.", "Googleログインを準備しています。");
+    return;
+  }
   $("#androidGoogleSignIn").hidden = true;
   $("#googleSignInButton").hidden = state.authMode !== "google";
   google.accounts.id.initialize({
@@ -2009,7 +2278,8 @@ async function initializeAuth() {
   if (window.AndroidAuth) renderGoogleButton();
   try {
     const config = await fetch(`${state.serverUrl}/api/auth/config`).then(response => response.json());
-    state.googleClientId = config.googleClientId || "";
+    state.googleClientId = config.googleClientId || state.googleClientId || DEFAULT_GOOGLE_CLIENT_ID;
+    renderGoogleButton();
     let attempts = 0;
     const timer = setInterval(() => {
       attempts += 1;
@@ -2034,6 +2304,8 @@ async function initializeAuth() {
       renderSettings();
     }
   } catch (error) {
+    state.googleClientId ||= DEFAULT_GOOGLE_CLIENT_ID;
+    renderGoogleButton();
     if (state.authToken && state.account) {
       setAccount(state.authToken, state.account);
       return;
@@ -5433,9 +5705,22 @@ $("#openSettings").addEventListener("click", () => {
   $("#settingsPanel").hidden = false;
 });
 $("#closeSettings").addEventListener("click", () => $("#settingsPanel").hidden = true);
-$("#androidGoogleSignIn").addEventListener("click", () => window.AndroidAuth?.signIn());
+$("#androidGoogleSignIn").addEventListener("click", () => {
+  if (window.AndroidAuth) {
+    window.AndroidAuth.signIn();
+    return;
+  }
+  state.googleClientId ||= DEFAULT_GOOGLE_CLIENT_ID;
+  if (globalThis.google?.accounts?.id) {
+    renderGoogleButton();
+    google.accounts.id.prompt();
+    return;
+  }
+  showToast(uiText("Google 로그인을 아직 불러오는 중입니다.", "Google Sign-In is still loading.", "Googleログインを読み込み中です。"));
+});
 $("#authModeGoogle").addEventListener("click", () => {
   setAuthMode("google");
+  normalizeGoogleAuthStatus();
   renderGoogleButton();
 });
 $("#authModeLogin").addEventListener("click", () => setAuthMode("login"));
