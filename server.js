@@ -3,55 +3,26 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { OAuth2Client } = require("google-auth-library");
-const { MongoClient } = require("mongodb");
 
 const PORT = Number(process.env.PORT) || 8787;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
-const MONGO_URL = process.env.MONGO_URL || process.env.MONGODB_URI || "";
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 const WEB_ROOT = path.resolve(__dirname, "..", "outputs", "morse-pocket");
+const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : __dirname;
+const DATA_FILE = path.join(DATA_DIR, "data.json");
 const clients = new Map();
 const randomQueue = [];
 const randomPairs = new Map();
 const lastPartners = new Map();
 
-// MongoDB collections (populated after connect)
-let db;
-let colAccounts;
-let colSessions;
-let colDirect;
-let colSpace;
+let data = { direct: [], space: [], accounts: [], sessions: [] };
+try {
+  data = { ...data, ...JSON.parse(fs.readFileSync(DATA_FILE, "utf8")) };
+} catch {}
 
-async function connectMongo() {
-  if (!MONGO_URL) throw new Error("MONGO_URL environment variable is not set");
-  const client = new MongoClient(MONGO_URL);
-  await client.connect();
-  db = client.db();
-  colAccounts = db.collection("accounts");
-  colSessions = db.collection("sessions");
-  colDirect = db.collection("direct_messages");
-  colSpace = db.collection("space_signals");
-
-  // Indexes
-  await Promise.all([
-    colAccounts.createIndex({ googleSub: 1 }, { unique: true }),
-    colAccounts.createIndex({ signalId: 1 }, { unique: true }),
-    colAccounts.createIndex({ nicknameLower: 1 }, { unique: true }),
-    colSessions.createIndex({ token: 1 }, { unique: true }),
-    colSessions.createIndex({ googleSub: 1 }),
-    colDirect.createIndex({ from: 1, to: 1, createdAt: -1 }),
-    colDirect.createIndex({ to: 1, createdAt: -1 }),
-    colSpace.createIndex({ sender: 1, day: 1 }),
-    colSpace.createIndex({ createdAt: -1 }),
-  ]);
-
-  console.log("Connected to MongoDB");
-}
-
-function cleanDoc(doc) {
-  if (!doc) return null;
-  const { _id, nicknameLower, ...rest } = doc;
-  return rest;
+function saveData() {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
 function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
@@ -72,21 +43,19 @@ async function verifyGoogleCredential(credential) {
   return payload;
 }
 
-async function createSession(account) {
+function createSession(account) {
   const token = crypto.randomBytes(32).toString("hex");
-  // Replace any existing session for this account
-  await colSessions.deleteMany({ googleSub: account.googleSub });
-  await colSessions.insertOne({ token, googleSub: account.googleSub, createdAt: Date.now() });
+  data.sessions = data.sessions.filter(item => item.googleSub !== account.googleSub);
+  data.sessions.push({ token, googleSub: account.googleSub, createdAt: Date.now() });
+  saveData();
   return token;
 }
 
-async function sessionAccount(req, url) {
+function sessionAccount(req, url) {
   const bearer = req.headers.authorization?.startsWith("Bearer ") ? req.headers.authorization.slice(7) : "";
   const token = bearer || url.searchParams.get("token") || "";
-  if (!token) return null;
-  const session = await colSessions.findOne({ token });
-  if (!session) return null;
-  return cleanDoc(await colAccounts.findOne({ googleSub: session.googleSub }));
+  const session = data.sessions.find(item => item.token === token);
+  return session ? data.accounts.find(account => account.googleSub === session.googleSub) : null;
 }
 
 function publicAccount(account) {
@@ -160,35 +129,27 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "OPTIONS") return json(res, 204, {});
   const url = new URL(req.url, "http://localhost");
 
-  if (req.method === "GET" && url.pathname === "/api/health") {
-    try {
-      await db.command({ ping: 1 });
-      return json(res, 200, { ok: true, googleConfigured: Boolean(GOOGLE_CLIENT_ID), googleClientId: GOOGLE_CLIENT_ID, storage: { type: "mongodb", connected: true } });
-    } catch {
-      return json(res, 503, { ok: false, error: "storage-unavailable" });
-    }
-  }
+  if (req.method === "GET" && url.pathname === "/api/health") return json(res, 200, { ok: true, googleConfigured: Boolean(GOOGLE_CLIENT_ID), googleClientId: GOOGLE_CLIENT_ID });
   if (req.method === "GET" && url.pathname === "/api/auth/config") return json(res, 200, { googleClientId: GOOGLE_CLIENT_ID });
   if (req.method === "POST" && url.pathname === "/api/auth/register") {
     try {
       const { credential, nickname, password } = await readBody(req);
       if (!nickname?.trim() || nickname.trim().length < 2 || !password || password.length < 8) return json(res, 400, { error: "nickname-password-required" });
       const google = await verifyGoogleCredential(credential);
-      if (await colAccounts.findOne({ googleSub: google.sub }, { projection: { _id: 1 } })) return json(res, 409, { error: "already-registered" });
-      if (await colAccounts.findOne({ nicknameLower: nickname.trim().toLowerCase() }, { projection: { _id: 1 } })) return json(res, 409, { error: "nickname-taken" });
+      if (data.accounts.some(account => account.googleSub === google.sub)) return json(res, 409, { error: "already-registered" });
+      if (data.accounts.some(account => account.nickname.toLowerCase() === nickname.trim().toLowerCase())) return json(res, 409, { error: "nickname-taken" });
       const passwordData = hashPassword(password);
       const account = {
         googleSub: google.sub,
         email: google.email,
         nickname: nickname.trim(),
-        nicknameLower: nickname.trim().toLowerCase(),
         signalId: `SIGNAL-${crypto.randomBytes(4).toString("hex").toUpperCase()}`,
         passwordSalt: passwordData.salt,
         passwordHash: passwordData.hash,
         createdAt: Date.now()
       };
-      await colAccounts.insertOne(account);
-      const token = await createSession(account);
+      data.accounts.push(account);
+      const token = createSession(account);
       return json(res, 200, { token, account: publicAccount(account) });
     } catch (error) {
       return json(res, 401, { error: error.message || "google-verification-failed" });
@@ -198,20 +159,20 @@ const server = http.createServer(async (req, res) => {
     try {
       const { credential, password } = await readBody(req);
       const google = await verifyGoogleCredential(credential);
-      const account = cleanDoc(await colAccounts.findOne({ googleSub: google.sub }));
+      const account = data.accounts.find(item => item.googleSub === google.sub);
       if (!account || !passwordMatches(password || "", account)) return json(res, 401, { error: "invalid-login" });
-      const token = await createSession(account);
+      const token = createSession(account);
       return json(res, 200, { token, account: publicAccount(account) });
     } catch (error) {
       return json(res, 401, { error: error.message || "invalid-login" });
     }
   }
   if (req.method === "GET" && url.pathname === "/api/auth/me") {
-    const account = await sessionAccount(req, url);
+    const account = sessionAccount(req, url);
     return account ? json(res, 200, { account: publicAccount(account) }) : json(res, 401, { error: "auth-required" });
   }
 
-  const account = await sessionAccount(req, url);
+  const account = sessionAccount(req, url);
   if (url.pathname.startsWith("/api/") && !account) return json(res, 401, { error: "auth-required" });
   if (req.method === "GET" && url.pathname === "/api/events") {
     const userId = account.signalId;
@@ -238,44 +199,39 @@ const server = http.createServer(async (req, res) => {
     const from = account.signalId;
     if (!to || !message) return json(res, 400, { error: "to and message required" });
     const item = { id: crypto.randomUUID(), from, to, message, createdAt: Date.now() };
-    await colDirect.insertOne(item);
+    data.direct.push(item);
+    data.direct = data.direct.slice(-2000);
+    saveData();
     emit(to, "direct-message", item);
-    return json(res, 200, { id: item.id, from: item.from, to: item.to, message: item.message, createdAt: item.createdAt });
+    return json(res, 200, item);
   }
   if (req.method === "GET" && url.pathname === "/api/direct/history") {
     const user = account.signalId;
     const friend = url.searchParams.get("friend");
-    const messages = await colDirect
-      .find({ $or: [{ from: user, to: friend }, { from: friend, to: user }] }, { projection: { _id: 0 } })
-      .sort({ createdAt: -1 }).limit(200).toArray();
-    return json(res, 200, { messages: messages.reverse() });
+    const messages = data.direct.filter(item => (item.from === user && item.to === friend) || (item.from === friend && item.to === user)).slice(-200);
+    return json(res, 200, { messages });
   }
   if (req.method === "GET" && url.pathname === "/api/direct/inbox") {
     const user = account.signalId;
-    const messages = await colDirect
-      .find({ to: user }, { projection: { _id: 0 } })
-      .sort({ createdAt: -1 }).limit(500).toArray();
-    return json(res, 200, { messages: messages.reverse() });
+    return json(res, 200, { messages: data.direct.filter(item => item.to === user).slice(-500) });
   }
 
   if (req.method === "POST" && url.pathname === "/api/space/send") {
     const { text, day = localDay() } = await readBody(req);
     const sender = account.signalId;
     if (!text) return json(res, 400, { error: "text required" });
-    if (await colSpace.findOne({ sender, day }, { projection: { _id: 1 } })) return json(res, 409, { error: "daily-limit" });
+    if (data.space.some(item => item.sender === sender && item.day === day)) return json(res, 409, { error: "daily-limit" });
     const signal = { id: crypto.randomUUID(), sender, text, day, createdAt: Date.now() };
-    await colSpace.insertOne(signal);
-    return json(res, 200, { id: signal.id, sender: signal.sender, text: signal.text, day: signal.day, createdAt: signal.createdAt });
+    data.space.push(signal);
+    data.space = data.space.slice(-5000);
+    saveData();
+    return json(res, 200, signal);
   }
   if (req.method === "GET" && url.pathname === "/api/space/random") {
     const exclude = account.signalId;
-    const [signal] = await colSpace.aggregate([
-      { $match: { sender: { $ne: exclude } } },
-      { $sample: { size: 1 } },
-      { $project: { _id: 0 } }
-    ]).toArray();
-    if (!signal) return json(res, 404, { error: "no-signals" });
-    return json(res, 200, signal);
+    const choices = data.space.filter(item => item.sender !== exclude);
+    if (!choices.length) return json(res, 404, { error: "no-signals" });
+    return json(res, 200, choices[Math.floor(Math.random() * choices.length)]);
   }
 
   if (req.method === "POST" && url.pathname === "/api/random/join") {
@@ -322,14 +278,6 @@ const server = http.createServer(async (req, res) => {
   serveFile(req, res);
 });
 
-async function start() {
-  await connectMongo();
-  server.listen(PORT, "0.0.0.0", () => {
-    console.log(`MORSE CHAT server running at http://0.0.0.0:${PORT}`);
-  });
-}
-
-start().catch(error => {
-  console.error("Failed to start server:", error);
-  process.exitCode = 1;
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`MORSE CHAT server running at http://0.0.0.0:${PORT}`);
 });
