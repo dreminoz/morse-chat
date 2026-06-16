@@ -121,17 +121,17 @@ function decodeSecretPresses(logs, sender) {
     const next = marks[index + 1];
     if (!next) {
       morse += letter;
-      text += SECRET_MORSE[letter] || "�";
+      text += SECRET_MORSE[letter] || "?";
       return;
     }
     const gap = next.at - item.end;
     if (gap >= item.unit * 7) {
       morse += `${letter} / `;
-      text += `${SECRET_MORSE[letter] || "�"} `;
+      text += `${SECRET_MORSE[letter] || "?"} `;
       letter = "";
     } else if (gap >= item.unit * 3) {
       morse += `${letter} `;
-      text += SECRET_MORSE[letter] || "�";
+      text += SECRET_MORSE[letter] || "?";
       letter = "";
     }
   });
@@ -229,38 +229,36 @@ function emit(userId, type, payload = {}) {
 }
 
 function notificationText(kind, language, data = {}) {
-  const en = language === "en";
   const hidden = Boolean(data.hidden);
   const preview = hidden ? "Morse Only" : String(data.preview || "").trim().slice(0, 90);
   const messages = {
     direct: {
-      title: en ? `New message from ${data.sender || "a friend"}` : `${data.sender || "친구"}님의 새 메시지`,
-      body: preview || (en ? "A new message arrived." : "새 메시지가 도착했습니다.")
+      title: `New message from ${data.sender || "a friend"}`,
+      body: preview || "A new message arrived."
     },
     "random-connected": {
-      title: en ? "Random Signal connected" : "랜덤 시그널 연결",
-      body: en ? "A new signal has connected." : "새로운 시그널과 연결되었습니다."
+      title: "Random Signal connected",
+      body: "A new signal has connected."
     },
     random: {
-      title: en ? "Random Signal" : "랜덤 시그널",
-      body: preview || (en ? "A new message arrived." : "새 메시지가 도착했습니다.")
+      title: "Random Signal",
+      body: preview || "A new message arrived."
     },
     daily: {
-      title: en ? "Daily Group Chat" : "데일리 그룹챗",
-      body: en ? "A new anonymous message arrived." : "새 익명 메시지가 도착했습니다."
+      title: "Daily Group Chat",
+      body: "A new anonymous message arrived."
     },
     group: {
-      title: en ? `Group Chat · ${data.groupName || "morsiq"}` : `그룹챗 · ${data.groupName || "morsiq"}`,
-      body: preview || (en ? "A new group message arrived." : "새 그룹 메시지가 도착했습니다.")
+      title: `Group Chat - ${data.groupName || "morsiq"}`,
+      body: preview || "A new group message arrived."
     },
     space: {
-      title: en ? "Space Signal received" : "우주 시그널 수신",
-      body: en ? "A new Space Signal arrived." : "새 우주 시그널이 도착했습니다."
+      title: "Space Signal received",
+      body: "A new Space Signal arrived."
     }
   };
   return messages[kind] || { title: "morsiq", body: preview };
 }
-
 async function pushToUser(signalId, kind, data = {}) {
   if (!pushEnabled) return;
   const account = await store.findAccountBySignalId(signalId);
@@ -294,7 +292,7 @@ function messagePushData(message) {
 
 async function publicGroup(group, viewer) {
   const members = group.type === "daily"
-    ? group.members.map((signalId, index) => ({ signalId: `ANON-${index + 1}`, nickname: signalId === viewer ? "나" : `익명 ${index + 1}` }))
+    ? group.members.map((signalId, index) => ({ signalId: `ANON-${index + 1}`, nickname: signalId === viewer ? "You" : `Anonymous ${index + 1}` }))
     : await Promise.all(group.members.map(async signalId => {
       const member = await store.findAccountBySignalId(signalId);
       return { ...publicAccount(member || { signalId, nickname: signalId }), owner: signalId === group.owner };
@@ -310,7 +308,7 @@ function publicGroupMessage(group, item, viewer) {
     id: item.id,
     groupId: item.groupId,
     from: `ANON-${index + 1}`,
-    fromNickname: item.from === viewer ? "나" : `익명 ${index + 1}`,
+    fromNickname: item.from === viewer ? "You" : `Anonymous ${index + 1}`,
     mine: item.from === viewer,
     text: item.text,
     type: item.type || "text",
@@ -672,7 +670,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, {
       inventory: account.inventory || [], equipped: account.equipped || {},
       coins: Number(account.coins || 0), drawCost: SHOP_DRAW_COST,
-      coinProduct: { id: SHOP_COIN_PRODUCT, coins: 100, displayPrice: "₩500" },
+      coinProduct: { id: SHOP_COIN_PRODUCT, coins: 100, displayPrice: "" },
       account: publicAccount(account)
     });
   }

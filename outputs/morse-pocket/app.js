@@ -1073,6 +1073,36 @@ function localizeMainUI() {
   setElementText("#diaryEditorSection .section-heading small", mainText("saveDiaryNote"));
   setElementText("#saveDiaryEntry", mainText("saveDiary"));
   setElementText("#addDiaryHidden", mainText("vibrationOnly"));
+  setElementText("#secretDiaryWorld .diary-header h2", mainText("secretDiary"));
+  setElementText("#openDiaryList", mainText("diaryList"));
+  const weekdayLabels = state.language === "en"
+    ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    : state.language === "ja"
+      ? ["日", "月", "火", "水", "木", "金", "土"]
+      : ["일", "월", "화", "수", "목", "금", "토"];
+  document.querySelectorAll(".diary-weekdays span").forEach((element, index) => {
+    element.textContent = weekdayLabels[index] || element.textContent;
+  });
+  setElementText(".diary-saved-section .section-heading strong", mainText("selectedDiary"));
+  setElementText(".diary-saved-section .section-heading small", mainText("savedEntries"));
+  setElementText(".diary-composer .section-heading strong", mainText("writingDiary"));
+  setElementText(".diary-composer .section-heading small", mainText("saveDiaryNote"));
+  if ($("#diaryEntries") && /선택한|저장된|일기|없|saved|entries/i.test($("#diaryEntries").textContent)) {
+    const emptyDiaryText = state.language === "en"
+      ? "No diary entries saved for the selected date."
+      : state.language === "ja" ? "選択した日付に保存された日記はありません。" : "선택한 날짜에 저장된 일기가 없습니다.";
+    const empty = $("#diaryEntries .chat-empty");
+    if (empty) empty.textContent = emptyDiaryText;
+  }
+  if ($("#diarySignal")) {
+    $("#diarySignal").textContent = state.diarySignal
+      ? extraText("currentLetter", prettyMorse(state.diarySignal))
+      : extraText("currentEmpty");
+  }
+  setElementText("#appendDiaryVibration", mainText("vibrationOnly"));
+  setElementText("#clearDiaryText", mainText("clear"));
+  const buyHint = $("#buyCoins100 small");
+  if (buyHint) buyHint.textContent = "";
 
   setElementText("#openReceivedRequests span", mainText("receivedRequests"));
   setElementText("#openSentRequests span", mainText("sentRequests"));
@@ -4201,6 +4231,7 @@ function renderProfileInventorySections(items, ko) {
 }
 
 function loadShop() {
+  renderShop();
   if (!state.authToken) return;
   api("/api/shop").then(({ inventory, equipped, coins, drawCost, account }) => {
     state.shopInventory = inventory || [];
@@ -4210,7 +4241,10 @@ function loadShop() {
     if (account) applyAccountUpdate(account);
     renderShop();
     if (!$("#groupManagePanel").hidden) renderGroupThemeChoices();
-  }).catch(error => showApiFailure(error));
+  }).catch(error => {
+    renderShop();
+    showApiFailure(error);
+  });
 }
 
 function renderGroupThemeChoices() {
@@ -4274,7 +4308,10 @@ function switchWorld(world) {
     loadGameRanking(10);
   }
   if (world === "secretDiary") openSecretDiary();
-  if (world === "shop") loadShop();
+  if (world === "shop") {
+    renderShop();
+    loadShop();
+  }
   if (world === "profile") renderMyProfile();
   localizeMainUI();
 }
@@ -5958,6 +5995,7 @@ renderShop = function renderShop() {
   setElementText(".shop-inventory-card .section-heading small", text.inventoryHint);
   setElementText("#shopCoinBalance", Number(state.shopCoins || 0).toLocaleString());
   setElementText("#buyCoins100 strong", text.coins100);
+  setElementText("#buyCoins100 small", "");
 
   const drawGrid = $("#shopDrawCategories");
   if (drawGrid) {
