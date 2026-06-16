@@ -18,8 +18,8 @@
       <h2>Login / Sign up</h2>
       <p>Sign in with your ID, create an account, or continue with Google.</p>
       <div class="auth-tabs">
-        <button id="authModeGoogle" type="button">Google</button>
-        <button id="authModeLogin" class="active" type="button">Login</button>
+        <button id="authModeGoogle" class="active" type="button">Google</button>
+        <button id="authModeLogin" type="button">Login</button>
         <button id="authModeRegister" type="button">Sign up</button>
       </div>
       <div id="googleSignInButton" class="google-sign-in"></div>
@@ -747,6 +747,13 @@
           <small>끄면 진동은 유지되고 삐 소리만 나지 않습니다.</small>
         </div>
         <input id="morseSoundEnabled" type="checkbox" checked>
+      </label>
+      <label class="settings-switch">
+        <div>
+          <strong>Vibration</strong>
+          <small>Turn this off to stop phone vibration.</small>
+        </div>
+        <input id="vibrationEnabled" type="checkbox" checked>
       </label>
       <div class="settings-section">
         <p class="label">대화 모스 입력 확정</p>

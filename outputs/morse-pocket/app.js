@@ -505,6 +505,10 @@ const SETTINGS_TEXT = {
     verySlow: "아주 느림",
     morseSound: "모스부호 소리",
     morseSoundHint: "끄면 진동은 유지되고 삐 소리만 나지 않습니다.",
+    vibration: "진동",
+    vibrationHint: "끄면 휴대폰 진동이 울리지 않습니다.",
+    vibrationOn: "진동을 켰습니다.",
+    vibrationOff: "진동을 껐습니다.",
     confirmation: "대화 모스 입력 확정",
     auto: "자동",
     manual: "수동",
@@ -553,6 +557,10 @@ const SETTINGS_TEXT = {
     verySlow: "Very slow",
     morseSound: "Morse code sound",
     morseSoundHint: "Turn this off to keep vibration without beep sounds.",
+    vibration: "Vibration",
+    vibrationHint: "Turn this off to stop phone vibration.",
+    vibrationOn: "Vibration is on.",
+    vibrationOff: "Vibration is off.",
     confirmation: "Chat Morse confirmation",
     auto: "Auto",
     manual: "Manual",
@@ -601,6 +609,10 @@ const SETTINGS_TEXT = {
     verySlow: "とても遅い",
     morseSound: "モールス音",
     morseSoundHint: "オフにすると振動だけ残り、ビープ音は鳴りません。",
+    vibration: "振動",
+    vibrationHint: "オフにするとスマホの振動は鳴りません。",
+    vibrationOn: "振動をオンにしました。",
+    vibrationOff: "振動をオフにしました。",
     confirmation: "チャットのモールス確定",
     auto: "自動",
     manual: "手動",
@@ -673,6 +685,13 @@ function localizeSettingsPanel() {
     const small = soundSwitch.querySelector("small");
     if (strong) strong.textContent = settingsText("morseSound");
     if (small) small.textContent = settingsText("morseSoundHint");
+  }
+  const vibrationSwitch = $("#vibrationEnabled")?.closest(".settings-switch");
+  if (vibrationSwitch) {
+    const strong = vibrationSwitch.querySelector("strong");
+    const small = vibrationSwitch.querySelector("small");
+    if (strong) strong.textContent = settingsText("vibration");
+    if (small) small.textContent = settingsText("vibrationHint");
   }
   const confirmationSection = panel.querySelector("[data-chat-keyer-mode]")?.closest(".settings-section");
   if (confirmationSection) {
@@ -954,6 +973,7 @@ const state = {
   viewingProfileSignalId: "",
   language: localStorage.getItem("morse-language") || "en",
   morseSoundEnabled: localStorage.getItem("morse-sound-enabled") !== "false",
+  vibrationEnabled: localStorage.getItem("morse-vibration-enabled") !== "false",
   world: localStorage.getItem("morse-world") || "hall",
   unit: Number(localStorage.getItem("morse-speed")) || 120,
   trainingMode: localStorage.getItem("morse-mode") || "auto",
@@ -1198,7 +1218,7 @@ function connectServer() {
       saveUnread();
     }
     renderRandomSignal();
-    navigator.vibrate?.([state.unit, state.unit, state.unit]);
+    vibrateDevice([state.unit, state.unit, state.unit]);
   });
   stream.addEventListener("random-disconnected", () => {
     if (state.randomSignalState === "connected") beginLastSignal(false);
@@ -1342,7 +1362,8 @@ function openAuthPanel() {
   setUsernameCheckStatus();
   setNicknameCheckStatus("#localNicknameCheckStatus");
   setNicknameCheckStatus("#authNicknameCheckStatus");
-  setAuthMode("login");
+  setAuthMode("google");
+  renderGoogleButton();
 }
 
 function normalizeLocalUsername() {
@@ -1594,7 +1615,7 @@ function receiveDirectMessage(item, silent = false) {
   renderFriends();
   if (state.activeFriend === friend) renderChat();
   if (!silent) {
-    navigator.vibrate?.([state.unit, state.unit, state.unit]);
+    vibrateDevice([state.unit, state.unit, state.unit]);
     const message = item.message || {};
     showNativeNotification(
       state.language === "en" ? `New message from ${item.fromNickname || "a friend"}` : `${item.fromNickname || "친구"}의 새 메시지`,
@@ -1680,14 +1701,27 @@ function playMorseAudio(pattern, soundId) {
   });
 }
 
+function vibrateDevice(pattern) {
+  if (!state.vibrationEnabled) return false;
+  if (window.AndroidVibration) window.AndroidVibration.vibrate(Array.isArray(pattern) ? pattern.join(",") : String(pattern));
+  else if (navigator.vibrate) navigator.vibrate(pattern);
+  else return false;
+  return true;
+}
+
+function cancelVibration() {
+  cancelVibration();
+}
+
 function playMorse(text, onComplete, playerLabel = text, soundId = "") {
   stopMorse(false);
   const pattern = vibrationPattern(text);
   if (!pattern.length) return;
   const duration = pattern.reduce((sum, value) => sum + value, 0);
   playMorseAudio(pattern, soundId);
-  if (window.AndroidVibration) window.AndroidVibration.vibrate(pattern.join(","));
-  else if (navigator.vibrate) navigator.vibrate(pattern);
+  if (state.vibrationEnabled && window.AndroidVibration) window.AndroidVibration.vibrate(pattern.join(","));
+  else if (state.vibrationEnabled && navigator.vibrate) navigator.vibrate(pattern);
+  else if (!state.vibrationEnabled) {}
   else showToast("이 기기에서는 진동 재생을 지원하지 않습니다.");
   $("#playerText").textContent = playerLabel;
   $("#player").hidden = false;
@@ -1701,8 +1735,7 @@ function playMorse(text, onComplete, playerLabel = text, soundId = "") {
 }
 
 function stopMorse(stopTraining = true) {
-  if (window.AndroidVibration) window.AndroidVibration.cancel();
-  else navigator.vibrate?.(0);
+  cancelVibration();
   clearTimeout(state.playTimer);
   state.playTimer = null;
   $("#player").hidden = true;
@@ -2672,6 +2705,7 @@ function renderSettings() {
     button.classList.toggle("active", button.dataset.language === state.language)
   );
   $("#morseSoundEnabled").checked = state.morseSoundEnabled;
+  $("#vibrationEnabled").checked = state.vibrationEnabled;
   $("#settingsSpeed").value = state.unit;
   $("#settingsSpeedLabel").textContent = `${speedName(state.unit)} · ${state.unit}ms`;
   $("#accountStatus").textContent = state.account ? `${state.account.nickname} · ${state.account.signalId}` : uiText("로그인하지 않음", "Not signed in", "未ログイン");
@@ -3662,13 +3696,11 @@ function sendSecretSignal(action) {
 }
 
 function startSecretVibration() {
-  if (window.AndroidVibration) window.AndroidVibration.vibrate("60000");
-  else navigator.vibrate?.(60000);
+  vibrateDevice(60000);
 }
 
 function stopSecretVibration() {
-  if (window.AndroidVibration) window.AndroidVibration.vibrate("0");
-  else navigator.vibrate?.(0);
+  cancelVibration();
 }
 
 function enterSecretComm(partner, notify = true, sessionId = "") {
@@ -3706,8 +3738,7 @@ function closeSecretComm(notify = true) {
 
 function pulseSignal(mark) {
   const duration = state.unit * (mark === "." ? 1 : 3);
-  if (window.AndroidVibration) window.AndroidVibration.vibrate(String(duration));
-  else navigator.vibrate?.(duration);
+  vibrateDevice(duration);
 }
 
 function clearKeyerTimers(target) {
@@ -3787,8 +3818,7 @@ function setupKeyer(target, selector) {
 
 function feedbackVibration(correct) {
   const pattern = correct ? [70, 70, 70] : [300];
-  if (window.AndroidVibration) window.AndroidVibration.vibrate(pattern.join(","));
-  else navigator.vibrate?.(pattern);
+  vibrateDevice(pattern);
 }
 
 function prettyMorse(code) {
@@ -4746,7 +4776,7 @@ $("#chatMessages").addEventListener("pointerdown", event => {
     const index = state.chatMessageHoldIndex;
     state.chatMessageLongPressed = true;
     cancelChatMessageHold();
-    navigator.vibrate?.(35);
+    vibrateDevice(35);
     deleteChatMessage(index);
   }, 650);
 });
@@ -5165,6 +5195,12 @@ $("#morseSoundEnabled").addEventListener("change", event => {
   showToast(state.morseSoundEnabled
     ? (state.language === "en" ? "Morse sound is on." : "모스부호 소리를 켰습니다.")
     : (state.language === "en" ? "Morse sound is off." : "모스부호 소리를 껐습니다."));
+});
+$("#vibrationEnabled").addEventListener("change", event => {
+  state.vibrationEnabled = event.target.checked;
+  localStorage.setItem("morse-vibration-enabled", String(state.vibrationEnabled));
+  if (!state.vibrationEnabled) cancelVibration();
+  showToast(state.vibrationEnabled ? settingsText("vibrationOn") : settingsText("vibrationOff"));
 });
 $("#chatKeyer").addEventListener("pointerdown", event => {
   clearTimeout(state.chatLetterTimer);
