@@ -643,12 +643,456 @@ function settingsText(key) {
 
 function setElementText(selector, text) {
   const element = document.querySelector(selector);
-  if (element) element.textContent = text;
+  if (element && element.textContent !== text) element.textContent = text;
 }
 
 function setElementPlaceholder(selector, text) {
   const element = document.querySelector(selector);
-  if (element) element.placeholder = text;
+  if (element && element.placeholder !== text) element.placeholder = text;
+}
+
+function setElementHtml(selector, html) {
+  const element = document.querySelector(selector);
+  if (element && element.innerHTML !== html) element.innerHTML = html;
+}
+
+const MAIN_TEXT = {
+  ko: {
+    conversations: "대화",
+    training: "훈련장",
+    space: "우주",
+    randomSignal: "랜덤 시그널",
+    profile: "프로필",
+    dailyGroup: "데일리 그룹챗",
+    games: "게임",
+    secretDiary: "비밀일기",
+    shop: "상점",
+    saved: "저장",
+    train: "훈련",
+    quiz: "퀴즈",
+    writer: "쓰기",
+    reference: "목록",
+    speed: "진동 속도",
+    faster: "빠르게",
+    slower: "느리게",
+    phrasePlaceholder: "전달할 문구를 입력하세요",
+    savePhrase: "문구 저장",
+    support: "영문, 숫자, 주요 문장부호를 지원합니다.",
+    emptyPhrase: "문구를 저장하면<br>여기에 차곡차곡 모입니다.",
+    trainingType: "훈련 유형",
+    random: "랜덤",
+    alphabet: "알파벳순",
+    morseOrder: "모스부호순",
+    sentence: "문장",
+    sentenceNote: "문장 훈련은 저장한 영문 문장을 우선 사용합니다.",
+    playbackMode: "재생 방식",
+    auto: "자동",
+    tap: "탭",
+    loop: "무한 반복",
+    repeat: "항목별 반복",
+    delay: "다음 항목까지",
+    startTraining: "훈련 시작",
+    endTraining: "훈련 끝내기",
+    pressHold: "PRESS & HOLD",
+    shortLong: "짧게 누르면 · 점 / 길게 누르면 – 선",
+    autoKeyer: "3단위 휴식: 글자 확정 · 7단위 휴식: 띄어쓰기",
+    manualKeyerRight: "오른쪽: 확정 · 왼쪽: 띄어쓰기 · 위: 대문자 · 아래: 엔터",
+    manualKeyerLeft: "왼쪽: 확정 · 오른쪽: 띄어쓰기 · 위: 대문자 · 아래: 엔터",
+    hiddenRight: "오른쪽 밀기: 숨김 신호",
+    morseInput: "모스코드를 입력하세요",
+    currentEmpty: "현재 글자: 비어 있음",
+    send: "보내기",
+    delete: "지우기",
+    photo: "사진",
+    unlimited: "무제한",
+    spaceTitle: "우주",
+    spaceIntro: "하루에 하나의 시그널을 우주로 보내고, 누군가의 시그널을 수신합니다.",
+    transmit: "시그널 발신",
+    receive: "시그널 수신",
+    sendToday: "오늘의 시그널 발신",
+    asciiPhoto: "ASCII 사진 발신",
+    receiveRandom: "랜덤 시그널 수신",
+    radar: "레이더가 우주 시그널을 탐색하고 있습니다.",
+    randomIntro: "연결되면 서로 이름을 공개하지 않고 대화할 수 있습니다.",
+    connectSignal: "시그널 연결",
+    cancel: "취소",
+    disconnect: "시그널 끊기",
+    lastSignalSend: "라스트 시그널 보내기",
+    lastSignalSkip: "라스트 시그널 보내지 않기",
+    profilePhoto: "프로필 사진 선택",
+    saveProfile: "프로필 저장",
+    dailyOn: "데일리 그룹챗 참여",
+    leaveDaily: "오늘 그룹 나가기",
+    clear: "지우기",
+    startGame: "게임 시작",
+    fullRanking: "전체 랭킹",
+    diaryHint: "비밀일기를 열려면 비밀번호를 입력하세요.",
+    openDiary: "비밀일기 열기",
+    lock: "잠그기",
+    diaryList: "일기 목록",
+    selectedDiary: "선택한 날짜의 일기",
+    savedEntries: "저장된 내용",
+    writingDiary: "작성 중인 일기",
+    saveDiaryNote: "일기 저장을 눌러야 서버에 저장됩니다",
+    saveDiary: "일기 저장",
+    vibrationOnly: "진동 전용",
+    usesChatInput: "대화 입력 설정을 따릅니다",
+    chatProfileHint: "말풍선을 누르면 모스 진동 재생",
+    backConversations: "대화 목록으로 돌아가기",
+    viewProfile: "프로필 보기",
+    secretComm: "실시간 비밀 통신",
+    receivedRequests: "받은 요청",
+    sentRequests: "보낸 요청",
+    addFriend: "친구 추가",
+    createGroup: "그룹챗 만들기",
+    groups: "그룹챗",
+    friends: "친구"
+  },
+  en: {
+    conversations: "Conversations",
+    training: "Training",
+    space: "Space",
+    randomSignal: "Random Signal",
+    profile: "Profile",
+    dailyGroup: "Daily Group Chat",
+    games: "Games",
+    secretDiary: "Secret Diary",
+    shop: "Shop",
+    saved: "Saved",
+    train: "Training",
+    quiz: "Quiz",
+    writer: "Writer",
+    reference: "Reference",
+    speed: "Vibration speed",
+    faster: "Faster",
+    slower: "Slower",
+    phrasePlaceholder: "Enter a phrase to send",
+    savePhrase: "Save phrase",
+    support: "Supports English letters, numbers, and common punctuation.",
+    emptyPhrase: "Save a phrase and<br>it will collect here.",
+    trainingType: "Training type",
+    random: "Random",
+    alphabet: "Alphabetical",
+    morseOrder: "Morse order",
+    sentence: "Sentence",
+    sentenceNote: "Sentence training uses your saved English sentences first.",
+    playbackMode: "Playback mode",
+    auto: "Auto",
+    tap: "Tap",
+    loop: "Loop",
+    repeat: "Repeats per item",
+    delay: "Delay before next item",
+    startTraining: "Start training",
+    endTraining: "End training",
+    pressHold: "PRESS & HOLD",
+    shortLong: "Short press: dot / Long press: dash",
+    autoKeyer: "3-unit pause: confirm letter · 7-unit pause: add space",
+    manualKeyerRight: "Right: confirm · Left: space · Up: uppercase · Down: enter",
+    manualKeyerLeft: "Left: confirm · Right: space · Up: uppercase · Down: enter",
+    hiddenRight: "Swipe right: hidden signal",
+    morseInput: "Enter Morse code",
+    currentEmpty: "Current letter: empty",
+    send: "Send",
+    delete: "Delete",
+    photo: "Photo",
+    unlimited: "Unlimited",
+    spaceTitle: "Space",
+    spaceIntro: "Send one signal into space each day and receive someone else's signal.",
+    transmit: "Transmit signal",
+    receive: "Receive signal",
+    sendToday: "Transmit today's signal",
+    asciiPhoto: "Send ASCII photo",
+    receiveRandom: "Receive random signal",
+    radar: "Radar is scanning for a Space signal.",
+    randomIntro: "Once connected, you can chat without revealing your names.",
+    connectSignal: "Connect signal",
+    cancel: "Cancel",
+    disconnect: "Disconnect signal",
+    lastSignalSend: "Send Last Signal",
+    lastSignalSkip: "Do not send Last Signal",
+    profilePhoto: "Choose profile photo",
+    saveProfile: "Save profile",
+    dailyOn: "Join Daily Group Chat",
+    leaveDaily: "Leave today's group",
+    clear: "Clear",
+    startGame: "Start game",
+    fullRanking: "Full ranking",
+    diaryHint: "Enter your password to open the Secret Diary.",
+    openDiary: "Open Secret Diary",
+    lock: "Lock",
+    diaryList: "Diary list",
+    selectedDiary: "Entries for selected date",
+    savedEntries: "Saved entries",
+    writingDiary: "Writing diary",
+    saveDiaryNote: "Press Save Diary to store it on the server",
+    saveDiary: "Save diary",
+    vibrationOnly: "Vibration only",
+    usesChatInput: "Uses conversation input settings",
+    chatProfileHint: "Tap a bubble to replay Morse vibration",
+    backConversations: "Back to conversations",
+    viewProfile: "View profile",
+    secretComm: "Live Secret Communication",
+    receivedRequests: "Received requests",
+    sentRequests: "Sent requests",
+    addFriend: "Add friend",
+    createGroup: "Create group chat",
+    groups: "Group chats",
+    friends: "Friends"
+  },
+  ja: {
+    conversations: "会話",
+    training: "トレーニング",
+    space: "宇宙",
+    randomSignal: "ランダムシグナル",
+    profile: "プロフィール",
+    dailyGroup: "デイリーグループチャット",
+    games: "ゲーム",
+    secretDiary: "秘密日記",
+    shop: "ショップ",
+    saved: "保存",
+    train: "練習",
+    quiz: "クイズ",
+    writer: "入力",
+    reference: "一覧",
+    speed: "振動速度",
+    faster: "速く",
+    slower: "遅く",
+    phrasePlaceholder: "送信するフレーズを入力",
+    savePhrase: "フレーズを保存",
+    support: "英字、数字、主な句読点に対応しています。",
+    emptyPhrase: "フレーズを保存すると<br>ここに集まります。",
+    trainingType: "練習タイプ",
+    random: "ランダム",
+    alphabet: "アルファベット順",
+    morseOrder: "モールス順",
+    sentence: "文",
+    sentenceNote: "文の練習では保存した英語文を優先します。",
+    playbackMode: "再生モード",
+    auto: "自動",
+    tap: "タップ",
+    loop: "無限ループ",
+    repeat: "項目ごとの繰り返し",
+    delay: "次の項目まで",
+    startTraining: "練習開始",
+    endTraining: "練習終了",
+    pressHold: "PRESS & HOLD",
+    shortLong: "短押し: 点 / 長押し: 線",
+    autoKeyer: "3単位休止: 文字確定 · 7単位休止: スペース",
+    manualKeyerRight: "右: 確定 · 左: スペース · 上: 大文字 · 下: 改行",
+    manualKeyerLeft: "左: 確定 · 右: スペース · 上: 大文字 · 下: 改行",
+    hiddenRight: "右スワイプ: 隠し信号",
+    morseInput: "モールスコードを入力",
+    currentEmpty: "現在の文字: 空",
+    send: "送信",
+    delete: "削除",
+    photo: "写真",
+    unlimited: "無制限",
+    spaceTitle: "宇宙",
+    spaceIntro: "1日に1つの信号を宇宙へ送り、誰かの信号を受信します。",
+    transmit: "信号送信",
+    receive: "信号受信",
+    sendToday: "今日の信号を送信",
+    asciiPhoto: "ASCII写真を送信",
+    receiveRandom: "ランダム信号を受信",
+    radar: "レーダーが宇宙信号を探しています。",
+    randomIntro: "接続すると名前を公開せずに会話できます。",
+    connectSignal: "信号接続",
+    cancel: "キャンセル",
+    disconnect: "信号を切断",
+    lastSignalSend: "ラストシグナルを送信",
+    lastSignalSkip: "ラストシグナルを送らない",
+    profilePhoto: "プロフィール写真を選択",
+    saveProfile: "プロフィール保存",
+    dailyOn: "デイリーグループチャットに参加",
+    leaveDaily: "今日のグループを退出",
+    clear: "クリア",
+    startGame: "ゲーム開始",
+    fullRanking: "全ランキング",
+    diaryHint: "秘密日記を開くにはパスワードを入力してください。",
+    openDiary: "秘密日記を開く",
+    lock: "ロック",
+    diaryList: "日記一覧",
+    selectedDiary: "選択日の日記",
+    savedEntries: "保存済み",
+    writingDiary: "日記を書く",
+    saveDiaryNote: "保存ボタンを押すとサーバーに保存されます",
+    saveDiary: "日記を保存",
+    vibrationOnly: "振動専用",
+    usesChatInput: "会話入力設定を使用",
+    chatProfileHint: "吹き出しをタップするとモールス振動を再生",
+    backConversations: "会話一覧に戻る",
+    viewProfile: "プロフィールを見る",
+    secretComm: "リアルタイム秘密通信",
+    receivedRequests: "受信リクエスト",
+    sentRequests: "送信リクエスト",
+    addFriend: "友達追加",
+    createGroup: "グループチャット作成",
+    groups: "グループチャット",
+    friends: "友達"
+  }
+};
+
+function mainText(key) {
+  return (MAIN_TEXT[state.language] || MAIN_TEXT.en)[key] || MAIN_TEXT.en[key] || key;
+}
+
+function keyerModeHint() {
+  return state.chatKeyerMode === "auto"
+    ? mainText("autoKeyer")
+    : (state.reverseChatSwipe ? mainText("manualKeyerRight") : mainText("manualKeyerLeft"));
+}
+
+function localizeMainUI() {
+  document.querySelector("[data-world='friends']") && (document.querySelector("[data-world='friends']").textContent = mainText("conversations"));
+  document.querySelector("[data-world='hall']") && (document.querySelector("[data-world='hall']").textContent = mainText("training"));
+  document.querySelector("[data-world='space']") && (document.querySelector("[data-world='space']").textContent = mainText("space"));
+  document.querySelector("[data-world='randomSignal']") && (document.querySelector("[data-world='randomSignal']").textContent = mainText("randomSignal"));
+  document.querySelector("[data-world='profile']") && (document.querySelector("[data-world='profile']").textContent = mainText("profile"));
+  document.querySelector("[data-world='dailyGroup']") && (document.querySelector("[data-world='dailyGroup']").textContent = mainText("dailyGroup"));
+  document.querySelector("[data-world='games']") && (document.querySelector("[data-world='games']").textContent = mainText("games"));
+  document.querySelector("[data-world='secretDiary']") && (document.querySelector("[data-world='secretDiary']").textContent = mainText("secretDiary"));
+  document.querySelector("[data-world='shop']") && (document.querySelector("[data-world='shop']").textContent = mainText("shop"));
+
+  setElementText(".speed-card .label", mainText("speed"));
+  $("#speed")?.setAttribute("aria-label", mainText("speed"));
+  setElementText(".speed-card .range-labels span:first-child", mainText("faster"));
+  setElementText(".speed-card .range-labels span:last-child", mainText("slower"));
+  setElementText("#speedLabel", `${localizedSpeedName(state.unit)} · ${state.unit}ms`);
+
+  const tabNames = { library: "saved", training: "train", quiz: "quiz", writer: "writer", reference: "reference" };
+  Object.entries(tabNames).forEach(([view, key]) => setElementText(`.tab[data-view='${view}']`, mainText(key)));
+  setElementPlaceholder("#phraseInput", mainText("phrasePlaceholder"));
+  $("#phraseForm button[type='submit']")?.setAttribute("aria-label", mainText("savePhrase"));
+  setElementText(".support-note", mainText("support"));
+  setElementHtml("#emptyState p", mainText("emptyPhrase"));
+  setElementText("#training .training-type-wrap .label", mainText("trainingType"));
+  setElementText("[data-type='random']", mainText("random"));
+  setElementText("[data-type='alphabet']", mainText("alphabet"));
+  setElementText("[data-type='morse']", mainText("morseOrder"));
+  setElementText("[data-type='sentence']", mainText("sentence"));
+  setElementText(".training-note", mainText("sentenceNote"));
+  setElementText("#training .training-settings .label", mainText("playbackMode"));
+  setElementText("[data-mode='auto']", mainText("auto"));
+  setElementText("[data-mode='tap']", mainText("tap"));
+  setElementText("[data-mode='loop']", mainText("loop"));
+  setElementText("#repeatSetting span", mainText("repeat"));
+  setElementText("#delaySetting span", mainText("delay"));
+  if (!state.training) setElementText("#toggleTraining", mainText("startTraining"));
+  setElementText(".answer-toggle span", uiText("모스부호 답 보기", "Show Morse answer", "モールスの答えを表示"));
+  setElementText("[data-quiz-mode='listen']", uiText("진동 듣고 맞히기", "Listen & guess", "聞いて答える"));
+  setElementText("[data-quiz-mode='send']", uiText("글자 보고 입력하기", "Read & send", "文字を見て入力"));
+  setElementText("#toggleExam", state.examActive ? uiText("시험 종료", "End exam", "試験終了") : uiText("시험 시작 · A-Z 전체", "Start exam · A-Z", "試験開始 · A-Z"));
+  setElementText("#toggleRecords", uiText("기록 보기", "View records", "記録を見る"));
+  if ($("#quizInputDisplay") && /진동|알파벳|LISTEN|듣|聞|吏/.test($("#quizInputDisplay").textContent)) {
+    $("#quizInputDisplay").textContent = state.quizMode === "listen"
+      ? uiText("진동을 듣고 알파벳을 입력하세요", "Listen to the vibration and enter the letter", "振動を聞いて文字を入力してください")
+      : prettyMorse(state.quizSignal || "");
+  }
+  setElementText("#submitListenQuiz", uiText("정답 확인", "Check answer", "答えを確認"));
+  document.querySelectorAll(".keyer-settings > span").forEach(element => { element.textContent = uiText("입력 확정", "Input confirmation", "入力確定"); });
+  document.querySelectorAll(".keyer-mode-button[data-keyer-mode='auto']").forEach(element => { element.textContent = mainText("auto"); });
+  document.querySelectorAll(".keyer-mode-button[data-keyer-mode='manual']").forEach(element => { element.textContent = mainText("manual"); });
+  setElementText("#quizKeyerHint", state.quizKeyerMode === "auto"
+    ? uiText("쉬면 자동으로 정답을 확인합니다", "Pause to check the answer automatically", "休止すると自動で答えを確認します")
+    : uiText("왼쪽 스와이프: 정답 확인 · 오른쪽: 지우기", "Swipe left: submit · Right: clear", "左スワイプ: 確認 · 右: クリア"));
+  setElementText(".quiz-swipe-hint", uiText("카드 탭: 정답 보기 · 좌우 스와이프: 문제 이동", "Tap card: show answer · Swipe: move question", "カードタップ: 答え表示 · スワイプ: 問題移動"));
+  setElementText("[data-writer-mode='single']", uiText("한 글자 확인", "Single letter", "1文字確認"));
+  setElementText("[data-writer-mode='sentence']", uiText("문장 입력", "Sentence input", "文入力"));
+  if ($("#writerText") && /입력|문장|글자|湲|臾/.test($("#writerText").textContent)) {
+    $("#writerText").textContent = state.writerText || (state.writerMode === "single"
+      ? uiText("글자를 입력하세요", "Enter one letter", "文字を入力してください")
+      : uiText("문장을 입력하세요", "Enter a sentence", "文を入力してください"));
+  }
+  if ($("#writerCurrent") && /비어|empty|空|湲/.test($("#writerCurrent").textContent)) $("#writerCurrent").textContent = mainText("currentEmpty");
+  if ($("#writerMorse") && /점|선|press|湲|쨌/.test($("#writerMorse").textContent)) $("#writerMorse").textContent = uiText("· 점과 − 선을 눌러 시작하세요", "Press dot and dash to start", "点と線を押して始めてください");
+  setElementText("#writerKeyerHint", state.writerKeyerMode === "auto" ? mainText("autoKeyer") : mainText("manualKeyerLeft"));
+  setElementText("#writerBackspace", uiText("한 칸 지우기", "Backspace", "1つ削除"));
+  setElementText("#clearWriterCode", uiText("전체 지우기", "Clear code", "コードをクリア"));
+  setElementText("#resetWriter", uiText("초기화", "Reset", "リセット"));
+  setElementText("#playWriterText", uiText("작성 문장 재생", "Play written sentence", "入力文を再生"));
+  setElementText("#reference .reference-heading strong", uiText("알파벳·숫자·모스부호", "Letters, numbers, and Morse code", "文字・数字・モールス符号"));
+
+  document.querySelectorAll(".morse-keyer strong").forEach(element => { element.textContent = mainText("pressHold"); });
+  document.querySelectorAll(".morse-keyer span").forEach(element => { element.textContent = mainText("shortLong"); });
+  ["#chatKeyer small", "#groupMessageKeyer small", "#dailyGroupKeyer small", "#randomChatKeyer small", "#spaceSendKeyer small"].forEach(selector => setElementText(selector, keyerModeHint()));
+  setElementText("#diaryKeyer small", mainText("usesChatInput"));
+
+  ["#chatMorseText", "#groupMessageInput", "#dailyGroupInput", "#randomChatInput"].forEach(selector => setElementPlaceholder(selector, mainText("morseInput")));
+  ["#chatMorseSignal", "#groupMessageSignal", "#dailyGroupSignal", "#randomChatSignal"].forEach(selector => {
+    const element = document.querySelector(selector);
+    if (element && (!element.textContent || /비어|empty|空|湲/.test(element.textContent))) element.textContent = mainText("currentEmpty");
+  });
+  setElementText("#clearChatMorse", mainText("delete"));
+  setElementText("#clearGroupMessage", mainText("delete"));
+  setElementText("#clearDailyGroupMessage", mainText("delete"));
+  setElementText("#clearRandomChat", mainText("delete"));
+  document.querySelectorAll(".photo-send-button span").forEach(element => { element.textContent = mainText("photo"); });
+  ["#sendChatMorse strong", "#sendGroupMessage strong", "#sendDailyGroupMessage strong", "#sendRandomChat strong"].forEach(selector => setElementText(selector, mainText("send")));
+  ["#hiddenLimitHint", "#groupHiddenLimitHint", "#dailyGroupHiddenLimitHint", "#randomHiddenLimitHint"].forEach(selector => {
+    const element = document.querySelector(selector);
+    if (element) element.textContent = `${mainText("hiddenRight")} · ${hiddenLimitLabel()}`;
+  });
+  document.querySelectorAll(".hidden-view-picker span").forEach(element => { element.textContent = mainText("hiddenRight"); });
+  document.querySelectorAll("[data-hidden-limit='unlimited'], [data-group-hidden-limit='unlimited'], [data-daily-hidden-limit='unlimited'], [data-random-limit='unlimited']").forEach(element => { element.textContent = mainText("unlimited"); });
+
+  setElementText("#spaceWorld .space-hero h2", mainText("spaceTitle"));
+  setElementText("#spaceWorld .space-hero p", mainText("spaceIntro"));
+  setElementText("[data-space-view='send']", mainText("transmit"));
+  setElementText("[data-space-view='receive']", mainText("receive"));
+  setElementText("#sendSpaceSignal", mainText("sendToday"));
+  setElementText("label[for='spacePhotoInput']", mainText("asciiPhoto"));
+  setElementText("#receiveSpaceSignal", mainText("receiveRandom"));
+  if ($("#spaceReceiveStatus") && /레이더|Radar|レーダー/.test($("#spaceReceiveStatus").textContent)) setElementText("#spaceReceiveStatus", mainText("radar"));
+
+  setElementText("#randomSignalWorld h2", mainText("randomSignal"));
+  setElementText("#randomSignalWorld .random-card > p", mainText("randomIntro"));
+  setElementText("#connectRandomSignal", mainText("connectSignal"));
+  setElementText("#cancelRandomSignal", mainText("cancel"));
+  setElementText("#disconnectRandomSignal", mainText("disconnect"));
+  setElementText("#sendLastSignal", mainText("lastSignalSend"));
+  setElementText("#skipLastSignal", mainText("lastSignalSkip"));
+
+  setElementText("label[for='profilePhotoInput']", mainText("profilePhoto"));
+  setElementText("#saveMyProfile", mainText("saveProfile"));
+  setElementText("#dailyGroupEnabledLabel", mainText("dailyOn"));
+  setElementText("#leaveDailyGroup", mainText("leaveDaily"));
+  setElementText("#clearGameInput", mainText("clear"));
+  if (!state.gameRunning) setElementText("#startGame", mainText("startGame"));
+  setElementText("#openFullRanking", mainText("fullRanking"));
+
+  setElementText("#diaryLockHint", mainText("diaryHint"));
+  if (!state.diaryUnlocked) setElementText("#unlockDiary", mainText("openDiary"));
+  setElementText("#lockDiary", mainText("lock"));
+  setElementText("#openDiaryList", mainText("diaryList"));
+  setElementText("#diaryListOverlay h2", mainText("diaryList"));
+  setElementText("#secretDiaryWorld .diary-header h2", mainText("secretDiary"));
+  setElementText("#diaryEntriesSection .section-heading strong", mainText("selectedDiary"));
+  setElementText("#diaryEntriesSection .section-heading small", mainText("savedEntries"));
+  setElementText("#diaryEditorSection .section-heading strong", mainText("writingDiary"));
+  setElementText("#diaryEditorSection .section-heading small", mainText("saveDiaryNote"));
+  setElementText("#saveDiaryEntry", mainText("saveDiary"));
+  setElementText("#addDiaryHidden", mainText("vibrationOnly"));
+
+  setElementText("#openReceivedRequests span", mainText("receivedRequests"));
+  setElementText("#openSentRequests span", mainText("sentRequests"));
+  setElementText("#openAddFriend span", mainText("addFriend"));
+  setElementText("#openCreateGroup span", mainText("createGroup"));
+  setElementText("#conversationList > .label", mainText("groups"));
+  setElementText(".friend-list-label", mainText("friends"));
+  $("#closeChat")?.setAttribute("aria-label", mainText("backConversations"));
+  $("#openChatProfile")?.setAttribute("aria-label", mainText("viewProfile"));
+  $("#openSecretComm")?.setAttribute("aria-label", mainText("secretComm"));
+  setElementText("#openChatProfileInfo small", mainText("chatProfileHint"));
+}
+
+let mainLocalizationQueued = false;
+function scheduleMainLocalization() {
+  if (mainLocalizationQueued) return;
+  mainLocalizationQueued = true;
+  setTimeout(() => {
+    mainLocalizationQueued = false;
+    localizeMainUI();
+  }, 0);
 }
 
 function localizeSettingsPanel() {
@@ -2150,7 +2594,7 @@ function localizedSpeedName(value) {
 
 function renderSpeed() {
   $("#speed").value = state.unit;
-  $("#speedLabel").textContent = `${speedName(state.unit)} · ${state.unit}ms`;
+  $("#speedLabel").textContent = `${localizedSpeedName(state.unit)} · ${state.unit}ms`;
 }
 
 function renderPhrases() {
@@ -2636,6 +3080,10 @@ function hiddenLimitLabel(limit = state.hiddenViewLimit) {
   return limit === "unlimited" ? "무제한" : `${limit}회`;
 }
 
+function hiddenLimitLabel(limit = state.hiddenViewLimit) {
+  return limit === "unlimited" ? mainText("unlimited") : `${limit}x`;
+}
+
 function hiddenSignalExhausted(message) {
   return typeof message === "object"
     && message.hidden
@@ -2687,6 +3135,10 @@ function renderChatComposer() {
   $("#chatKeyer").querySelector("small").textContent = state.chatKeyerMode === "auto"
     ? "3단위 휴식: 글자 확정 · 7단위 휴식: 띄어쓰기"
     : `${state.reverseChatSwipe ? "오른쪽" : "왼쪽"}: 확정 · ${state.reverseChatSwipe ? "왼쪽" : "오른쪽"}: 띄어쓰기 · 위: 대문자 · 아래: 엔터`;
+}
+
+function localizeAfterComposerRender() {
+  localizeMainUI();
 }
 
 function renderSettings() {
@@ -2779,6 +3231,7 @@ function refreshLocalizedViews() {
   renderSettings();
   if (state.diaryUnlocked) renderDiary();
   renderGame();
+  localizeMainUI();
 }
 
 function applyLanguage(language) {
@@ -2789,6 +3242,7 @@ function applyLanguage(language) {
   document.title = "morsiq";
   refreshLocalizedViews();
   translateElement(document.body, language);
+  localizeMainUI();
   if (!$("#shopWorld").hidden) renderShop();
   if (state.authToken) {
     api("/api/push/language", { method: "POST", body: JSON.stringify({ language }) }).catch(() => {});
@@ -3540,6 +3994,7 @@ function switchWorld(world) {
   if (world === "secretDiary") openSecretDiary();
   if (world === "shop") loadShop();
   if (world === "profile") renderMyProfile();
+  localizeMainUI();
 }
 
 function updateFriendNativeAd() {
@@ -5151,6 +5606,28 @@ $("#autocompleteList").addEventListener("click", event => {
   saveAutocompletes();
   showToast(state.language === "en" ? "Autocomplete deleted." : "자동완성을 삭제했습니다.");
 });
+[
+  "renderChatComposer",
+  "renderGroupComposer",
+  "renderRandomSignal",
+  "renderSpace",
+  "renderTrainingHint",
+  "renderAutoSettings",
+  "renderQuiz",
+  "renderWriter",
+  "renderDiary",
+  "renderGame",
+  "renderShop"
+].forEach(name => {
+  const original = globalThis[name];
+  if (typeof original !== "function") return;
+  globalThis[name] = function localizedRenderWrapper(...args) {
+    const result = original.apply(this, args);
+    localizeMainUI();
+    return result;
+  };
+});
+
 document.querySelectorAll("[data-chat-keyer-mode]").forEach(button => button.addEventListener("click", () => {
   state.chatKeyerMode = button.dataset.chatKeyerMode;
   state.quizKeyerMode = state.chatKeyerMode;
@@ -5832,6 +6309,7 @@ const languageObserver = new MutationObserver(mutations => {
       }
     });
   });
+  scheduleMainLocalization();
 });
 languageObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
 
