@@ -544,7 +544,13 @@ class MongoStore {
 }
 
 async function createStore({ dataFile }) {
-  const uri = process.env.MONGO_URL || process.env.MONGODB_URI || process.env.MONGO_PRIVATE_URL || "";
+  const uri = process.env.MONGO_URL
+    || process.env.MONGODB_URI
+    || process.env.MONGO_PRIVATE_URL
+    || process.env.MONGO_PUBLIC_URL
+    || process.env.DATABASE_URL
+    || process.env.MONGO_CONNECTION_STRING
+    || "";
   const store = uri
     ? new MongoStore(uri, process.env.MONGO_DB_NAME || "morse_chat", dataFile)
     : new FileStore(dataFile);

@@ -185,6 +185,12 @@ function verifyPassword(password, stored) {
   return actual.length === expectedBuffer.length && crypto.timingSafeEqual(actual, expectedBuffer);
 }
 
+function verifyDiaryPassword(vault, password, legacyHash = "") {
+  if (!vault?.passwordHash) return false;
+  if (String(vault.passwordHash).startsWith("scrypt:")) return verifyPassword(password, vault.passwordHash);
+  return Boolean(legacyHash && vault.passwordHash === legacyHash);
+}
+
 async function createSession(account) {
   const token = crypto.randomBytes(32).toString("hex");
   await store.createSession({ token, googleSub: account.googleSub, createdAt: Date.now() });
@@ -530,22 +536,24 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { hasPassword: Boolean(vault?.passwordHash) });
   }
   if (req.method === "POST" && url.pathname === "/api/diary/setup") {
-    const { passwordHash } = await readBody(req);
-    if (!passwordHash || String(passwordHash).length < 20) return json(res, 400, { error: "invalid-password" });
+    const { password, passwordHash } = await readBody(req);
+    const rawPassword = String(password || "");
+    if (rawPassword && rawPassword.length < 4) return json(res, 400, { error: "invalid-password" });
+    if (!rawPassword && (!passwordHash || String(passwordHash).length < 20)) return json(res, 400, { error: "invalid-password" });
     if (await store.diaryVault(account.signalId)) return json(res, 409, { error: "password-already-set" });
-    await store.setDiaryVault(account.signalId, String(passwordHash));
+    await store.setDiaryVault(account.signalId, rawPassword ? hashPassword(rawPassword) : String(passwordHash));
     return json(res, 200, { ok: true });
   }
   if (req.method === "POST" && url.pathname === "/api/diary/unlock") {
-    const { passwordHash } = await readBody(req);
+    const { password, passwordHash } = await readBody(req);
     const vault = await store.diaryVault(account.signalId);
-    if (!vault || vault.passwordHash !== passwordHash) return json(res, 403, { error: "wrong-password" });
+    if (!vault || !verifyDiaryPassword(vault, String(password || ""), String(passwordHash || ""))) return json(res, 403, { error: "wrong-password" });
     return json(res, 200, { entries: await store.diaryEntriesFor(account.signalId) });
   }
   if (req.method === "POST" && url.pathname === "/api/diary/entries") {
-    const { passwordHash, text, vibrationOnly = false, segments = [], date = "", entries = [] } = await readBody(req);
+    const { password, passwordHash, text, vibrationOnly = false, segments = [], date = "", entries = [] } = await readBody(req);
     const vault = await store.diaryVault(account.signalId);
-    if (!vault || vault.passwordHash !== passwordHash) return json(res, 403, { error: "wrong-password" });
+    if (!vault || !verifyDiaryPassword(vault, String(password || ""), String(passwordHash || ""))) return json(res, 403, { error: "wrong-password" });
     const incoming = entries.length ? entries : [{ text, vibrationOnly, segments, date, createdAt: Date.now() }];
     const saved = [];
     for (const entry of incoming.slice(0, 500)) {
@@ -568,9 +576,9 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { entries: saved });
   }
   if (req.method === "DELETE" && url.pathname === "/api/diary/entries") {
-    const { passwordHash, id } = await readBody(req);
+    const { password, passwordHash, id } = await readBody(req);
     const vault = await store.diaryVault(account.signalId);
-    if (!vault || vault.passwordHash !== passwordHash) return json(res, 403, { error: "wrong-password" });
+    if (!vault || !verifyDiaryPassword(vault, String(password || ""), String(passwordHash || ""))) return json(res, 403, { error: "wrong-password" });
     return json(res, 200, { removed: await store.removeDiaryEntry(account.signalId, id) });
   }
   if (req.method === "GET" && url.pathname === "/api/game/ranking") {
@@ -626,7 +634,12 @@ const server = http.createServer(async (req, res) => {
     });
   }
   if (req.method === "GET" && url.pathname === "/api/friends") {
-    return json(res, 200, { friends: await store.friendIds(account.signalId) });
+    const friends = await store.friendIds(account.signalId);
+    const profiles = await Promise.all(friends.map(async signalId => {
+      const profile = await store.findAccountBySignalId(signalId);
+      return publicAccount(profile || { signalId, nickname: signalId });
+    }));
+    return json(res, 200, { friends, profiles });
   }
   if (req.method === "POST" && url.pathname === "/api/friends/respond") {
     const { id, status } = await readBody(req);

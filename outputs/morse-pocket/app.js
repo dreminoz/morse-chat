@@ -54,6 +54,11 @@ if (localStorage.getItem("morse-language-default-en-applied") !== DEFAULT_LANGUA
   }
   localStorage.setItem("morse-language-default-en-applied", DEFAULT_LANGUAGE_MIGRATION);
 }
+const DEFAULT_TRAINING_TYPE_MIGRATION = "2026-06-training-random";
+if (localStorage.getItem("morse-training-default-applied") !== DEFAULT_TRAINING_TYPE_MIGRATION) {
+  localStorage.setItem("morse-training-type", "random");
+  localStorage.setItem("morse-training-default-applied", DEFAULT_TRAINING_TYPE_MIGRATION);
+}
 
 const $ = (selector) => document.querySelector(selector);
 const I18N_PAIRS = [
@@ -1626,7 +1631,7 @@ const state = {
   friends: JSON.parse(localStorage.getItem("morse-friends") || "[]"),
   friendRequests: [],
   sentFriendRequests: [],
-  chats: JSON.parse(localStorage.getItem("morse-chats") || "{}"),
+  chats: {},
   unreadDirect: JSON.parse(localStorage.getItem("morse-unread-direct") || "{}"),
   unreadGroups: JSON.parse(localStorage.getItem("morse-unread-groups") || "{}"),
   unreadRandom: Number(localStorage.getItem("morse-unread-random")) || 0,
@@ -1640,6 +1645,7 @@ const state = {
   diaryEntries: JSON.parse(localStorage.getItem("morse-secret-diary-entries") || "[]"),
   diaryHasServerPassword: false,
   diaryPasswordHash: "",
+  diaryLegacyHash: "",
   diarySignal: "",
   diaryText: "",
   diaryLetterTimer: null,
@@ -2364,6 +2370,8 @@ function receiveDirectMessage(item, silent = false) {
     localStorage.setItem("morse-received-direct-ids", JSON.stringify([...state.receivedDirectIds].slice(-1000)));
   }
   const friend = item.from;
+  if (item.fromNickname) state.profileCache[item.from] = { ...(state.profileCache[item.from] || {}), signalId: item.from, nickname: item.fromNickname };
+  if (item.toNickname) state.profileCache[item.to] = { ...(state.profileCache[item.to] || {}), signalId: item.to, nickname: item.toNickname };
   state.chats[friend] ||= [];
   state.chats[friend].push(taggedChatMessage(item.message, false, item.createdAt));
   if (!silent && state.activeFriend !== friend) {
@@ -2393,7 +2401,7 @@ function showNativeNotification(title, body) {
 }
 
 function syncDirectInbox() {
-  api(`/api/direct/inbox?user=${encodeURIComponent(state.userId)}`)
+  api("/api/direct/inbox")
     .then(({ messages }) => messages.forEach(item => receiveDirectMessage(item, true)))
     .catch(() => {});
 }
@@ -2469,7 +2477,10 @@ function vibrateDevice(pattern) {
 }
 
 function cancelVibration() {
-  cancelVibration();
+  try {
+    if (window.AndroidVibration) window.AndroidVibration.vibrate("0");
+    else if (navigator.vibrate) navigator.vibrate(0);
+  } catch {}
 }
 
 function playMorse(text, onComplete, playerLabel = text, soundId = "") {
@@ -3283,9 +3294,13 @@ function loadFriendRequests() {
 
 function loadFriends() {
   if (!state.authToken) return;
-  api("/api/friends").then(({ friends }) => {
+  api("/api/friends").then(({ friends, profiles = [] }) => {
     state.friends = friends;
+    profiles.forEach(profile => {
+      if (profile?.signalId) state.profileCache[profile.signalId] = profile;
+    });
     localStorage.setItem("morse-friends", JSON.stringify(state.friends));
+    renderFriends();
     loadFriendProfiles();
   }).catch(() => {});
 }
@@ -3372,7 +3387,7 @@ async function openFriendProfile(signalId) {
 }
 
 function saveChats() {
-  localStorage.setItem("morse-chats", JSON.stringify(state.chats));
+  localStorage.removeItem("morse-chats");
 }
 
 function chatMessageText(message) {
@@ -3435,7 +3450,18 @@ function renderChat() {
       </div>`;
     }).join("")
     : '<p class="chat-empty">아직 메시지가 없습니다.<br>첫 모스 메시지를 보내보세요.</p>';
-  $("#chatMessages").scrollTop = $("#chatMessages").scrollHeight;
+  scrollChatToBottom();
+}
+
+function scrollChatToBottom() {
+  const target = $("#chatMessages");
+  if (!target) return;
+  const scroll = () => {
+    target.scrollTop = target.scrollHeight;
+  };
+  scroll();
+  requestAnimationFrame(scroll);
+  setTimeout(scroll, 80);
 }
 
 function renderChatComposer() {
@@ -3655,15 +3681,18 @@ function sendChatMessage(message, hidden = false) {
   const outgoing = hidden
     ? { text: message, hidden: true, limit: state.hiddenViewLimit, views: 0, senderSound: equippedSound() }
     : typeof message === "object" ? { ...message, senderSound: equippedSound() } : { text: message, senderSound: equippedSound() };
-  const localMessage = taggedChatMessage(outgoing, true);
-  const wireMessage = { ...localMessage };
-  delete wireMessage.mine;
-  state.chats[state.activeFriend].push(localMessage);
-  saveChats();
-  renderChat();
+  const friend = state.activeFriend;
   api("/api/direct/send", {
     method: "POST",
-    body: JSON.stringify({ from: state.userId, to: state.activeFriend, message: wireMessage })
+    body: JSON.stringify({ to: friend, message: outgoing })
+  }).then(item => {
+    if (item.fromNickname) state.profileCache[item.from] = { ...(state.profileCache[item.from] || {}), signalId: item.from, nickname: item.fromNickname };
+    if (item.toNickname) state.profileCache[item.to] = { ...(state.profileCache[item.to] || {}), signalId: item.to, nickname: item.toNickname };
+    state.chats[friend] ||= [];
+    state.chats[friend].push(taggedChatMessage(item.message, true, item.createdAt));
+    saveChats();
+    renderChat();
+    renderFriends();
   }).catch(() => showToast(serverFailureMessage()));
 }
 
@@ -3760,6 +3789,10 @@ function openChat(friend) {
   renderChatComposer();
   api(`/api/direct/history?user=${encodeURIComponent(state.userId)}&friend=${encodeURIComponent(friend)}`)
     .then(({ messages }) => {
+      messages.forEach(item => {
+        if (item.fromNickname) state.profileCache[item.from] = { ...(state.profileCache[item.from] || {}), signalId: item.from, nickname: item.fromNickname };
+        if (item.toNickname) state.profileCache[item.to] = { ...(state.profileCache[item.to] || {}), signalId: item.to, nickname: item.toNickname };
+      });
       state.chats[friend] = messages.map(item => taggedChatMessage(item.message, item.from === state.userId, item.createdAt));
       saveChats();
       renderChat();
@@ -3790,9 +3823,18 @@ async function diaryPasswordHash(value) {
   return btoa(unescape(encodeURIComponent(value)));
 }
 
+function diaryAuthPayload(extra = {}) {
+  return {
+    password: state.diaryPasswordHash,
+    passwordHash: state.diaryLegacyHash,
+    ...extra
+  };
+}
+
 async function openSecretDiary() {
   state.diaryUnlocked = false;
   state.diaryPasswordHash = "";
+  state.diaryLegacyHash = "";
   $("#diaryDesk").hidden = true;
   $("#diaryLock").hidden = false;
   $("#diaryPassword").value = "";
@@ -3820,6 +3862,7 @@ function lockSecretDiary() {
   state.diarySignal = "";
   state.diaryText = "";
   state.diaryPasswordHash = "";
+  state.diaryLegacyHash = "";
   clearTimeout(state.diaryLetterTimer);
   clearTimeout(state.diarySpaceTimer);
   if ($("#diaryDesk")) $("#diaryDesk").hidden = true;
@@ -3955,7 +3998,7 @@ async function storeDiaryEntry() {
   try {
     const { entries } = await api("/api/diary/entries", {
       method: "POST",
-      body: JSON.stringify({ passwordHash: state.diaryPasswordHash, segments: state.diaryDraftSegments, date: state.diarySelectedDate })
+      body: JSON.stringify(diaryAuthPayload({ segments: state.diaryDraftSegments, date: state.diarySelectedDate }))
     });
     entries.forEach(entry => {
       const index = state.diaryEntries.findIndex(item => item.id === entry.id);
@@ -4824,6 +4867,10 @@ function shuffledLetters() {
 }
 
 function trainingSequence() {
+  if (!["random", "alphabet", "morse", "sentence"].includes(state.trainingType)) {
+    state.trainingType = "random";
+    localStorage.setItem("morse-training-type", state.trainingType);
+  }
   if (state.trainingType === "alphabet") return LETTERS;
   if (state.trainingType === "morse") return MORSE_ORDER;
   if (state.trainingType === "sentence") {
@@ -4836,6 +4883,7 @@ function trainingSequence() {
 
 function renderTrainingItem(direction = 1) {
   const activeSequence = trainingSequence();
+  if (state.sequenceIndex < 0 || state.sequenceIndex >= activeSequence.length) state.sequenceIndex = 0;
   state.currentItem = activeSequence[state.sequenceIndex];
   const isSentence = state.trainingType === "sentence";
   const card = $("#trainingCard");
@@ -4847,6 +4895,9 @@ function renderTrainingItem(direction = 1) {
   $("#trainingMorse").textContent = textToMorse(state.currentItem).replaceAll(".", "· ").replaceAll("-", "− ");
   const names = { random: "랜덤 알파벳", alphabet: "알파벳순", morse: "모스부호순", sentence: "문장 훈련" };
   $("#trainingKicker").textContent = `${names[state.trainingType]} · ${state.sequenceIndex + 1}/${activeSequence.length}`;
+  document.querySelectorAll(".type-button").forEach(button =>
+    button.classList.toggle("active", button.dataset.type === state.trainingType)
+  );
 }
 
 function moveTrainingItem(direction = 1, play = true) {
@@ -5265,21 +5316,22 @@ $("#dailyGroupPhotoInput").addEventListener("change", event => {
 $("#unlockDiary").addEventListener("click", async () => {
   const password = $("#diaryPassword").value;
   if (password.length < 4) return showToast("비밀번호를 4자 이상 입력하세요.");
-  const hash = await diaryPasswordHash(password);
+  const legacyHash = await diaryPasswordHash(password);
   try {
     if (!state.diaryHasServerPassword) {
       if (password !== $("#diaryPasswordConfirm").value) return showToast(extraText("mismatchPassword"));
-      await api("/api/diary/setup", { method: "POST", body: JSON.stringify({ passwordHash: hash }) });
+      await api("/api/diary/setup", { method: "POST", body: JSON.stringify({ password, passwordHash: legacyHash }) });
       state.diaryHasServerPassword = true;
     }
-    const { entries } = await api("/api/diary/unlock", { method: "POST", body: JSON.stringify({ passwordHash: hash }) });
-    state.diaryPasswordHash = hash;
+    const { entries } = await api("/api/diary/unlock", { method: "POST", body: JSON.stringify({ password, passwordHash: legacyHash }) });
+    state.diaryPasswordHash = password;
+    state.diaryLegacyHash = legacyHash;
     state.diaryEntries = entries;
     const localEntries = JSON.parse(localStorage.getItem("morse-secret-diary-entries") || "[]");
     if (localEntries.length) {
       const migrated = await api("/api/diary/entries", {
         method: "POST",
-        body: JSON.stringify({ passwordHash: hash, entries: localEntries })
+        body: JSON.stringify(diaryAuthPayload({ entries: localEntries }))
       });
       state.diaryEntries.push(...migrated.entries);
       localStorage.removeItem("morse-secret-diary-entries");
@@ -5401,7 +5453,7 @@ $("#diaryEntries").addEventListener("click", event => {
   const entry = state.diaryEntries[index];
   api("/api/diary/entries", {
     method: "DELETE",
-    body: JSON.stringify({ passwordHash: state.diaryPasswordHash, id: entry.id })
+    body: JSON.stringify(diaryAuthPayload({ id: entry.id }))
   }).then(() => {
     state.diaryEntries.splice(index, 1);
     renderDiary();
@@ -5416,7 +5468,7 @@ $("#diaryAllEntries").addEventListener("click", event => {
   const entry = state.diaryEntries[index];
   api("/api/diary/entries", {
     method: "DELETE",
-    body: JSON.stringify({ passwordHash: state.diaryPasswordHash, id: entry.id })
+    body: JSON.stringify(diaryAuthPayload({ id: entry.id }))
   }).then(() => {
     state.diaryEntries.splice(index, 1);
     renderDiary();
@@ -5966,6 +6018,17 @@ $("#autocompleteList").addEventListener("click", event => {
 });
 
 renderShop = function renderShop() {
+  state.shopInventory = Array.isArray(state.shopInventory) ? state.shopInventory : [];
+  state.shopEquipped = state.shopEquipped || {};
+  state.shopCoins = Number(state.shopCoins || 0);
+  state.shopDrawCost = Number(state.shopDrawCost || 50);
+  if (!SHOP_CATEGORIES.some(category => category.id === state.shopInventoryCategory)) {
+    state.shopInventoryCategory = "randomTheme";
+  }
+  const drawGrid = $("#shopDrawCategories");
+  const inventoryTabs = $("#shopInventoryTabs");
+  const inventoryPanel = $("#shopInventory");
+  if (!drawGrid || !inventoryTabs || !inventoryPanel) return;
   const lang = state.language;
   const ko = lang === "ko";
   const ja = lang === "ja";
@@ -6002,22 +6065,19 @@ renderShop = function renderShop() {
   setElementText("#buyCoins100 strong", text.coins100);
   setElementText("#buyCoins100 small", "");
 
-  const drawGrid = $("#shopDrawCategories");
-  if (drawGrid) {
-    drawGrid.innerHTML = SHOP_CATEGORIES.map(category => {
-      const categoryItems = SHOP_ITEMS.filter(item => item.category === category.id && !item.free);
-      const allOwned = categoryItems.length > 0 && categoryItems.every(item => state.shopInventory.includes(item.id));
-      const insufficient = Number(state.shopCoins || 0) < Number(state.shopDrawCost || 50);
-      const label = allOwned ? text.allOwned : insufficient ? text.need(state.shopDrawCost || 50) : text.draw(state.shopDrawCost || 50);
-      return `
-        <article class="shop-category-card" data-shop-preview="${category.id}">
-          <span>${category.name.slice(0, 3).toUpperCase()}</span>
-          <strong>${categoryNames[category.id] || category.name}</strong>
-          <small>${categoryDescriptions[category.id] || category.description}</small>
-          <button type="button" data-shop-draw="${category.id}" ${allOwned || insufficient ? "disabled" : ""}>${label}</button>
-        </article>`;
-    }).join("");
-  }
+  drawGrid.innerHTML = SHOP_CATEGORIES.map(category => {
+    const categoryItems = SHOP_ITEMS.filter(item => item.category === category.id && !item.free);
+    const allOwned = categoryItems.length > 0 && categoryItems.every(item => state.shopInventory.includes(item.id));
+    const insufficient = Number(state.shopCoins || 0) < Number(state.shopDrawCost || 50);
+    const label = allOwned ? text.allOwned : insufficient ? text.need(state.shopDrawCost || 50) : text.draw(state.shopDrawCost || 50);
+    return `
+      <article class="shop-category-card" data-shop-preview="${category.id}" data-no-i18n>
+        <span>${category.name.slice(0, 3).toUpperCase()}</span>
+        <strong>${categoryNames[category.id] || category.name}</strong>
+        <small>${categoryDescriptions[category.id] || category.description}</small>
+        <button type="button" data-shop-draw="${category.id}" ${allOwned || insufficient ? "disabled" : ""}>${label}</button>
+      </article>`;
+  }).join("");
 
   const result = state.shopLastDraw;
   $("#shopResult").hidden = !result;
@@ -6026,17 +6086,17 @@ renderShop = function renderShop() {
   }
 
   const owned = (state.shopInventory || []).map(shopItem).filter(Boolean);
-  $("#shopInventoryTabs").innerHTML = SHOP_CATEGORIES.map(category =>
+  inventoryTabs.innerHTML = SHOP_CATEGORIES.map(category =>
     `<button type="button" data-shop-inventory-category="${category.id}" class="${state.shopInventoryCategory === category.id ? "active" : ""}">${categoryNames[category.id] || category.name}</button>`
   ).join("");
   const categoryOwned = state.shopInventoryCategory === "morseSound"
     ? [shopItem("sound_basic"), ...owned.filter(item => item.category === "morseSound" && item.id !== "sound_basic")].filter(Boolean)
     : owned.filter(item => item.category === state.shopInventoryCategory);
-  $("#shopInventory").innerHTML = categoryOwned.length ? categoryOwned.map(item => {
+  inventoryPanel.innerHTML = categoryOwned.length ? categoryOwned.map(item => {
     const equipped = item.id === "sound_basic"
       ? !state.shopEquipped?.morseSound || state.shopEquipped?.morseSound === "sound_basic"
       : state.shopEquipped?.[item.slot] === item.id;
-    return `<article class="shop-inventory-item" data-owned-preview="${item.id}">
+    return `<article class="shop-inventory-item" data-owned-preview="${item.id}" data-no-i18n>
       <span>${item.icon}</span>
       <div><strong>${item.name}</strong><small>${item.free ? text.defaultItem : (categoryNames[item.category] || item.category)}</small></div>
       <button type="button" ${equipped ? `data-shop-unequip="${item.slot}"` : `data-shop-equip="${item.id}"`}>${equipped ? text.unequip : text.equip}</button>
@@ -6044,7 +6104,7 @@ renderShop = function renderShop() {
   }).join("") : `<p class="shop-empty">${text.noItems}</p>`;
   if (state.shopInventoryCategory === "profile" && categoryOwned.length) renderProfileInventorySections(categoryOwned, ko);
   if (state.shopInventoryCategory !== "profile") {
-    [...$("#shopInventory").querySelectorAll(".shop-inventory-item")].forEach(element => {
+    [...inventoryPanel.querySelectorAll(".shop-inventory-item")].forEach(element => {
       const item = shopItem(element.dataset.ownedPreview);
       if (item && item.category !== "morseSound") {
         element.firstElementChild?.remove();
@@ -6057,7 +6117,7 @@ renderShop = function renderShop() {
     const rewardTitle = ko ? "컬렉션 완성 보상" : ja ? "コレクション完成報酬" : "Collection Complete Reward";
     const rewardBody = ko ? "상점 컬렉터 배지 · 황금 왕관 프로필 효과" : ja ? "ショップマスターバッジ · 金の王冠効果" : "Shop Master badge · Golden Crown profile effect";
     const crownText = crownOn ? (ko ? "왕관 테두리 끄기" : ja ? "王冠枠を外す" : "Disable crown border") : (ko ? "왕관 테두리 켜기" : ja ? "王冠枠を付ける" : "Enable crown border");
-    $("#shopInventory").insertAdjacentHTML("beforeend", `<article class="collector-reward"><strong>${rewardTitle}</strong><span>${rewardBody}</span><button type="button" data-collector-crown="${crownOn ? "off" : "on"}">${crownText}</button></article>`);
+    inventoryPanel.insertAdjacentHTML("beforeend", `<article class="collector-reward"><strong>${rewardTitle}</strong><span>${rewardBody}</span><button type="button" data-collector-crown="${crownOn ? "off" : "on"}">${crownText}</button></article>`);
   }
 };
 
@@ -6459,31 +6519,30 @@ $("#toggleTraining").addEventListener("click", () => {
   }
 });
 
-$("#trainingCard").addEventListener("click", () => {
-  if (state.didSwipe || Date.now() < Number(state.ignoreTrainingClickUntil || 0)) {
-    state.didSwipe = false;
-    return;
-  }
-  playTrainingItem();
+$("#trainingCard").addEventListener("click", event => {
+  event.preventDefault();
 });
 $("#trainingCard").addEventListener("pointerdown", event => {
+  event.preventDefault();
   state.swipeStartX = event.clientX;
   state.swipeStartY = event.clientY;
-  state.didSwipe = false;
+  state.trainingPointerDown = true;
 });
 $("#trainingCard").addEventListener("pointerup", event => {
+  if (!state.trainingPointerDown) return;
+  state.trainingPointerDown = false;
+  event.preventDefault();
   const deltaX = event.clientX - state.swipeStartX;
   const deltaY = event.clientY - state.swipeStartY;
-  if (Math.abs(deltaX) < 45 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) return;
-  event.preventDefault();
-  event.stopPropagation();
-  state.didSwipe = true;
-  state.ignoreTrainingClickUntil = Date.now() + 250;
-  setTimeout(() => {
-    state.didSwipe = false;
-  }, 260);
+  if (Math.abs(deltaX) < 45 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) {
+    playTrainingItem();
+    return;
+  }
   stopMorse(false);
   moveTrainingItem(deltaX < 0 ? 1 : -1, state.training);
+});
+$("#trainingCard").addEventListener("pointercancel", () => {
+  state.trainingPointerDown = false;
 });
 $("#showAnswer").addEventListener("change", event => $("#trainingMorse").style.visibility = event.target.checked ? "visible" : "hidden");
 $("#stopPlayer").addEventListener("click", () => stopMorse());
