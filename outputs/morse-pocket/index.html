@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -51,81 +51,81 @@
         <p class="eyebrow">morsiq</p>
         <h1>morsiq</h1>
       </div>
-      <button id="openSettings" class="round-button" type="button" aria-label="설정 열기">···</button>
+      <button id="openSettings" class="round-button" type="button" aria-label="?ㅼ젙 ?닿린">쨌쨌쨌</button>
     </header>
 
-    <nav class="world-tabs" aria-label="화면 선택">
+    <nav class="world-tabs" aria-label="?붾㈃ ?좏깮">
       <div class="world-tab-row primary-world-tabs">
-        <button class="world-tab" data-world="friends">대화</button>
-        <button class="world-tab active" data-world="hall">훈련장</button>
-        <button class="world-tab" data-world="space">우주</button>
-        <button class="world-tab" data-world="randomSignal">랜덤 시그널</button>
-        <button class="world-tab" data-world="profile">프로필</button>
+        <button class="world-tab" data-world="friends">???/button>
+        <button class="world-tab active" data-world="hall">?덈젴??/button>
+        <button class="world-tab" data-world="space">?곗＜</button>
+        <button class="world-tab" data-world="randomSignal">?쒕뜡 ?쒓렇??/button>
+        <button class="world-tab" data-world="profile">?꾨줈??/button>
       </div>
       <div class="world-tab-row secondary-world-tabs">
-        <button class="world-tab" data-world="dailyGroup">데일리 그룹챗</button>
-        <button class="world-tab" data-world="games">게임</button>
-        <button class="world-tab" data-world="secretDiary">비밀일기</button>
-        <button class="world-tab" data-world="shop">상점</button>
+        <button class="world-tab" data-world="dailyGroup">?곗씪由?洹몃９梨?/button>
+        <button class="world-tab" data-world="games">寃뚯엫</button>
+        <button class="world-tab" data-world="secretDiary">鍮꾨??쇨린</button>
+        <button class="world-tab" data-world="shop">?곸젏</button>
       </div>
     </nav>
 
     <section id="friendsWorld" class="world-view" hidden>
       <div id="conversationList">
-        <section id="friendNativeAdSlot" class="friend-native-ad-slot" aria-label="광고">
+        <section id="friendNativeAdSlot" class="friend-native-ad-slot" aria-label="愿묎퀬">
           <span>AD</span>
-          <div><strong>morsiq</strong><small>네이티브 광고</small></div>
+          <div><strong>morsiq</strong><small>?ㅼ씠?곕툕 愿묎퀬</small></div>
         </section>
         <section id="friendRequestSection" class="friend-request-section">
-          <button id="openReceivedRequests" type="button"><span>받은 요청</span><strong id="receivedRequestCount">0</strong></button>
-          <button id="openSentRequests" type="button"><span>보낸 요청</span><strong id="sentRequestCount">0</strong></button>
-          <button id="openAddFriend" type="button"><span>친구 추가</span><strong>+</strong></button>
-          <button id="openCreateGroup" type="button"><span>그룹챗 만들기</span><strong>+</strong></button>
+          <button id="openReceivedRequests" type="button"><span>諛쏆? ?붿껌</span><strong id="receivedRequestCount">0</strong></button>
+          <button id="openSentRequests" type="button"><span>蹂대궦 ?붿껌</span><strong id="sentRequestCount">0</strong></button>
+          <button id="openAddFriend" type="button"><span>移쒓뎄 異붽?</span><strong>+</strong></button>
+          <button id="openCreateGroup" type="button"><span>洹몃９梨?留뚮뱾湲?/span><strong>+</strong></button>
         </section>
-        <p class="label">그룹챗</p>
+        <p class="label">洹몃９梨?/p>
         <div id="groupList" class="friend-list group-list"></div>
-        <p class="label friend-list-label">친구</p>
+        <p class="label friend-list-label">移쒓뎄</p>
         <div id="friendList" class="friend-list"></div>
       </div>
       <section id="chatRoom" class="chat-room" hidden>
         <header class="chat-header">
-          <button id="closeChat" type="button" aria-label="대화 목록으로 돌아가기">‹</button>
-          <button id="openChatProfile" class="chat-profile-avatar" type="button" aria-label="친구 프로필 보기"><span id="chatAvatar" class="friend-avatar"></span></button>
+          <button id="closeChat" type="button" aria-label="???紐⑸줉?쇰줈 ?뚯븘媛湲?>??/button>
+          <button id="openChatProfile" class="chat-profile-avatar" type="button" aria-label="移쒓뎄 ?꾨줈??蹂닿린"><span id="chatAvatar" class="friend-avatar"></span></button>
           <button id="openChatProfileInfo" class="chat-profile-info" type="button">
             <strong id="chatFriendName"></strong>
-            <small>말풍선을 누르면 모스 진동 재생</small>
+            <small>留먰뭾?좎쓣 ?꾨Ⅴ硫?紐⑥뒪 吏꾨룞 ?ъ깮</small>
           </button>
-          <button id="openSecretComm" class="secret-comm-open" type="button" aria-label="실시간 비밀 통신">●</button>
+          <button id="openSecretComm" class="secret-comm-open" type="button" aria-label="?ㅼ떆媛?鍮꾨? ?듭떊">??/button>
         </header>
         <div id="chatMessages" class="chat-messages"></div>
         <div id="chatMorseComposer" class="chat-morse-composer">
           <div class="chat-morse-display">
-            <textarea id="chatMorseText" rows="1" maxlength="100" placeholder="모스코드를 입력하세요" autocomplete="off"></textarea>
-            <small id="chatMorseSignal">현재 글자: 비어 있음</small>
+            <textarea id="chatMorseText" rows="1" maxlength="100" placeholder="紐⑥뒪肄붾뱶瑜??낅젰?섏꽭?? autocomplete="off"></textarea>
+            <small id="chatMorseSignal">?꾩옱 湲?? 鍮꾩뼱 ?덉쓬</small>
           </div>
           <button id="chatKeyer" class="morse-keyer chat-keyer" type="button">
             <strong>PRESS & HOLD</strong>
-            <span>짧게 누르면 · 점 / 길게 누르면 − 선</span>
-            <small>3단위 휴식: 글자 확정 · 7단위 휴식: 띄어쓰기</small>
+            <span>吏㏐쾶 ?꾨Ⅴ硫?쨌 ??/ 湲멸쾶 ?꾨Ⅴ硫?????/span>
+            <small>3?⑥쐞 ?댁떇: 湲???뺤젙 쨌 7?⑥쐞 ?댁떇: ?꾩뼱?곌린</small>
           </button>
           <div class="chat-morse-actions">
-            <button id="clearChatMorse" class="light-button" type="button">지우기</button>
-            <label class="photo-send-button" for="chatPhotoInput" aria-label="사진을 ASCII 아트로 보내기">
-              <span>사진</span>
+            <button id="clearChatMorse" class="light-button" type="button">吏?곌린</button>
+            <label class="photo-send-button" for="chatPhotoInput" aria-label="?ъ쭊??ASCII ?꾪듃濡?蹂대궡湲?>
+              <span>?ъ쭊</span>
             </label>
             <div class="send-control">
               <div id="hiddenViewPicker" class="hidden-view-picker" hidden>
-                <span>숨김 신호 재생 횟수</span>
+                <span>?④? ?좏샇 ?ъ깮 ?잛닔</span>
                 <div>
                   <button type="button" data-hidden-limit="1">1</button>
                   <button type="button" data-hidden-limit="3">3</button>
                   <button type="button" data-hidden-limit="5">5</button>
-                  <button type="button" data-hidden-limit="unlimited">무제한</button>
+                  <button type="button" data-hidden-limit="unlimited">臾댁젣??/button>
                 </div>
               </div>
               <button id="sendChatMorse" class="primary-button swipe-send" type="button">
-                <strong>보내기</strong>
-                <small id="hiddenLimitHint">오른쪽 밀기: 숨김 신호 · 1회</small>
+                <strong>蹂대궡湲?/strong>
+                <small id="hiddenLimitHint">?ㅻⅨ履?諛湲? ?④? ?좏샇 쨌 1??/small>
               </button>
             </div>
           </div>
@@ -134,8 +134,8 @@
       </section>
       <section id="groupRoom" class="chat-room group-room" hidden>
         <header class="chat-header">
-          <button id="closeGroupChat" type="button" aria-label="그룹 목록으로 돌아가기">‹</button>
-          <button id="openGroupManageAvatar" class="chat-profile-avatar group-chat-avatar" type="button" aria-label="그룹챗 정보 보기"><span id="groupRoomAvatar" class="friend-avatar">#</span></button>
+          <button id="closeGroupChat" type="button" aria-label="洹몃９ 紐⑸줉?쇰줈 ?뚯븘媛湲?>??/button>
+          <button id="openGroupManageAvatar" class="chat-profile-avatar group-chat-avatar" type="button" aria-label="洹몃９梨??뺣낫 蹂닿린"><span id="groupRoomAvatar" class="friend-avatar">#</span></button>
           <button id="openGroupManage" class="chat-profile-info" type="button">
             <strong id="groupRoomName"></strong>
             <small id="groupRoomMembers"></small>
@@ -143,17 +143,17 @@
         </header>
         <div id="groupMessages" class="chat-messages"></div>
         <form id="groupMessageForm" class="chat-morse-composer group-chat-composer">
-          <div class="chat-morse-display"><textarea id="groupMessageInput" rows="1" maxlength="1000" placeholder="모스코드를 입력하세요"></textarea><small id="groupMessageSignal">현재 글자: 비어 있음</small></div>
-          <button id="groupMessageKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>짧게 누르면 · 점 / 길게 누르면 – 선</span><small></small></button>
+          <div class="chat-morse-display"><textarea id="groupMessageInput" rows="1" maxlength="1000" placeholder="紐⑥뒪肄붾뱶瑜??낅젰?섏꽭??></textarea><small id="groupMessageSignal">?꾩옱 湲?? 鍮꾩뼱 ?덉쓬</small></div>
+          <button id="groupMessageKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>吏㏐쾶 ?꾨Ⅴ硫?쨌 ??/ 湲멸쾶 ?꾨Ⅴ硫?????/span><small></small></button>
           <div class="chat-morse-actions">
-            <button id="clearGroupMessage" class="light-button" type="button">지우기</button>
-            <label class="photo-send-button" for="groupMessagePhotoInput"><span>사진</span></label>
+            <button id="clearGroupMessage" class="light-button" type="button">吏?곌린</button>
+            <label class="photo-send-button" for="groupMessagePhotoInput"><span>?ъ쭊</span></label>
             <div class="send-control">
               <div id="groupHiddenViewPicker" class="hidden-view-picker" hidden>
-                <span>숨김 신호 재생 횟수</span>
-                <div><button type="button" data-group-hidden-limit="1">1</button><button type="button" data-group-hidden-limit="3">3</button><button type="button" data-group-hidden-limit="5">5</button><button type="button" data-group-hidden-limit="unlimited">무제한</button></div>
+                <span>?④? ?좏샇 ?ъ깮 ?잛닔</span>
+                <div><button type="button" data-group-hidden-limit="1">1</button><button type="button" data-group-hidden-limit="3">3</button><button type="button" data-group-hidden-limit="5">5</button><button type="button" data-group-hidden-limit="unlimited">臾댁젣??/button></div>
               </div>
-              <button id="sendGroupMessage" class="primary-button swipe-send" type="submit"><strong>보내기</strong><small id="groupHiddenLimitHint">오른쪽 밀기 · 숨김 신호 · 1회</small></button>
+              <button id="sendGroupMessage" class="primary-button swipe-send" type="submit"><strong>蹂대궡湲?/strong><small id="groupHiddenLimitHint">?ㅻⅨ履?諛湲?쨌 ?④? ?좏샇 쨌 1??/small></button>
             </div>
           </div>
           <input id="groupMessagePhotoInput" class="visually-hidden" type="file" accept="image/*">
@@ -165,161 +165,161 @@
     <section class="speed-card">
       <div class="section-heading">
         <div>
-          <p class="label">진동 속도</p>
-          <strong id="speedLabel">보통 · 120ms</strong>
+          <p class="label">吏꾨룞 ?띾룄</p>
+          <strong id="speedLabel">蹂댄넻 쨌 120ms</strong>
         </div>
         <span class="pulse" aria-hidden="true"></span>
       </div>
-      <input id="speed" type="range" min="60" max="300" step="10" value="120" aria-label="진동 속도">
-      <div class="range-labels"><span>빠르게</span><span>느리게</span></div>
+      <input id="speed" type="range" min="60" max="300" step="10" value="120" aria-label="吏꾨룞 ?띾룄">
+      <div class="range-labels"><span>鍮좊Ⅴ寃?/span><span>?먮━寃?/span></div>
     </section>
 
-    <nav class="tabs" aria-label="화면 선택">
-      <button class="tab active" data-view="library">저장</button>
-      <button class="tab" data-view="training">훈련</button>
-      <button class="tab" data-view="quiz">퀴즈</button>
-      <button class="tab" data-view="writer">쓰기</button>
-      <button class="tab" data-view="reference">목록</button>
+    <nav class="tabs" aria-label="?붾㈃ ?좏깮">
+      <button class="tab active" data-view="library">???/button>
+      <button class="tab" data-view="training">?덈젴</button>
+      <button class="tab" data-view="quiz">?댁쫰</button>
+      <button class="tab" data-view="writer">?곌린</button>
+      <button class="tab" data-view="reference">紐⑸줉</button>
     </nav>
 
     <section id="library" class="view active">
       <form id="phraseForm" class="composer">
-        <input id="phraseInput" maxlength="100" placeholder="전달할 문구를 입력하세요" autocomplete="off">
-        <button type="submit" aria-label="문구 저장">+</button>
+        <input id="phraseInput" maxlength="100" placeholder="?꾨떖??臾멸뎄瑜??낅젰?섏꽭?? autocomplete="off">
+        <button type="submit" aria-label="臾멸뎄 ???>+</button>
       </form>
-      <p class="support-note">영문, 숫자, 주요 문장부호를 지원합니다.</p>
+      <p class="support-note">?곷Ц, ?レ옄, 二쇱슂 臾몄옣遺?몃? 吏?먰빀?덈떎.</p>
       <div id="phraseList" class="phrase-list"></div>
       <div id="emptyState" class="empty-state">
-        <span>· − ·</span>
-        <p>문구를 저장하면<br>여기에 차곡차곡 모입니다.</p>
+        <span>쨌 ??쨌</span>
+        <p>臾멸뎄瑜???ν븯硫?br>?ш린??李④끝李④끝 紐⑥엯?덈떎.</p>
       </div>
     </section>
 
     <section id="training" class="view">
       <div class="training-type-wrap">
-        <p class="label">훈련 유형</p>
+        <p class="label">?덈젴 ?좏삎</p>
         <div class="training-types">
-          <button class="type-button active" data-type="random">랜덤</button>
-          <button class="type-button" data-type="alphabet">알파벳순</button>
-          <button class="type-button" data-type="morse">모스부호순</button>
-          <button class="type-button" data-type="sentence">문장</button>
+          <button class="type-button active" data-type="random">?쒕뜡</button>
+          <button class="type-button" data-type="alphabet">?뚰뙆踰녹닚</button>
+          <button class="type-button" data-type="morse">紐⑥뒪遺?몄닚</button>
+          <button class="type-button" data-type="sentence">臾몄옣</button>
         </div>
-        <p class="training-note">문장 훈련은 저장한 영문 문장을 우선 사용합니다.</p>
+        <p class="training-note">臾몄옣 ?덈젴? ??ν븳 ?곷Ц 臾몄옣???곗꽑 ?ъ슜?⑸땲??</p>
       </div>
       <div class="training-settings">
-        <p class="label">재생 방식</p>
+        <p class="label">?ъ깮 諛⑹떇</p>
         <div class="segmented">
-          <button class="mode-button active" data-mode="auto">자동</button>
-          <button class="mode-button" data-mode="tap">탭</button>
-          <button class="mode-button" data-mode="loop">무한 반복</button>
+          <button class="mode-button active" data-mode="auto">?먮룞</button>
+          <button class="mode-button" data-mode="tap">??/button>
+          <button class="mode-button" data-mode="loop">臾댄븳 諛섎났</button>
         </div>
       </div>
       <div id="autoSettings" class="auto-settings">
         <label id="repeatSetting">
-          <span>항목당 반복</span>
+          <span>??ぉ??諛섎났</span>
           <select id="repeatCount">
-            <option value="1">1회</option>
-            <option value="2">2회</option>
-            <option value="3">3회</option>
-            <option value="4">4회</option>
-            <option value="5">5회</option>
+            <option value="1">1??/option>
+            <option value="2">2??/option>
+            <option value="3">3??/option>
+            <option value="4">4??/option>
+            <option value="5">5??/option>
           </select>
         </label>
         <label>
-          <span id="nextDelayTitle">다음 항목까지</span>
-          <strong id="nextDelayLabel">1.0초</strong>
+          <span id="nextDelayTitle">?ㅼ쓬 ??ぉ源뚯?</span>
+          <strong id="nextDelayLabel">1.0珥?/strong>
           <input id="nextDelay" type="range" min="500" max="10000" step="500" value="1000">
         </label>
       </div>
 
       <button id="trainingCard" class="training-card" type="button">
-        <span id="trainingKicker" class="card-kicker">랜덤 알파벳 · 1/26</span>
+        <span id="trainingKicker" class="card-kicker">?쒕뜡 ?뚰뙆踰?쨌 1/26</span>
         <strong id="trainingLetter">A</strong>
-        <span id="trainingMorse" class="training-morse">· −</span>
-        <span id="trainingHint" class="training-hint">좌우로 밀어 이전·다음 항목 보기</span>
+        <span id="trainingMorse" class="training-morse">쨌 ??/span>
+        <span id="trainingHint" class="training-hint">醫뚯슦濡?諛???댁쟾쨌?ㅼ쓬 ??ぉ 蹂닿린</span>
       </button>
       <div class="training-actions">
-        <button id="toggleTraining" class="primary-button">훈련 시작</button>
+        <button id="toggleTraining" class="primary-button">?덈젴 ?쒖옉</button>
       </div>
       <label class="answer-toggle">
         <input id="showAnswer" type="checkbox" checked>
-        <span>모스부호 답 보기</span>
+        <span>紐⑥뒪遺????蹂닿린</span>
       </label>
     </section>
 
     <section id="quiz" class="view">
       <div class="quiz-modes">
-        <button class="quiz-mode active" data-quiz-mode="listen">진동 듣고 맞히기</button>
-        <button class="quiz-mode" data-quiz-mode="send">글자 보고 입력하기</button>
+        <button class="quiz-mode active" data-quiz-mode="listen">吏꾨룞 ?ｊ퀬 留욏엳湲?/button>
+        <button class="quiz-mode" data-quiz-mode="send">湲??蹂닿퀬 ?낅젰?섍린</button>
       </div>
       <div class="exam-bar">
-        <button id="toggleExam">시험 시작 · A-Z 전체</button>
-        <button id="toggleRecords" class="light-button">기록 보기</button>
+        <button id="toggleExam">?쒗뿕 ?쒖옉 쨌 A-Z ?꾩껜</button>
+        <button id="toggleRecords" class="light-button">湲곕줉 蹂닿린</button>
       </div>
       <div id="examStatus" class="exam-status" hidden></div>
       <div id="quizRecords" class="quiz-records" hidden></div>
       <div id="quizCard" class="quiz-card">
         <span id="quizKicker" class="card-kicker">LISTEN</span>
         <strong id="quizPrompt">?</strong>
-        <span id="quizInputDisplay" class="quiz-code">진동을 듣고 알파벳을 입력하세요</span>
+        <span id="quizInputDisplay" class="quiz-code">吏꾨룞???ｊ퀬 ?뚰뙆踰녹쓣 ?낅젰?섏꽭??/span>
         <p id="quizFeedback" class="quiz-feedback"></p>
       </div>
       <div id="listenAnswer" class="quiz-answer">
         <input id="quizLetterInput" maxlength="1" inputmode="text" placeholder="A-Z" autocomplete="off">
-        <button id="submitListenQuiz">정답 확인</button>
+        <button id="submitListenQuiz">?뺣떟 ?뺤씤</button>
       </div>
       <div id="sendAnswer" class="send-answer" hidden>
         <div class="keyer-settings">
-          <span>입력 확정</span>
+          <span>?낅젰 ?뺤젙</span>
           <div class="keyer-mode">
-            <button class="keyer-mode-button active" data-keyer-target="quiz" data-keyer-mode="auto">자동</button>
-            <button class="keyer-mode-button" data-keyer-target="quiz" data-keyer-mode="manual">수동</button>
+            <button class="keyer-mode-button active" data-keyer-target="quiz" data-keyer-mode="auto">?먮룞</button>
+            <button class="keyer-mode-button" data-keyer-target="quiz" data-keyer-mode="manual">?섎룞</button>
           </div>
         </div>
         <button id="quizKeyer" class="morse-keyer" type="button">
           <strong>PRESS & HOLD</strong>
-          <span>짧게 누르면 점 · 길게 누르면 선</span>
-          <small id="quizKeyerHint">쉬면 자동으로 정답을 확인합니다</small>
+          <span>吏㏐쾶 ?꾨Ⅴ硫???쨌 湲멸쾶 ?꾨Ⅴ硫???/span>
+          <small id="quizKeyerHint">?щ㈃ ?먮룞?쇰줈 ?뺣떟???뺤씤?⑸땲??/small>
         </button>
       </div>
-      <p class="quiz-swipe-hint">카드 탭: 정답 보기 · 좌우 스와이프: 문제 이동</p>
+      <p class="quiz-swipe-hint">移대뱶 ?? ?뺣떟 蹂닿린 쨌 醫뚯슦 ?ㅼ??댄봽: 臾몄젣 ?대룞</p>
     </section>
 
     <section id="writer" class="view">
       <div class="writer-modes">
-        <button class="writer-mode-button active" data-writer-mode="single">한 글자 확인</button>
-        <button class="writer-mode-button" data-writer-mode="sentence">문장 입력</button>
+        <button class="writer-mode-button active" data-writer-mode="single">??湲???뺤씤</button>
+        <button class="writer-mode-button" data-writer-mode="sentence">臾몄옣 ?낅젰</button>
       </div>
       <div class="writer-card">
         <span class="card-kicker">MORSE WRITER</span>
-        <strong id="writerText">글자를 입력하세요</strong>
-        <span id="writerCurrent" class="quiz-code">현재 글자: 비어 있음</span>
-        <p id="writerMorse" class="writer-morse">· 점과 − 선을 눌러 시작하세요</p>
+        <strong id="writerText">湲?먮? ?낅젰?섏꽭??/strong>
+        <span id="writerCurrent" class="quiz-code">?꾩옱 湲?? 鍮꾩뼱 ?덉쓬</span>
+        <p id="writerMorse" class="writer-morse">쨌 ?먭낵 ???좎쓣 ?뚮윭 ?쒖옉?섏꽭??/p>
       </div>
       <div class="keyer-settings writer-keyer-settings">
-        <span>글자·띄어쓰기 확정</span>
+        <span>湲?먃룸쓣?댁벐湲??뺤젙</span>
         <div class="keyer-mode">
-          <button class="keyer-mode-button active" data-keyer-target="writer" data-keyer-mode="auto">자동</button>
-          <button class="keyer-mode-button" data-keyer-target="writer" data-keyer-mode="manual">수동</button>
+          <button class="keyer-mode-button active" data-keyer-target="writer" data-keyer-mode="auto">?먮룞</button>
+          <button class="keyer-mode-button" data-keyer-target="writer" data-keyer-mode="manual">?섎룞</button>
         </div>
       </div>
       <button id="writerKeyer" class="morse-keyer writer-keyer" type="button">
         <strong>PRESS & HOLD</strong>
-        <span>짧게 누르면 점 · 길게 누르면 선</span>
-        <small id="writerKeyerHint">3단위 휴식: 글자 확정 · 7단위 휴식: 띄어쓰기</small>
+        <span>吏㏐쾶 ?꾨Ⅴ硫???쨌 湲멸쾶 ?꾨Ⅴ硫???/span>
+        <small id="writerKeyerHint">3?⑥쐞 ?댁떇: 湲???뺤젙 쨌 7?⑥쐞 ?댁떇: ?꾩뼱?곌린</small>
       </button>
       <div class="writer-actions">
-        <button id="writerBackspace" class="light-button">한 칸 지우기</button>
-        <button id="clearWriterCode" class="light-button">전체 지우기</button>
-        <button id="resetWriter" class="light-button">초기화</button>
+        <button id="writerBackspace" class="light-button">??移?吏?곌린</button>
+        <button id="clearWriterCode" class="light-button">?꾩껜 吏?곌린</button>
+        <button id="resetWriter" class="light-button">珥덇린??/button>
       </div>
-      <button id="playWriterText" class="primary-button writer-play">작성 문장 재생</button>
+      <button id="playWriterText" class="primary-button writer-play">?묒꽦 臾몄옣 ?ъ깮</button>
     </section>
 
     <section id="reference" class="view">
       <div class="reference-heading">
-        <p class="label">A TO Z · 0 TO 10 REFERENCE</p>
-        <strong>알파벳·숫자 모스부호</strong>
+        <p class="label">A TO Z 쨌 0 TO 10 REFERENCE</p>
+        <strong>?뚰뙆踰냈룹닽??紐⑥뒪遺??/strong>
       </div>
       <div id="morseReference" class="morse-reference"></div>
     </section>
@@ -328,12 +328,12 @@
     <section id="spaceWorld" class="world-view space-world" hidden>
       <div class="friends-hero space-hero">
         <p class="eyebrow">morsiq</p>
-        <h2>우주</h2>
-        <p>하루에 하나의 시그널을 우주로 보내고, 누군가의 시그널을 수신합니다.</p>
+        <h2>?곗＜</h2>
+        <p>?섎（???섎굹???쒓렇?먯쓣 ?곗＜濡?蹂대궡怨? ?꾧뎔媛???쒓렇?먯쓣 ?섏떊?⑸땲??</p>
       </div>
       <nav class="space-tabs">
-        <button class="space-tab active" data-space-view="transmit">시그널 발신</button>
-        <button class="space-tab" data-space-view="receive">시그널 수신</button>
+        <button class="space-tab active" data-space-view="transmit">?쒓렇??諛쒖떊</button>
+        <button class="space-tab" data-space-view="receive">?쒓렇???섏떊</button>
       </nav>
       <section id="spaceTransmit" class="space-panel">
         <p id="spaceSendStatus" class="space-status"></p>
@@ -346,14 +346,14 @@
         </div>
         <form id="spaceSendForm" class="space-send-form">
           <textarea id="spaceSendInput" maxlength="300" inputmode="text" placeholder="Letters, numbers, and Morse symbols"></textarea>
-          <small id="spaceSendSignal" class="space-send-signal">현재 글자: 비어 있음</small>
+          <small id="spaceSendSignal" class="space-send-signal">?꾩옱 湲?? 鍮꾩뼱 ?덉쓬</small>
           <button id="spaceSendKeyer" class="morse-keyer space-keyer" type="button">
             <strong>PRESS & HOLD</strong>
-            <span>짧게 누르면 · / 길게 누르면 —</span>
-            <small>3단위 휴식: 글자 확정 · 7단위 휴식: 띄어쓰기</small>
+            <span>吏㏐쾶 ?꾨Ⅴ硫?쨌 / 湲멸쾶 ?꾨Ⅴ硫???/span>
+            <small>3?⑥쐞 ?댁떇: 湲???뺤젙 쨌 7?⑥쐞 ?댁떇: ?꾩뼱?곌린</small>
           </button>
-          <button id="submitSpaceSignal" type="submit">오늘의 시그널 발신</button>
-          <label class="space-photo-button" for="spacePhotoInput">ASCII 사진 발신</label>
+          <button id="submitSpaceSignal" type="submit">?ㅻ뒛???쒓렇??諛쒖떊</button>
+          <label class="space-photo-button" for="spacePhotoInput">ASCII ?ъ쭊 諛쒖떊</label>
           <input id="spacePhotoInput" class="visually-hidden" type="file" accept="image/*">
         </form>
       </section>
@@ -364,17 +364,17 @@
           <span class="space-radar-blip blip-two"></span>
           <span class="space-radar-center"></span>
         </div>
-        <p id="spaceReceiveStatus" class="space-status">레이더가 우주 시그널을 탐색하고 있습니다.</p>
-        <button id="receiveSpaceSignal" class="primary-button" type="button">랜덤 시그널 수신</button>
+        <p id="spaceReceiveStatus" class="space-status">?덉씠?붽? ?곗＜ ?쒓렇?먯쓣 ?먯깋?섍퀬 ?덉뒿?덈떎.</p>
+        <button id="receiveSpaceSignal" class="primary-button" type="button">?쒕뜡 ?쒓렇???섏떊</button>
         <article id="spaceReceivedSignal" class="space-received" hidden>
           <p class="label">RECEIVED FROM SPACE</p>
           <strong data-no-i18n></strong>
           <time id="spaceSignalDate" class="space-signal-date"></time>
-          <small id="spaceDecodeStatus">모스 진동에 맞춰 해석 중</small>
+          <small id="spaceDecodeStatus">紐⑥뒪 吏꾨룞??留욎떠 ?댁꽍 以?/small>
           <div class="space-received-actions">
-            <button id="redecodeSpaceSignal" type="button">다시 해석하기</button>
-            <button id="reportSpaceSignal" type="button">신고</button>
-            <button id="blockSpaceSender" type="button">차단</button>
+            <button id="redecodeSpaceSignal" type="button">?ㅼ떆 ?댁꽍?섍린</button>
+            <button id="reportSpaceSignal" type="button">?좉퀬</button>
+            <button id="blockSpaceSender" type="button">李⑤떒</button>
           </div>
         </article>
       </section>
@@ -385,69 +385,69 @@
         <header class="random-signal-header">
           <div>
             <p class="eyebrow">morsiq</p>
-            <h2>랜덤 시그널</h2>
+            <h2>?쒕뜡 ?쒓렇??/h2>
           </div>
-          <span id="randomSignalStatus" class="random-signal-status">연결 대기 중</span>
+          <span id="randomSignalStatus" class="random-signal-status">?곌껐 ?湲?以?/span>
         </header>
 
         <section id="randomSignalIdle" class="random-signal-state">
           <div class="random-signal-orbit" aria-hidden="true"><span></span></div>
-          <strong>랜덤한 상대와 연결합니다</strong>
-          <p>연결되면 서로 이름을 공개하지 않고 대화할 수 있습니다.</p>
-          <button id="connectRandomSignal" class="random-signal-primary" type="button">시그널 연결</button>
+          <strong>?쒕뜡???곷?? ?곌껐?⑸땲??/strong>
+          <p>?곌껐?섎㈃ ?쒕줈 ?대쫫??怨듦컻?섏? ?딄퀬 ??뷀븷 ???덉뒿?덈떎.</p>
+          <button id="connectRandomSignal" class="random-signal-primary" type="button">?쒓렇???곌껐</button>
         </section>
 
         <section id="randomSignalSearching" class="random-signal-state" hidden>
           <div class="random-signal-searching" aria-hidden="true"><span></span><span></span><span></span></div>
-          <strong>상대를 찾는 중...</strong>
-          <p>근처의 새로운 시그널을 탐색하고 있습니다.</p>
-          <button id="cancelRandomSignal" class="random-signal-secondary" type="button">취소</button>
+          <strong>?곷?瑜?李얜뒗 以?..</strong>
+          <p>洹쇱쿂???덈줈???쒓렇?먯쓣 ?먯깋?섍퀬 ?덉뒿?덈떎.</p>
+          <button id="cancelRandomSignal" class="random-signal-secondary" type="button">痍⑥냼</button>
         </section>
 
         <section id="randomSignalConnected" class="random-chat" hidden>
           <div id="randomChatMessages" class="random-chat-messages"></div>
           <div class="random-chat-composer">
             <div class="chat-morse-display">
-              <textarea id="randomChatInput" rows="1" maxlength="300" autocomplete="off" placeholder="모스코드를 입력하세요"></textarea>
-              <small id="randomChatSignal">현재 글자: 비어 있음</small>
+              <textarea id="randomChatInput" rows="1" maxlength="300" autocomplete="off" placeholder="紐⑥뒪肄붾뱶瑜??낅젰?섏꽭??></textarea>
+              <small id="randomChatSignal">?꾩옱 湲?? 鍮꾩뼱 ?덉쓬</small>
             </div>
             <button id="randomChatKeyer" class="morse-keyer chat-keyer" type="button">
               <strong>PRESS & HOLD</strong>
-              <span>짧게 누르면 · 점 / 길게 누르면 − 선</span>
-              <small>3단위 휴식: 글자 확정 · 7단위 휴식: 띄어쓰기</small>
+              <span>吏㏐쾶 ?꾨Ⅴ硫?쨌 ??/ 湲멸쾶 ?꾨Ⅴ硫?????/span>
+              <small>3?⑥쐞 ?댁떇: 湲???뺤젙 쨌 7?⑥쐞 ?댁떇: ?꾩뼱?곌린</small>
             </button>
             <div class="random-chat-actions">
-              <button id="clearRandomChat" class="light-button" type="button">지우기</button>
-              <label class="photo-send-button" for="randomPhotoInput" aria-label="사진을 ASCII 아트로 보내기"><span>사진</span></label>
+              <button id="clearRandomChat" class="light-button" type="button">吏?곌린</button>
+              <label class="photo-send-button" for="randomPhotoInput" aria-label="?ъ쭊??ASCII ?꾪듃濡?蹂대궡湲?><span>?ъ쭊</span></label>
               <div class="send-control">
                 <div id="randomHiddenPicker" class="hidden-view-picker" hidden>
-                  <span>시그널 재생 횟수</span>
+                  <span>?쒓렇???ъ깮 ?잛닔</span>
                   <div>
                     <button type="button" data-random-limit="1">1</button>
                     <button type="button" data-random-limit="3">3</button>
                     <button type="button" data-random-limit="5">5</button>
-                    <button type="button" data-random-limit="unlimited">무제한</button>
+                    <button type="button" data-random-limit="unlimited">臾댁젣??/button>
                   </div>
                 </div>
                 <button id="sendRandomChat" class="primary-button swipe-send" type="button">
-                  <strong>보내기</strong>
-                  <small id="randomHiddenLimitHint">오른쪽 밀기: 숨김 신호 · 1회</small>
+                  <strong>蹂대궡湲?/strong>
+                  <small id="randomHiddenLimitHint">?ㅻⅨ履?諛湲? ?④? ?좏샇 쨌 1??/small>
                 </button>
               </div>
             </div>
             <input id="randomPhotoInput" class="visually-hidden" type="file" accept="image/*">
-            <button id="disconnectRandomSignal" class="random-signal-secondary disconnect-signal" type="button">시그널 끊기</button>
+            <button id="disconnectRandomSignal" class="random-signal-secondary disconnect-signal" type="button">?쒓렇???딄린</button>
           </div>
         </section>
 
         <section id="randomSignalLast" class="random-signal-state last-signal-state" hidden>
-          <strong>라스트 시그널</strong>
-          <p>연결이 끊겼습니다. 마지막 문장을 보낼지 선택하세요.</p>
+          <strong>?쇱뒪???쒓렇??/strong>
+          <p>?곌껐???딄꼈?듬땲?? 留덉?留?臾몄옣??蹂대궪吏 ?좏깮?섏꽭??</p>
           <form id="lastSignalForm" class="last-signal-form">
-            <input id="lastSignalInput" type="text" maxlength="300" autocomplete="off" placeholder="마지막 문장을 입력하세요">
+            <input id="lastSignalInput" type="text" maxlength="300" autocomplete="off" placeholder="留덉?留?臾몄옣???낅젰?섏꽭??>
             <div class="last-signal-actions">
-              <button id="skipLastSignal" class="light-button" type="button">보내지 않기</button>
-              <button type="submit">보내기</button>
+              <button id="skipLastSignal" class="light-button" type="button">蹂대궡吏 ?딄린</button>
+              <button type="submit">蹂대궡湲?/button>
             </div>
           </form>
         </section>
@@ -462,39 +462,39 @@
         <small id="myProfileSignalId" class="profile-signal-id" data-no-i18n></small>
         <div id="myProfileBadges" class="profile-badges"></div>
         <label class="profile-description-field">
-          <span>자기소개</span>
-          <textarea id="myProfileDescription" maxlength="240" placeholder="자신을 소개해보세요"></textarea>
+          <span>?먭린?뚭컻</span>
+          <textarea id="myProfileDescription" maxlength="240" placeholder="?먯떊???뚭컻?대낫?몄슂"></textarea>
         </label>
         <div class="profile-actions">
-          <label class="profile-photo-button" for="profilePhotoInput">프로필 사진 선택</label>
-          <button id="removeProfilePhoto" class="light-button" type="button">사진 지우기</button>
+          <label class="profile-photo-button" for="profilePhotoInput">?꾨줈???ъ쭊 ?좏깮</label>
+          <button id="removeProfilePhoto" class="light-button" type="button">?ъ쭊 吏?곌린</button>
         </div>
         <input id="profilePhotoInput" class="visually-hidden" type="file" accept="image/*">
-        <button id="saveMyProfile" class="primary-button" type="button">프로필 저장</button>
+        <button id="saveMyProfile" class="primary-button" type="button">?꾨줈?????/button>
       </section>
     </section>
 
     <section id="dailyGroupWorld" class="world-view daily-group-world" hidden>
       <header class="daily-group-header">
-        <strong id="dailyGroupStatus">멤버를 불러오는 중입니다.</strong>
+        <strong id="dailyGroupStatus">硫ㅻ쾭瑜?遺덈윭?ㅻ뒗 以묒엯?덈떎.</strong>
         <div class="daily-group-controls">
           <button id="toggleDailyGroupJoin" type="button">ON</button>
-          <button id="leaveDailyGroup" type="button">나가기</button>
+          <button id="leaveDailyGroup" type="button">?섍?湲?/button>
         </div>
       </header>
       <div id="dailyGroupMessages" class="chat-messages daily-group-messages"></div>
       <form id="dailyGroupForm" class="chat-morse-composer group-chat-composer">
-        <div class="chat-morse-display"><textarea id="dailyGroupInput" rows="1" maxlength="1000" placeholder="모스코드를 입력하세요"></textarea><small id="dailyGroupSignal">현재 글자: 비어 있음</small></div>
-        <button id="dailyGroupKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>짧게 누르면 · 점 / 길게 누르면 – 선</span><small></small></button>
+        <div class="chat-morse-display"><textarea id="dailyGroupInput" rows="1" maxlength="1000" placeholder="紐⑥뒪肄붾뱶瑜??낅젰?섏꽭??></textarea><small id="dailyGroupSignal">?꾩옱 湲?? 鍮꾩뼱 ?덉쓬</small></div>
+        <button id="dailyGroupKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>吏㏐쾶 ?꾨Ⅴ硫?쨌 ??/ 湲멸쾶 ?꾨Ⅴ硫?????/span><small></small></button>
         <div class="chat-morse-actions">
-          <button id="clearDailyGroupMessage" class="light-button" type="button">지우기</button>
-          <label class="photo-send-button" for="dailyGroupPhotoInput"><span>사진</span></label>
+          <button id="clearDailyGroupMessage" class="light-button" type="button">吏?곌린</button>
+          <label class="photo-send-button" for="dailyGroupPhotoInput"><span>?ъ쭊</span></label>
           <div class="send-control">
             <div id="dailyGroupHiddenViewPicker" class="hidden-view-picker" hidden>
-              <span>숨김 신호 재생 횟수</span>
-              <div><button type="button" data-daily-hidden-limit="1">1</button><button type="button" data-daily-hidden-limit="3">3</button><button type="button" data-daily-hidden-limit="5">5</button><button type="button" data-daily-hidden-limit="unlimited">무제한</button></div>
+              <span>?④? ?좏샇 ?ъ깮 ?잛닔</span>
+              <div><button type="button" data-daily-hidden-limit="1">1</button><button type="button" data-daily-hidden-limit="3">3</button><button type="button" data-daily-hidden-limit="5">5</button><button type="button" data-daily-hidden-limit="unlimited">臾댁젣??/button></div>
             </div>
-            <button id="sendDailyGroupMessage" class="primary-button swipe-send" type="submit"><strong>보내기</strong><small id="dailyGroupHiddenLimitHint">오른쪽 밀기 · 숨김 신호 · 1회</small></button>
+            <button id="sendDailyGroupMessage" class="primary-button swipe-send" type="submit"><strong>蹂대궡湲?/strong><small id="dailyGroupHiddenLimitHint">?ㅻⅨ履?諛湲?쨌 ?④? ?좏샇 쨌 1??/small></button>
           </div>
         </div>
         <input id="dailyGroupPhotoInput" class="visually-hidden" type="file" accept="image/*">
@@ -502,59 +502,59 @@
     </section>
 
     <section id="gamesWorld" class="world-view games-world" hidden>
-      <header class="game-header"><div><p class="eyebrow">MORSE SPEED RACE</p><h2>10단어 스피드</h2><p>모스부호로 10개의 단어를 가장 빠르게 입력하세요.</p></div><button id="openFullRanking" type="button">전체 랭킹</button></header>
+      <header class="game-header"><div><p class="eyebrow">MORSE SPEED RACE</p><h2>10?⑥뼱 ?ㅽ뵾??/h2><p>紐⑥뒪遺?몃줈 10媛쒖쓽 ?⑥뼱瑜?媛??鍮좊Ⅴ寃??낅젰?섏꽭??</p></div><button id="openFullRanking" type="button">?꾩껜 ??궧</button></header>
       <section class="game-status-card">
-        <div><small>진행</small><strong id="gameProgress">0 / 10</strong></div>
-        <div><small>시간</small><strong id="gameTimer">0.00초</strong></div>
-        <div><small>내 순위</small><strong id="gameMyRank">기록 없음</strong></div>
+        <div><small>吏꾪뻾</small><strong id="gameProgress">0 / 10</strong></div>
+        <div><small>?쒓컙</small><strong id="gameTimer">0.00珥?/strong></div>
+        <div><small>???쒖쐞</small><strong id="gameMyRank">湲곕줉 ?놁쓬</strong></div>
       </section>
       <section class="game-play-card">
-        <small id="gameWordNumber">시작 준비</small>
+        <small id="gameWordNumber">?쒖옉 以鍮?/small>
         <strong id="gameTargetWord">READY</strong>
-        <div class="chat-morse-display"><input id="gameInput" maxlength="30" placeholder="단어 입력" autocomplete="off"><small id="gameSignal">현재 글자: 비어 있음</small></div>
-        <button id="gameKeyer" class="morse-keyer" type="button"><strong>PRESS & HOLD</strong><span>짧게 누르면 · 점 / 길게 누르면 − 선</span><small></small></button>
-        <div class="game-actions"><button id="clearGameInput" class="light-button" type="button">지우기</button><button id="startGame" type="button">게임 시작</button></div>
+        <div class="chat-morse-display"><input id="gameInput" maxlength="30" placeholder="?⑥뼱 ?낅젰" autocomplete="off"><small id="gameSignal">?꾩옱 湲?? 鍮꾩뼱 ?덉쓬</small></div>
+        <button id="gameKeyer" class="morse-keyer" type="button"><strong>PRESS & HOLD</strong><span>吏㏐쾶 ?꾨Ⅴ硫?쨌 ??/ 湲멸쾶 ?꾨Ⅴ硫?????/span><small></small></button>
+        <div class="game-actions"><button id="clearGameInput" class="light-button" type="button">吏?곌린</button><button id="startGame" type="button">寃뚯엫 ?쒖옉</button></div>
         <p id="gameFeedback" class="game-feedback"></p>
       </section>
-      <section class="ranking-preview"><div class="section-heading"><strong>TOP 10</strong><button id="refreshGameRanking" type="button">새로고침</button></div><div id="gameRankingPreview" class="ranking-list"></div></section>
+      <section class="ranking-preview"><div class="section-heading"><strong>TOP 10</strong><button id="refreshGameRanking" type="button">?덈줈怨좎묠</button></div><div id="gameRankingPreview" class="ranking-list"></div></section>
     </section>
 
     <section id="secretDiaryWorld" class="world-view secret-diary-world" hidden>
       <section id="diaryLock" class="diary-lock-card">
         <p class="eyebrow">SECRET DIARY</p>
-        <h2 id="diaryLockTitle">비밀번호 입력</h2>
-        <p id="diaryLockHint">비밀일기를 열려면 비밀번호를 입력하세요.</p>
-        <input id="diaryPassword" type="password" maxlength="64" autocomplete="off" placeholder="비밀번호">
-        <input id="diaryPasswordConfirm" type="password" maxlength="64" autocomplete="off" placeholder="비밀번호 확인" hidden>
-        <button id="unlockDiary" class="primary-button" type="button">비밀일기 열기</button>
+        <h2 id="diaryLockTitle">鍮꾨?踰덊샇 ?낅젰</h2>
+        <p id="diaryLockHint">鍮꾨??쇨린瑜??대젮硫?鍮꾨?踰덊샇瑜??낅젰?섏꽭??</p>
+        <input id="diaryPassword" type="password" maxlength="64" autocomplete="off" placeholder="鍮꾨?踰덊샇">
+        <input id="diaryPasswordConfirm" type="password" maxlength="64" autocomplete="off" placeholder="鍮꾨?踰덊샇 ?뺤씤" hidden>
+        <button id="unlockDiary" class="primary-button" type="button">鍮꾨??쇨린 ?닿린</button>
       </section>
       <section id="diaryDesk" class="diary-desk" hidden>
-        <header class="diary-header"><div><p class="eyebrow">SECRET DIARY</p><h2>비밀일기</h2></div><button id="lockDiary" type="button">잠그기</button></header>
-        <button id="openDiaryList" class="diary-list-open" type="button">일기 목록</button>
+        <header class="diary-header"><div><p class="eyebrow">SECRET DIARY</p><h2>鍮꾨??쇨린</h2></div><button id="lockDiary" type="button">?좉렇湲?/button></header>
+        <button id="openDiaryList" class="diary-list-open" type="button">?쇨린 紐⑸줉</button>
         <section class="diary-calendar-card">
-          <div class="diary-calendar-nav"><button id="diaryPrevMonth" type="button">‹</button><strong id="diaryCalendarTitle"></strong><button id="diaryNextMonth" type="button">›</button></div>
-          <div class="diary-weekdays"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+          <div class="diary-calendar-nav"><button id="diaryPrevMonth" type="button">??/button><strong id="diaryCalendarTitle"></strong><button id="diaryNextMonth" type="button">??/button></div>
+          <div class="diary-weekdays"><span>??/span><span>??/span><span>??/span><span>??/span><span>紐?/span><span>湲?/span><span>??/span></div>
           <div id="diaryYearPicker" class="diary-year-picker" hidden></div>
           <div id="diaryCalendar" class="diary-calendar"></div>
           <strong id="diarySelectedDate" class="diary-selected-date"></strong>
         </section>
         <section class="diary-saved-section">
-          <div class="section-heading"><strong>선택한 날짜의 일기</strong><small>저장된 내용</small></div>
+          <div class="section-heading"><strong>?좏깮???좎쭨???쇨린</strong><small>??λ맂 ?댁슜</small></div>
           <div id="diaryEntries" class="diary-entries"></div>
         </section>
         <div class="diary-composer">
-          <div class="section-heading"><strong>작성 중인 일기</strong><small>일기 저장을 눌러야 서버에 저장됩니다</small></div>
+          <div class="section-heading"><strong>?묒꽦 以묒씤 ?쇨린</strong><small>?쇨린 ??μ쓣 ?뚮윭???쒕쾭????λ맗?덈떎</small></div>
           <div id="diaryDraftSegments" class="diary-draft-segments" contenteditable="true" role="textbox" aria-multiline="true"></div>
           <div class="chat-morse-display">
-            <textarea id="diaryText" rows="4" maxlength="5000" placeholder="일기를 입력하세요"></textarea>
-            <small id="diarySignal">현재 글자: 비어 있음</small>
+            <textarea id="diaryText" rows="4" maxlength="5000" placeholder="?쇨린瑜??낅젰?섏꽭??></textarea>
+            <small id="diarySignal">?꾩옱 湲?? 鍮꾩뼱 ?덉쓬</small>
           </div>
-          <button id="diaryKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>짧게 누르면 · 점 / 길게 누르면 − 선</span><small>대화 입력 설정을 따릅니다</small></button>
+          <button id="diaryKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>吏㏐쾶 ?꾨Ⅴ硫?쨌 ??/ 湲멸쾶 ?꾨Ⅴ硫?????/span><small>????낅젰 ?ㅼ젙???곕쫭?덈떎</small></button>
           <div class="diary-actions">
-            <button id="appendDiaryText" type="button">보내기</button>
-            <button id="appendDiaryVibration" type="button">진동 전용</button>
-            <button id="clearDiaryText" type="button">지우기</button>
-            <button id="saveDiaryEntry" class="primary-button" type="button">일기 저장</button>
+            <button id="appendDiaryText" type="button">蹂대궡湲?/button>
+            <button id="appendDiaryVibration" type="button">吏꾨룞 ?꾩슜</button>
+            <button id="clearDiaryText" type="button">吏?곌린</button>
+            <button id="saveDiaryEntry" class="primary-button" type="button">?쇨린 ???/button>
           </div>
         </div>
       </section>
@@ -563,12 +563,12 @@
     <section id="shopWorld" class="world-view shop-world" hidden>
       <section class="shop-hero">
         <p class="eyebrow">morsiq shop</p>
-        <h2>상점</h2>
-        <p>준비 중입니다.</p>
+        <h2>?곸젏</h2>
+        <p>以鍮?以묒엯?덈떎.</p>
       </section>
       <section class="shop-wallet-card">
         <div><small>MY SIGNAL COINS</small><strong id="shopCoinBalance">0</strong></div>
-        <button id="buyCoins100" type="button"><strong>100</strong><small>₩500 · Google Play</small></button>
+        <button id="buyCoins100" type="button"><strong>100</strong><small>??00 쨌 Google Play</small></button>
       </section>
       <div id="shopDrawCategories" class="shop-category-grid"></div>
       <section id="shopResult" class="shop-result" hidden></section>
@@ -582,15 +582,15 @@
 
   <div id="diaryListPanel" class="profile-overlay" hidden>
     <section class="request-panel-card">
-      <button id="closeDiaryList" class="profile-close" type="button">×</button>
-      <p class="eyebrow">SECRET DIARY</p><h2>일기 목록</h2>
+      <button id="closeDiaryList" class="profile-close" type="button">횞</button>
+      <p class="eyebrow">SECRET DIARY</p><h2>?쇨린 紐⑸줉</h2>
       <div id="diaryAllEntries" class="diary-all-entries"></div>
     </section>
   </div>
 
   <div id="shopPreviewPanel" class="profile-overlay" hidden>
     <section class="request-panel-card shop-preview-card">
-      <button id="closeShopPreview" class="profile-close" type="button">×</button>
+      <button id="closeShopPreview" class="profile-close" type="button">횞</button>
       <p class="eyebrow">DRAW COLLECTION</p><h2 id="shopPreviewTitle"></h2>
       <p id="shopPreviewDescription" class="profile-description"></p>
       <div id="shopPreviewItems" class="shop-preview-items"></div>
@@ -599,22 +599,22 @@
 
   <div id="friendProfilePanel" class="profile-overlay" hidden>
     <section class="profile-card friend-profile-card">
-      <button id="closeFriendProfile" class="profile-close" type="button" aria-label="프로필 닫기">×</button>
+      <button id="closeFriendProfile" class="profile-close" type="button" aria-label="?꾨줈???リ린">횞</button>
       <p class="eyebrow">morsiq profile</p>
       <div id="friendProfileVisual" class="profile-visual"></div>
       <strong id="friendProfileNickname" class="profile-nickname"></strong>
       <small id="friendProfileSignalId" class="profile-signal-id" data-no-i18n></small>
       <div id="friendProfileBadges" class="profile-badges"></div>
       <p id="friendProfileDescription" class="profile-description"></p>
-      <button id="chatFromProfile" class="primary-button" type="button">대화하기</button>
-      <button id="removeFriend" class="danger-button" type="button">친구 끊기</button>
+      <button id="chatFromProfile" class="primary-button" type="button">??뷀븯湲?/button>
+      <button id="removeFriend" class="danger-button" type="button">移쒓뎄 ?딄린</button>
     </section>
   </div>
 
   <div id="gameRankingPanel" class="profile-overlay" hidden>
     <section class="request-panel-card ranking-panel-card">
-      <button id="closeGameRanking" class="profile-close" type="button">×</button>
-      <p class="eyebrow">MORSE SPEED RACE</p><h2>전체 랭킹 TOP 100</h2>
+      <button id="closeGameRanking" class="profile-close" type="button">횞</button>
+      <p class="eyebrow">MORSE SPEED RACE</p><h2>?꾩껜 ??궧 TOP 100</h2>
       <p id="fullRankingMine" class="profile-description"></p>
       <div id="gameRankingFull" class="ranking-list full-ranking-list"></div>
     </section>
@@ -622,9 +622,9 @@
 
   <div id="friendRequestPanel" class="profile-overlay" hidden>
     <section class="request-panel-card">
-      <button id="closeFriendRequests" class="profile-close" type="button" aria-label="친구 요청 닫기">×</button>
+      <button id="closeFriendRequests" class="profile-close" type="button" aria-label="移쒓뎄 ?붿껌 ?リ린">횞</button>
       <p class="eyebrow">morsiq</p>
-      <h2 id="friendRequestPanelTitle">받은 요청</h2>
+      <h2 id="friendRequestPanelTitle">諛쏆? ?붿껌</h2>
       <div id="friendRequests" class="friend-requests"></div>
       <div id="sentFriendRequests" class="friend-requests" hidden></div>
     </section>
@@ -632,36 +632,36 @@
 
   <div id="createGroupPanel" class="profile-overlay" hidden>
     <section class="request-panel-card">
-      <button id="closeCreateGroup" class="profile-close" type="button">×</button>
+      <button id="closeCreateGroup" class="profile-close" type="button">횞</button>
       <p class="eyebrow">NEW GROUP CHAT</p>
-      <h2>그룹챗 만들기</h2>
+      <h2>洹몃９梨?留뚮뱾湲?/h2>
       <form id="createGroupForm" class="group-create-form">
-        <input id="groupNameInput" maxlength="40" placeholder="그룹 이름">
+        <input id="groupNameInput" maxlength="40" placeholder="洹몃９ ?대쫫">
         <div id="groupFriendChoices" class="group-friend-choices"></div>
-        <button type="submit">선택한 친구와 만들기</button>
+        <button type="submit">?좏깮??移쒓뎄? 留뚮뱾湲?/button>
       </form>
     </section>
   </div>
 
   <div id="addFriendPanel" class="profile-overlay" hidden>
     <section class="request-panel-card">
-      <button id="closeAddFriend" class="profile-close" type="button">×</button>
+      <button id="closeAddFriend" class="profile-close" type="button">횞</button>
       <p class="eyebrow">morsiq</p>
-      <h2>친구 추가</h2>
+      <h2>移쒓뎄 異붽?</h2>
       <form id="friendForm" class="group-create-form">
-        <input id="friendInput" maxlength="24" placeholder="친구 닉네임" autocomplete="off">
-        <button type="submit">친구 요청 보내기</button>
+        <input id="friendInput" maxlength="24" placeholder="移쒓뎄 ?됰꽕?? autocomplete="off">
+        <button type="submit">移쒓뎄 ?붿껌 蹂대궡湲?/button>
       </form>
     </section>
   </div>
 
   <div id="groupManagePanel" class="profile-overlay" hidden>
     <section class="request-panel-card">
-      <button id="closeGroupManage" class="profile-close" type="button">×</button>
+      <button id="closeGroupManage" class="profile-close" type="button">횞</button>
       <p class="eyebrow">GROUP CHAT</p>
-      <h2 id="groupManageName">그룹챗</h2>
+      <h2 id="groupManageName">洹몃９梨?/h2>
       <div id="groupManageVisual" class="group-manage-visual"></div>
-      <label id="groupPhotoLabel" class="profile-photo-button" for="groupPhotoInput">그룹 사진 설정</label>
+      <label id="groupPhotoLabel" class="profile-photo-button" for="groupPhotoInput">洹몃９ ?ъ쭊 ?ㅼ젙</label>
       <input id="groupPhotoInput" class="visually-hidden" type="file" accept="image/*">
       <section id="groupThemeSection" class="group-theme-section" hidden>
         <strong>Group Chat Theme</strong>
@@ -669,28 +669,37 @@
       </section>
       <div id="groupManageMembers" class="group-member-grid"></div>
       <div id="groupAddFriendChoices" class="group-friend-choices"></div>
-      <button id="leaveGroup" class="danger-button" type="button">그룹챗 나가기</button>
+      <button id="leaveGroup" class="danger-button" type="button">洹몃９梨??섍?湲?/button>
     </section>
   </div>
 
   <div id="player" class="player" hidden>
     <div>
       <span id="playerPulse" class="player-dot"></span>
-      <div><small>재생 중</small><strong id="playerText"></strong></div>
+      <div><small>?ъ깮 以?/small><strong id="playerText"></strong></div>
     </div>
-    <button id="stopPlayer">중지</button>
+    <button id="stopPlayer">以묒?</button>
   </div>
 
   <div id="asciiPreview" class="ascii-preview-overlay" hidden>
     <section class="ascii-preview-card">
       <div>
         <p class="label">ASCII ART PREVIEW</p>
-        <strong>사진 변환 결과</strong>
+        <strong>?ъ쭊 蹂??寃곌낵</strong>
+      </div>      <div class="ascii-editor">
+        <canvas id="asciiEditorCanvas"></canvas>
+        <div class="ascii-editor-tools">
+          <button id="asciiAutoEnhance" type="button">Auto</button>
+          <button id="asciiKeepBrush" class="active" type="button">Keep</button>
+          <button id="asciiEraseBrush" type="button">Erase</button>
+          <button id="asciiClearBrush" type="button">Clear marks</button>
+        </div>
+        <small>Draw over the object to keep it. Draw erase marks to turn that area into blank space.</small>
       </div>
       <pre id="asciiPreviewText"></pre>
       <div class="ascii-preview-actions">
-        <button id="cancelAscii" class="light-button" type="button">취소</button>
-        <button id="sendAscii" class="primary-button" type="button">보내기</button>
+        <button id="cancelAscii" class="light-button" type="button">痍⑥냼</button>
+        <button id="sendAscii" class="primary-button" type="button">蹂대궡湲?/button>
       </div>
     </section>
   </div>
@@ -700,51 +709,51 @@
       <header class="settings-header">
         <div>
           <p class="eyebrow">morsiq</p>
-          <h2>설정</h2>
+          <h2>?ㅼ젙</h2>
         </div>
-        <button id="closeSettings" type="button" aria-label="설정 닫기">×</button>
+        <button id="closeSettings" type="button" aria-label="?ㅼ젙 ?リ린">횞</button>
       </header>
       <div class="settings-section account-settings">
-        <p class="label">계정</p>
-        <strong id="accountStatus">로그인하지 않음</strong>
-        <button id="openAuthSettings" type="button">로그인 / 회원가입</button>
-        <button id="logoutAccount" class="light-button" type="button" hidden>로그아웃</button>
+        <p class="label">怨꾩젙</p>
+        <strong id="accountStatus">濡쒓렇?명븯吏 ?딆쓬</strong>
+        <button id="openAuthSettings" type="button">濡쒓렇??/ ?뚯썝媛??/button>
+        <button id="logoutAccount" class="light-button" type="button" hidden>濡쒓렇?꾩썐</button>
       </div>
       <div id="nicknameSettings" class="settings-section nickname-settings" hidden>
-        <p class="label">닉네임 변경</p>
+        <p class="label">?됰꽕??蹂寃?/p>
         <input id="settingsNickname" maxlength="24" autocomplete="nickname">
         <p id="nicknameChangeStatus" class="nickname-change-status" role="status" hidden></p>
-        <button id="saveNickname" type="button">닉네임 저장</button>
+        <button id="saveNickname" type="button">?됰꽕?????/button>
       </div>
       <div class="settings-section">
-        <p class="label">언어</p>
+        <p class="label">?몄뼱</p>
         <div class="settings-options language-options">
           <button type="button" data-language="ko">
-            <strong>한국어</strong>
-            <small>앱 전체를 한국어로 표시</small>
+            <strong>?쒓뎅??/strong>
+            <small>???꾩껜瑜??쒓뎅?대줈 ?쒖떆</small>
           </button>
           <button type="button" data-language="en">
             <strong>English</strong>
             <small>Show the entire app in English</small>
           </button>
           <button type="button" data-language="ja">
-            <strong>日本語</strong>
-            <small>アプリ全体を日本語で表示</small>
+            <strong>?ζ쑍沃?/strong>
+            <small>?㏂깤?ゅ뀲鵝볝굮?ζ쑍沃욁겎烏①ㅊ</small>
           </button>
         </div>
       </div>
       <div class="settings-section settings-speed">
         <div>
-          <p class="label">진동 속도</p>
-          <strong id="settingsSpeedLabel">보통 · 120ms</strong>
+          <p class="label">吏꾨룞 ?띾룄</p>
+          <strong id="settingsSpeedLabel">蹂댄넻 쨌 120ms</strong>
         </div>
-        <input id="settingsSpeed" type="range" min="60" max="300" step="10" value="120" aria-label="설정 진동 속도">
-        <div class="range-labels"><span>빠르게</span><span>느리게</span></div>
+        <input id="settingsSpeed" type="range" min="60" max="300" step="10" value="120" aria-label="?ㅼ젙 吏꾨룞 ?띾룄">
+        <div class="range-labels"><span>鍮좊Ⅴ寃?/span><span>?먮━寃?/span></div>
       </div>
       <label class="settings-switch">
         <div>
-          <strong>모스부호 소리</strong>
-          <small>끄면 진동은 유지되고 삐 소리만 나지 않습니다.</small>
+          <strong>紐⑥뒪遺???뚮━</strong>
+          <small>?꾨㈃ 吏꾨룞? ?좎??섍퀬 ???뚮━留??섏? ?딆뒿?덈떎.</small>
         </div>
         <input id="morseSoundEnabled" type="checkbox" checked>
       </label>
@@ -756,61 +765,61 @@
         <input id="vibrationEnabled" type="checkbox" checked>
       </label>
       <div class="settings-section">
-        <p class="label">대화 모스 입력 확정</p>
+        <p class="label">???紐⑥뒪 ?낅젰 ?뺤젙</p>
         <div class="settings-options">
           <button type="button" data-chat-keyer-mode="auto">
-            <strong>자동</strong>
-            <small>쉬는 시간으로 글자·띄어쓰기 확정</small>
+            <strong>?먮룞</strong>
+            <small>?щ뒗 ?쒓컙?쇰줈 湲?먃룸쓣?댁벐湲??뺤젙</small>
           </button>
           <button type="button" data-chat-keyer-mode="manual">
-            <strong>수동</strong>
-            <small>상하좌우 스와이프로 직접 입력</small>
+            <strong>?섎룞</strong>
+            <small>?곹븯醫뚯슦 ?ㅼ??댄봽濡?吏곸젒 ?낅젰</small>
           </button>
         </div>
       </div>
       <label id="swipeReverseSetting" class="settings-switch">
         <div>
-          <strong>좌우 방향 반전</strong>
-          <small id="swipeDirectionHint">오른쪽: 글자 확정 · 왼쪽: 띄어쓰기 · 위: 대문자 · 아래: 엔터</small>
+          <strong>醫뚯슦 諛⑺뼢 諛섏쟾</strong>
+          <small id="swipeDirectionHint">?ㅻⅨ履? 湲???뺤젙 쨌 ?쇱そ: ?꾩뼱?곌린 쨌 ?? ?臾몄옄 쨌 ?꾨옒: ?뷀꽣</small>
         </div>
         <input id="reverseChatSwipe" type="checkbox" checked>
       </label>
       <div class="settings-section autocomplete-settings">
         <button id="toggleAutocompleteSettings" class="settings-subtab" type="button">
-          <strong>자동완성</strong>
-          <small>특정 모스부호를 단어·문장으로 입력</small>
+          <strong>?먮룞?꾩꽦</strong>
+          <small>?뱀젙 紐⑥뒪遺?몃? ?⑥뼱쨌臾몄옣?쇰줈 ?낅젰</small>
         </button>
         <div id="autocompleteSettingsPanel" hidden>
-          <p class="autocomplete-note">표준 모스부호와 겹치지 않는 점·선 조합만 사용할 수 있습니다.</p>
+          <p class="autocomplete-note">?쒖? 紐⑥뒪遺?몄? 寃뱀튂吏 ?딅뒗 ?먃룹꽑 議고빀留??ъ슜?????덉뒿?덈떎.</p>
           <form id="autocompleteForm" class="autocomplete-form">
-            <input id="autocompleteCode" maxlength="10" placeholder="모스부호 예: ......" autocomplete="off">
-            <textarea id="autocompleteText" maxlength="300" placeholder="입력할 단어 또는 문장"></textarea>
+            <input id="autocompleteCode" maxlength="10" placeholder="紐⑥뒪遺???? ......" autocomplete="off">
+            <textarea id="autocompleteText" maxlength="300" placeholder="?낅젰???⑥뼱 ?먮뒗 臾몄옣"></textarea>
             <button id="autocompleteKeyer" class="morse-keyer autocomplete-keyer" type="button">
               <strong>PRESS &amp; HOLD</strong>
-              <span>짧게 누르면 · 점 / 길게 누르면 − 선</span>
-              <small>최대 10개 입력</small>
+              <span>吏㏐쾶 ?꾨Ⅴ硫?쨌 ??/ 湲멸쾶 ?꾨Ⅴ硫?????/span>
+              <small>理쒕? 10媛??낅젰</small>
             </button>
             <div class="autocomplete-keyer-actions">
-              <button id="autocompleteBackspace" type="button">한 칸 지우기</button>
-              <button id="autocompleteClear" type="button">초기화</button>
+              <button id="autocompleteBackspace" type="button">??移?吏?곌린</button>
+              <button id="autocompleteClear" type="button">珥덇린??/button>
             </div>
-            <button type="submit">자동완성 추가</button>
+            <button type="submit">?먮룞?꾩꽦 異붽?</button>
           </form>
           <div id="autocompleteList" class="autocomplete-list"></div>
         </div>
       </div>
       <div class="settings-section suggestion-settings">
-        <p class="label">건의하기</p>
-        <textarea id="suggestionText" maxlength="2000" placeholder="추가했으면 하는 기능이나 불편한 점을 적어주세요"></textarea>
-        <button id="submitSuggestion" type="button">건의사항 보내기</button>
+        <p class="label">嫄댁쓽?섍린</p>
+        <textarea id="suggestionText" maxlength="2000" placeholder="異붽??덉쑝硫??섎뒗 湲곕뒫?대굹 遺덊렪???먯쓣 ?곸뼱二쇱꽭??></textarea>
+        <button id="submitSuggestion" type="button">嫄댁쓽?ы빆 蹂대궡湲?/button>
         <p id="suggestionStatus" class="nickname-change-status" role="status" hidden></p>
       </div>
     </section>
   </div>
 
   <div id="secretComm" class="secret-comm" hidden>
-    <button id="secretCommSurface" class="secret-comm-surface" type="button" aria-label="누르는 동안 상대에게 진동 전달"></button>
-    <button id="exitSecretComm" class="secret-comm-exit" type="button" aria-label="비밀 통신 나가기">×</button>
+    <button id="secretCommSurface" class="secret-comm-surface" type="button" aria-label="?꾨Ⅴ???숈븞 ?곷??먭쾶 吏꾨룞 ?꾨떖"></button>
+    <button id="exitSecretComm" class="secret-comm-exit" type="button" aria-label="鍮꾨? ?듭떊 ?섍?湲?>횞</button>
   </div>
 
   <div id="toast" class="toast" role="status"></div>
@@ -818,3 +827,4 @@
   <script src="app.js"></script>
 </body>
 </html>
+

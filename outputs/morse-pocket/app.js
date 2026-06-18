@@ -1714,6 +1714,13 @@ const state = {
   chatKeyerStartY: 0,
   asciiDraft: "",
   asciiTarget: "friend",
+  asciiImage: null,
+  asciiBrushMode: "keep",
+  asciiAutoEnhance: false,
+  asciiKeepCanvas: null,
+  asciiEraseCanvas: null,
+  asciiDrawing: false,
+  asciiLastPoint: null,
   profileDraftAscii: null,
   profileCache: {},
   viewingProfileSignalId: "",
@@ -3699,10 +3706,10 @@ function sendChatMessage(message, hidden = false) {
   }).catch(() => showToast(serverFailureMessage()));
 }
 
-function imageToAscii(image) {
+function imageToAscii(image, options = {}) {
   const aspect = image.height / image.width;
-  const width = aspect > 1.15 ? 64 : aspect < .72 ? 104 : 88;
-  const height = Math.min(220, Math.max(16, Math.round(aspect * width * 0.55)));
+  const width = aspect > 1.15 ? 72 : aspect < .72 ? 92 : 82;
+  const height = Math.min(260, Math.max(24, Math.round(aspect * width * 0.82)));
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -3713,18 +3720,29 @@ function imageToAscii(image) {
   context.fillRect(0, 0, width, height);
   context.drawImage(image, 0, 0, width, height);
   const pixels = context.getImageData(0, 0, width, height).data;
+  const keepMask = sampleAsciiMask(options.keepCanvas, width, height);
+  const eraseMask = sampleAsciiMask(options.eraseCanvas, width, height);
   const brightnessValues = [];
+  const saturationValues = [];
   for (let offset = 0; offset < pixels.length; offset += 4) {
-    brightnessValues.push(pixels[offset] * .299 + pixels[offset + 1] * .587 + pixels[offset + 2] * .114);
+    const r = pixels[offset], g = pixels[offset + 1], b = pixels[offset + 2];
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    brightnessValues.push(r * .299 + g * .587 + b * .114);
+    saturationValues.push((max - min) / 255);
   }
   const sorted = [...brightnessValues].sort((a, b) => a - b);
-  const dark = sorted[Math.floor(sorted.length * .02)];
-  const light = sorted[Math.floor(sorted.length * .98)];
-  const range = Math.max(24, light - dark);
-  const shades = "@%#*+=-:. ";
-  const normalizedValues = brightnessValues.map(value => Math.max(0, Math.min(1, (value - dark) / range)));
+  const lowCut = options.autoEnhance ? .01 : .02;
+  const highCut = options.autoEnhance ? .90 : .97;
+  const dark = sorted[Math.floor(sorted.length * lowCut)];
+  const light = sorted[Math.floor(sorted.length * highCut)];
+  const range = Math.max(18, light - dark);
+  const shades = "@%#8&$*+=-:. ";
+  const normalizedValues = brightnessValues.map(value => {
+    const balanced = options.autoEnhance ? value - 100 : value;
+    return Math.max(0, Math.min(1, (balanced - dark) / range));
+  });
   const cornerSamples = [];
-  const cornerSize = Math.max(2, Math.round(Math.min(width, height) * .12));
+  const cornerSize = Math.max(3, Math.round(Math.min(width, height) * .14));
   for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
     if ((x < cornerSize || x >= width - cornerSize) && (y < cornerSize || y >= height - cornerSize)) {
       cornerSamples.push(normalizedValues[y * width + x]);
@@ -3732,11 +3750,16 @@ function imageToAscii(image) {
   }
   cornerSamples.sort((a, b) => a - b);
   const background = cornerSamples[Math.floor(cornerSamples.length / 2)] ?? 1;
+  const hasKeepMask = keepMask.some(Boolean);
   const lines = [];
   for (let y = 0; y < height; y++) {
     let line = "";
     for (let x = 0; x < width; x++) {
       const index = y * width + x;
+      if (eraseMask[index]) {
+        line += " ";
+        continue;
+      }
       const normalized = normalizedValues[index];
       const left = normalizedValues[y * width + Math.max(0, x - 1)];
       const right = normalizedValues[y * width + Math.min(width - 1, x + 1)];
@@ -3746,19 +3769,20 @@ function imageToAscii(image) {
       const edgeY = down - up;
       const edge = Math.sqrt(edgeX * edgeX + edgeY * edgeY);
       const localAverage = (left + right + up + down + normalized) / 5;
-      const localContrast = normalized - localAverage;
-      const backgroundDistance = Math.abs(normalized - background);
-      if (backgroundDistance < .075 && edge < .12) {
+      const localContrast = (normalized - localAverage) * (options.autoEnhance ? 3.4 : 2.1);
+      const backgroundDistance = Math.abs(normalized - background) + saturationValues[index] * .35 + edge * .65;
+      const kept = keepMask[index];
+      if ((hasKeepMask && !kept) || (!kept && backgroundDistance < (options.autoEnhance ? .18 : .11) && edge < (options.autoEnhance ? .20 : .14))) {
         line += " ";
         continue;
       }
-      if (edge > .18) {
-        const horizontal = Math.abs(edgeX) > Math.abs(edgeY) * 1.7;
-        const vertical = Math.abs(edgeY) > Math.abs(edgeX) * 1.7;
+      if (edge > (options.autoEnhance ? .12 : .17)) {
+        const horizontal = Math.abs(edgeX) > Math.abs(edgeY) * 1.65;
+        const vertical = Math.abs(edgeY) > Math.abs(edgeX) * 1.65;
         line += horizontal ? "|" : vertical ? "_" : edgeX * edgeY > 0 ? "/" : "\\";
       } else {
-        const detailed = Math.max(0, Math.min(1, normalized + localContrast * 1.8));
-        const corrected = Math.pow(detailed, .9);
+        const detailed = Math.max(0, Math.min(1, normalized + localContrast));
+        const corrected = Math.pow(detailed, options.autoEnhance ? .62 : .82);
         line += shades[Math.min(shades.length - 1, Math.floor(corrected * shades.length))];
       }
     }
@@ -3769,6 +3793,18 @@ function imageToAscii(image) {
   return lines.join("\n");
 }
 
+function sampleAsciiMask(maskCanvas, width, height) {
+  const result = new Array(width * height).fill(false);
+  if (!maskCanvas) return result;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  context.drawImage(maskCanvas, 0, 0, width, height);
+  const data = context.getImageData(0, 0, width, height).data;
+  for (let index = 0; index < result.length; index += 1) result[index] = data[index * 4 + 3] > 16;
+  return result;
+}
 function deleteChatInputCharacter() {
   clearTimeout(state.chatLetterTimer);
   clearTimeout(state.chatSpaceTimer);
@@ -5851,6 +5887,108 @@ $("#chatPhotoInput").addEventListener("change", event => {
   state.asciiTarget = "friend";
   prepareAsciiPhoto(file);
 });
+function asciiEditorContext(canvas) {
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  context.lineWidth = Math.max(18, Math.round(Math.min(canvas.width, canvas.height) * .08));
+  return context;
+}
+
+function renderAsciiEditor(image) {
+  const canvas = $("#asciiEditorCanvas");
+  if (!canvas) return;
+  const maxWidth = Math.min(460, window.innerWidth - 72);
+  const aspect = image.height / image.width;
+  canvas.width = Math.round(maxWidth);
+  canvas.height = Math.round(Math.min(520, Math.max(220, maxWidth * aspect)));
+  state.asciiKeepCanvas = document.createElement("canvas");
+  state.asciiEraseCanvas = document.createElement("canvas");
+  [state.asciiKeepCanvas, state.asciiEraseCanvas].forEach(mask => {
+    mask.width = canvas.width;
+    mask.height = canvas.height;
+  });
+  redrawAsciiEditor();
+  updateAsciiDraft();
+}
+
+function redrawAsciiEditor() {
+  const canvas = $("#asciiEditorCanvas");
+  if (!canvas || !state.asciiImage) return;
+  const context = canvas.getContext("2d");
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = "#fff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(state.asciiImage, 0, 0, canvas.width, canvas.height);
+  if (state.asciiKeepCanvas) {
+    context.save();
+    context.globalAlpha = .32;
+    context.fillStyle = "#00d084";
+    context.globalCompositeOperation = "source-over";
+    context.drawImage(tintMask(state.asciiKeepCanvas, "#00d084"), 0, 0);
+    context.restore();
+  }
+  if (state.asciiEraseCanvas) {
+    context.save();
+    context.globalAlpha = .42;
+    context.drawImage(tintMask(state.asciiEraseCanvas, "#ff3b30"), 0, 0);
+    context.restore();
+  }
+}
+
+function tintMask(maskCanvas, color) {
+  const canvas = document.createElement("canvas");
+  canvas.width = maskCanvas.width;
+  canvas.height = maskCanvas.height;
+  const context = canvas.getContext("2d");
+  context.fillStyle = color;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.globalCompositeOperation = "destination-in";
+  context.drawImage(maskCanvas, 0, 0);
+  return canvas;
+}
+
+function updateAsciiDraft() {
+  if (!state.asciiImage) return;
+  state.asciiDraft = imageToAscii(state.asciiImage, {
+    autoEnhance: state.asciiAutoEnhance,
+    keepCanvas: state.asciiKeepCanvas,
+    eraseCanvas: state.asciiEraseCanvas
+  });
+  $("#asciiPreviewText").textContent = state.asciiDraft;
+}
+
+function setAsciiBrushMode(mode) {
+  state.asciiBrushMode = mode;
+  $("#asciiKeepBrush")?.classList.toggle("active", mode === "keep");
+  $("#asciiEraseBrush")?.classList.toggle("active", mode === "erase");
+}
+
+function drawAsciiBrush(event) {
+  if (!state.asciiDrawing || !state.asciiKeepCanvas || !state.asciiEraseCanvas) return;
+  const canvas = $("#asciiEditorCanvas");
+  const rect = canvas.getBoundingClientRect();
+  const x = (event.clientX - rect.left) * (canvas.width / rect.width);
+  const y = (event.clientY - rect.top) * (canvas.height / rect.height);
+  const mask = state.asciiBrushMode === "erase" ? state.asciiEraseCanvas : state.asciiKeepCanvas;
+  const context = asciiEditorContext(mask);
+  context.strokeStyle = "#000";
+  if (!state.asciiLastPoint) state.asciiLastPoint = { x, y };
+  context.beginPath();
+  context.moveTo(state.asciiLastPoint.x, state.asciiLastPoint.y);
+  context.lineTo(x, y);
+  context.stroke();
+  state.asciiLastPoint = { x, y };
+  redrawAsciiEditor();
+}
+
+function finishAsciiBrush() {
+  if (!state.asciiDrawing) return;
+  state.asciiDrawing = false;
+  state.asciiLastPoint = null;
+  updateAsciiDraft();
+}
+
 function prepareAsciiPhoto(file) {
   if (!file.type.startsWith("image/")) {
     showToast("사진 파일만 선택할 수 있습니다.");
@@ -5859,10 +5997,12 @@ function prepareAsciiPhoto(file) {
   const image = new Image();
   const objectUrl = URL.createObjectURL(file);
   image.onload = () => {
-    state.asciiDraft = imageToAscii(image);
+    state.asciiImage = image;
+    state.asciiAutoEnhance = false;
+    setAsciiBrushMode("keep");
     URL.revokeObjectURL(objectUrl);
-    $("#asciiPreviewText").textContent = state.asciiDraft;
     $("#asciiPreview").hidden = false;
+    renderAsciiEditor(image);
   };
   image.onerror = () => {
     URL.revokeObjectURL(objectUrl);
@@ -5872,8 +6012,34 @@ function prepareAsciiPhoto(file) {
 }
 $("#cancelAscii").addEventListener("click", () => {
   state.asciiDraft = "";
+  state.asciiImage = null;
+  state.asciiKeepCanvas = null;
+  state.asciiEraseCanvas = null;
   $("#asciiPreview").hidden = true;
 });
+$("#asciiAutoEnhance").addEventListener("click", () => {
+  state.asciiAutoEnhance = !state.asciiAutoEnhance;
+  $("#asciiAutoEnhance").classList.toggle("active", state.asciiAutoEnhance);
+  updateAsciiDraft();
+});
+$("#asciiKeepBrush").addEventListener("click", () => setAsciiBrushMode("keep"));
+$("#asciiEraseBrush").addEventListener("click", () => setAsciiBrushMode("erase"));
+$("#asciiClearBrush").addEventListener("click", () => {
+  if (!state.asciiKeepCanvas || !state.asciiEraseCanvas) return;
+  state.asciiKeepCanvas.getContext("2d").clearRect(0, 0, state.asciiKeepCanvas.width, state.asciiKeepCanvas.height);
+  state.asciiEraseCanvas.getContext("2d").clearRect(0, 0, state.asciiEraseCanvas.width, state.asciiEraseCanvas.height);
+  redrawAsciiEditor();
+  updateAsciiDraft();
+});
+$("#asciiEditorCanvas").addEventListener("pointerdown", event => {
+  state.asciiDrawing = true;
+  state.asciiLastPoint = null;
+  event.currentTarget.setPointerCapture?.(event.pointerId);
+  drawAsciiBrush(event);
+});
+$("#asciiEditorCanvas").addEventListener("pointermove", drawAsciiBrush);
+$("#asciiEditorCanvas").addEventListener("pointerup", finishAsciiBrush);
+$("#asciiEditorCanvas").addEventListener("pointercancel", finishAsciiBrush);
 $("#sendAscii").addEventListener("click", () => {
   if (!state.asciiDraft) return;
   if (state.asciiTarget === "friend" && state.activeFriend) {
@@ -5915,6 +6081,9 @@ $("#sendAscii").addEventListener("click", () => {
     }).catch(error => showApiFailure(error, "그룹 사진을 저장하지 못했습니다."));
   } else return;
   state.asciiDraft = "";
+  state.asciiImage = null;
+  state.asciiKeepCanvas = null;
+  state.asciiEraseCanvas = null;
   $("#asciiPreview").hidden = true;
   showToast("사진을 ASCII 아트로 보냈습니다.");
 });
