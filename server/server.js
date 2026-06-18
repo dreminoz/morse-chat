@@ -912,7 +912,16 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method === "POST" && url.pathname === "/api/daily-group/settings") {
     const { enabled } = await readBody(req);
-    account.dailyGroupEnabled = Boolean(enabled);
+    const nextEnabled = Boolean(enabled);
+    account.dailyGroupEnabled = nextEnabled;
+    if (!nextEnabled) {
+      const todayGroup = (await store.groupsForUser(account.signalId))
+        .find(group => group.type === "daily" && group.day === localDay());
+      if (todayGroup?.members?.includes(account.signalId)) {
+        await store.removeGroupMember(todayGroup.id, account.signalId);
+      }
+      account.dailyGroupLeftDay = localDay();
+    }
     await store.updateAccount(account);
     return json(res, 200, { account: publicAccount(account) });
   }

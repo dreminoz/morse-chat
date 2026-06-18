@@ -2051,6 +2051,7 @@ function applyAccountUpdate(account) {
   localStorage.setItem("morse-user-id", account.signalId);
   renderSettings();
   renderMyProfile();
+  if (state.world === "randomSignal") renderRandomSignal();
 }
 
 function logoutAccount() {
@@ -6118,6 +6119,110 @@ renderShop = function renderShop() {
     const rewardBody = ko ? "상점 컬렉터 배지 · 황금 왕관 프로필 효과" : ja ? "ショップマスターバッジ · 金の王冠効果" : "Shop Master badge · Golden Crown profile effect";
     const crownText = crownOn ? (ko ? "왕관 테두리 끄기" : ja ? "王冠枠を外す" : "Disable crown border") : (ko ? "왕관 테두리 켜기" : ja ? "王冠枠を付ける" : "Enable crown border");
     inventoryPanel.insertAdjacentHTML("beforeend", `<article class="collector-reward"><strong>${rewardTitle}</strong><span>${rewardBody}</span><button type="button" data-collector-crown="${crownOn ? "off" : "on"}">${crownText}</button></article>`);
+  }
+};
+
+renderShop = function renderShop() {
+  state.shopInventory = Array.isArray(state.shopInventory) ? state.shopInventory : [];
+  state.shopEquipped = state.shopEquipped || {};
+  state.shopCoins = Number(state.shopCoins || 0);
+  state.shopDrawCost = Number(state.shopDrawCost || 50);
+  if (!SHOP_CATEGORIES.some(category => category.id === state.shopInventoryCategory)) state.shopInventoryCategory = "randomTheme";
+
+  const drawGrid = $("#shopDrawCategories");
+  const inventoryTabs = $("#shopInventoryTabs");
+  const inventoryPanel = $("#shopInventory");
+  if (!drawGrid || !inventoryTabs || !inventoryPanel) return;
+
+  const localized = {
+    ko: {
+      categoryNames: { randomTheme: "랜덤 시그널 꾸미기", chatTheme: "대화창 테마", morseSound: "모스부호 소리", profile: "프로필 꾸미기" },
+      descriptions: { randomTheme: "랜덤 시그널 대화창을 꾸밉니다.", chatTheme: "개인 대화와 방장 그룹챗에 적용합니다.", morseSound: "메시지를 재생할 때 발신자의 소리가 납니다.", profile: "프로필 테두리와 배경을 꾸밉니다." },
+      allOwned: "모두 보유 중", inventory: "보유 아이템", inventoryHint: "장착을 눌러 아이템을 적용합니다.",
+      noItems: "아직 아이템이 없습니다. 랜덤 뽑기를 해보세요.", equip: "장착", unequip: "장착 해제", turnOff: "끄기",
+      defaultItem: "기본", border: "테두리", background: "배경", coins100: "재화 100개",
+      profileBorders: "프로필 테두리", profileBackgrounds: "프로필 배경", noBorders: "보유한 테두리가 없습니다.", noBackgrounds: "보유한 배경이 없습니다.",
+      rewardTitle: "컬렉션 완성 보상", rewardBody: "상점 컬렉터 배지 · 황금 왕관 프로필 효과", crownOff: "왕관 테두리 끄기", crownOn: "왕관 테두리 켜기",
+      need: amount => `재화 ${amount}개 필요`, draw: amount => `랜덤 뽑기 · ${amount}`
+    },
+    ja: {
+      categoryNames: { randomTheme: "ランダムシグナル装飾", chatTheme: "チャットテーマ", morseSound: "モールス音", profile: "プロフィール装飾" },
+      descriptions: { randomTheme: "ランダムシグナル画面を飾ります。", chatTheme: "個人チャットとオーナーのグループチャットに適用します。", morseSound: "メッセージ再生時に送信者の音が鳴ります。", profile: "プロフィールの枠と背景を飾ります。" },
+      allOwned: "すべて所持済み", inventory: "所持アイテム", inventoryHint: "装着を押すとアイテムを適用します。",
+      noItems: "まだアイテムがありません。ランダム抽選を試してください。", equip: "装着", unequip: "解除", turnOff: "オフ",
+      defaultItem: "基本", border: "枠", background: "背景", coins100: "100コイン",
+      profileBorders: "プロフィール枠", profileBackgrounds: "プロフィール背景", noBorders: "所持している枠がありません。", noBackgrounds: "所持している背景がありません。",
+      rewardTitle: "コンプリート報酬", rewardBody: "ショップマスターバッジ · 金の王冠プロフィール効果", crownOff: "王冠枠を外す", crownOn: "王冠枠を付ける",
+      need: amount => `${amount}コイン必要`, draw: amount => `ランダム抽選 · ${amount}`
+    },
+    en: {
+      categoryNames: { randomTheme: "Random Signal", chatTheme: "Chat Theme", morseSound: "Morse Sound", profile: "Profile Style" },
+      descriptions: { randomTheme: "Decorate Random Signal chats.", chatTheme: "Themes for direct chats and owner-controlled groups.", morseSound: "Sounds heard when Morse messages are played.", profile: "Profile borders and backgrounds." },
+      allOwned: "All owned", inventory: "Inventory", inventoryHint: "Tap Equip to use an item.",
+      noItems: "No items yet. Try a random draw.", equip: "Equip", unequip: "Unequip", turnOff: "Turn off",
+      defaultItem: "Default", border: "Border", background: "Background", coins100: "100 coins",
+      profileBorders: "Profile Borders", profileBackgrounds: "Profile Backgrounds", noBorders: "No borders owned.", noBackgrounds: "No backgrounds owned.",
+      rewardTitle: "Collection Complete Reward", rewardBody: "Shop Master badge · Golden Crown profile effect", crownOff: "Disable crown border", crownOn: "Enable crown border",
+      need: amount => `Need ${amount} coins`, draw: amount => `Random Draw · ${amount}`
+    }
+  };
+  const text = localized[state.language] || localized.en;
+
+  setElementText(".shop-inventory-card .section-heading strong", text.inventory);
+  setElementText(".shop-inventory-card .section-heading small", text.inventoryHint);
+  setElementText("#shopCoinBalance", state.shopCoins.toLocaleString());
+  setElementText("#buyCoins100 strong", text.coins100);
+  setElementText("#buyCoins100 small", "");
+
+  drawGrid.innerHTML = SHOP_CATEGORIES.map(category => {
+    const categoryItems = SHOP_ITEMS.filter(item => item.category === category.id && !item.free);
+    const allOwned = categoryItems.length > 0 && categoryItems.every(item => state.shopInventory.includes(item.id));
+    const insufficient = state.shopCoins < state.shopDrawCost;
+    const buttonText = allOwned ? text.allOwned : insufficient ? text.need(state.shopDrawCost) : text.draw(state.shopDrawCost);
+    return `<article class="shop-category-card" data-shop-preview="${category.id}" data-no-i18n>
+      <span>${category.name.slice(0, 3).toUpperCase()}</span>
+      <strong>${text.categoryNames[category.id] || category.name}</strong>
+      <small>${text.descriptions[category.id] || category.description}</small>
+      <button type="button" data-shop-draw="${category.id}" ${allOwned || insufficient ? "disabled" : ""}>${buttonText}</button>
+    </article>`;
+  }).join("");
+
+  const result = state.shopLastDraw;
+  $("#shopResult").hidden = !result;
+  if (result?.item) $("#shopResult").innerHTML = `<span>${result.item.icon}</span><div><small>${result.duplicate ? "Duplicate item" : "New item"}</small><strong>${result.item.name}</strong></div>`;
+
+  inventoryTabs.innerHTML = SHOP_CATEGORIES.map(category =>
+    `<button type="button" data-shop-inventory-category="${category.id}" class="${state.shopInventoryCategory === category.id ? "active" : ""}">${text.categoryNames[category.id] || category.name}</button>`
+  ).join("");
+
+  const owned = state.shopInventory.map(shopItem).filter(Boolean);
+  const categoryOwned = state.shopInventoryCategory === "morseSound"
+    ? [shopItem("sound_basic"), ...owned.filter(item => item.category === "morseSound" && item.id !== "sound_basic")].filter(Boolean)
+    : owned.filter(item => item.category === state.shopInventoryCategory);
+  const itemCard = item => {
+    const equipped = item.id === "sound_basic" ? !state.shopEquipped?.morseSound || state.shopEquipped?.morseSound === "sound_basic" : state.shopEquipped?.[item.slot] === item.id;
+    const slotLabel = item.free ? text.defaultItem : item.slot === "profileBorder" ? text.border : item.slot === "profileBackground" ? text.background : text.categoryNames[item.category] || item.category;
+    const action = equipped ? (item.slot === "morseSound" ? text.turnOff : text.unequip) : text.equip;
+    return `<article class="shop-inventory-item" data-owned-preview="${item.id}" data-no-i18n>
+      ${item.category === "morseSound" ? `<span>${item.icon}</span>` : `<div class="shop-mini-preview">${shopPreviewVisual(item)}</div>`}
+      <div><strong>${item.name}</strong><small>${slotLabel}</small></div>
+      <button type="button" ${equipped ? `data-shop-unequip="${item.slot}"` : `data-shop-equip="${item.id}"`}>${action}</button>
+    </article>`;
+  };
+
+  if (state.shopInventoryCategory === "profile" && categoryOwned.length) {
+    const borders = categoryOwned.filter(item => item.slot === "profileBorder");
+    const backgrounds = categoryOwned.filter(item => item.slot === "profileBackground");
+    inventoryPanel.innerHTML = `
+      <section class="shop-profile-slot"><div class="shop-profile-slot-heading"><strong>${text.profileBorders}</strong><small>${text.background}</small></div>${borders.length ? borders.map(itemCard).join("") : `<p class="shop-empty">${text.noBorders}</p>`}</section>
+      <section class="shop-profile-slot"><div class="shop-profile-slot-heading"><strong>${text.profileBackgrounds}</strong><small>${text.border}</small></div>${backgrounds.length ? backgrounds.map(itemCard).join("") : `<p class="shop-empty">${text.noBackgrounds}</p>`}</section>`;
+  } else {
+    inventoryPanel.innerHTML = categoryOwned.length ? categoryOwned.map(itemCard).join("") : `<p class="shop-empty">${text.noItems}</p>`;
+  }
+
+  if ((state.account?.specials || []).includes("collector_badge")) {
+    const crownOn = state.shopEquipped?.collectorCrown !== false;
+    inventoryPanel.insertAdjacentHTML("beforeend", `<article class="collector-reward"><strong>${text.rewardTitle}</strong><span>${text.rewardBody}</span><button type="button" data-collector-crown="${crownOn ? "off" : "on"}">${crownOn ? text.crownOff : text.crownOn}</button></article>`);
   }
 };
 
