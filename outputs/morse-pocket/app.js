@@ -3981,23 +3981,52 @@ function renderDiaryFocusMode() {
   toggle.textContent = state.diaryFocusMode ? diaryText("showCalendar") : diaryText("hideCalendar");
 }
 
-function renderDiaryDraftSegment(segment, index) {
+function renderDiaryDraftSegment(segment) {
   const isHidden = segment.type === "vibration";
   const label = isHidden ? diaryText("hiddenDraft") : diaryText("textDraft");
-  return `<span class="diary-draft-piece ${isHidden ? "vibration-only" : "text-piece"}" title="${label}">
-    <span class="diary-draft-content">${isHidden ? '<span class="diary-hidden-blank" aria-hidden="true"></span>' : escapeHtml(segment.text)}</span>
-    <button type="button" class="diary-draft-remove" data-delete-diary-segment="${index}" aria-label="${diaryText("removePiece")}">×</button>
+  if (!isHidden) return escapeHtml(segment.text);
+  return `<span class="diary-draft-piece vibration-only" contenteditable="false" data-diary-vibration-text="${escapeHtml(segment.text)}" title="${label}">
+    <span class="diary-hidden-blank" aria-hidden="true"></span>
   </span>`;
 }
 
+function syncDiaryDraftFromEditor() {
+  const editor = $("#diaryDraftSegments");
+  if (!editor) return;
+  const segments = [];
+  const pushText = text => {
+    if (!text) return;
+    const last = segments[segments.length - 1];
+    if (last?.type === "text") last.text += text;
+    else segments.push({ type: "text", text });
+  };
+  const walk = node => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      pushText(node.nodeValue);
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    if (node.dataset?.diaryVibrationText !== undefined) {
+      segments.push({ type: "vibration", text: node.dataset.diaryVibrationText });
+      return;
+    }
+    if (node.tagName === "BR") {
+      pushText("\n");
+      return;
+    }
+    Array.from(node.childNodes).forEach(walk);
+    if (node.tagName === "DIV" || node.tagName === "P") pushText("\n");
+  };
+  Array.from(editor.childNodes).forEach(walk);
+  state.diaryDraftSegments = segments.filter(segment => segment.type === "vibration" || segment.text.length);
+}
 function renderDiary() {
   $("#diaryText").value = state.diaryText;
   $("#diarySignal").textContent = state.diarySignal ? diaryText("current", prettyMorse(state.diarySignal)) : diaryText("empty");
   renderDiaryCalendar();
   renderDiaryFocusMode();
-  $("#diaryDraftSegments").innerHTML = state.diaryDraftSegments.length ? state.diaryDraftSegments.map((segment, index) =>
-    renderDiaryDraftSegment(segment, index)
-  ).join("") : `<small>${diaryText("draftHint")}</small>`;
+  $("#diaryDraftSegments").setAttribute("data-placeholder", diaryText("draftHint"));
+  $("#diaryDraftSegments").innerHTML = state.diaryDraftSegments.map(segment => renderDiaryDraftSegment(segment)).join("");
   const entries = diaryEntriesForDate();
   if (!entries.length) {
     $("#diaryEntries").innerHTML = `<p class="chat-empty">${diaryText("selectedEmpty")}</p>`;
@@ -4060,6 +4089,7 @@ function addDiarySignal(mark) {
 
 function appendDiarySegment(type) {
   commitDiaryLetter();
+  syncDiaryDraftFromEditor();
   const input = $("#diaryText");
   const rawText = state.diaryText;
   const text = type === "vibration" ? rawText.trim() : rawText;
@@ -4080,6 +4110,7 @@ function appendDiarySegment(type) {
 
 async function storeDiaryEntry() {
   commitDiaryLetter();
+  syncDiaryDraftFromEditor();
   const segments = [];
   if (state.diaryText.trim()) segments.push({ type: "text", text: state.diaryText.trim() });
   segments.push(...state.diaryDraftSegments);
@@ -5486,11 +5517,9 @@ $("#diaryYearPicker").addEventListener("click", event => {
 });
 $("#appendDiaryText").addEventListener("click", () => appendDiarySegment("text"));
 $("#appendDiaryVibration").addEventListener("click", () => appendDiarySegment("vibration"));
-$("#diaryDraftSegments").addEventListener("click", event => {
-  const button = event.target.closest("[data-delete-diary-segment]");
-  if (!button) return;
-  state.diaryDraftSegments.splice(Number(button.dataset.deleteDiarySegment), 1);
-  renderDiary();
+$("#diaryDraftSegments").addEventListener("input", () => {
+  syncDiaryDraftFromEditor();
+  state.diaryDirty = true;
 });
 $("#openDiaryList").addEventListener("click", () => {
   renderDiaryList();
