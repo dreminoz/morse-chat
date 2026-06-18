@@ -1656,6 +1656,7 @@ const state = {
   diarySelectedDate: new Date().toLocaleDateString("en-CA"),
   diaryCalendarMonth: new Date().toLocaleDateString("en-CA").slice(0, 7),
   diaryDirty: false,
+  diaryFocusMode: localStorage.getItem("morsiq-diary-focus-mode") === "true",
   diaryDraftSegments: [],
   gameWords: [],
   gameIndex: -1,
@@ -3899,6 +3900,9 @@ function diaryText(key, ...args) {
       listEmpty: "??? ??? ????.",
       playHidden: "?? ?? ? ??? ??",
       vibrationOnlyRule: "?? ???? ??? ??? ??? ? ????.",
+      hideCalendar: "?? ???",
+      showCalendar: "?? ???",
+      removePiece: "??",
       saveFail: "??? ??? ???? ?????."
     },
     en: {
@@ -3911,6 +3915,9 @@ function diaryText(key, ...args) {
       listEmpty: "No saved diary entries.",
       playHidden: "Vibration only ? tap to play",
       vibrationOnlyRule: "Vibration-only diary parts can contain only English letters and numbers.",
+      hideCalendar: "Hide calendar",
+      showCalendar: "Show calendar",
+      removePiece: "Remove",
       saveFail: "Could not save the diary on the server."
     },
     ja: {
@@ -3923,6 +3930,9 @@ function diaryText(key, ...args) {
       listEmpty: "??????????????",
       playHidden: "???? ? ???????",
       vibrationOnlyRule: "????????????????????",
+      hideCalendar: "???????",
+      showCalendar: "???????",
+      removePiece: "??",
       saveFail: "???????????????????"
     }
   }[state.language] || {};
@@ -3954,12 +3964,39 @@ function renderDiaryCalendar() {
   $("#diarySelectedDate").textContent = state.diarySelectedDate;
 }
 
+function renderDiaryFocusMode() {
+  const desk = $("#diaryDesk");
+  if (!desk) return;
+  let toggle = $("#toggleDiaryFocus");
+  if (!toggle) {
+    $("#openDiaryList").insertAdjacentHTML("beforebegin", '<button id="toggleDiaryFocus" class="diary-focus-toggle" type="button"></button>');
+    toggle = $("#toggleDiaryFocus");
+    toggle.addEventListener("click", () => {
+      state.diaryFocusMode = !state.diaryFocusMode;
+      localStorage.setItem("morsiq-diary-focus-mode", state.diaryFocusMode ? "true" : "false");
+      renderDiaryFocusMode();
+    });
+  }
+  desk.classList.toggle("diary-focus-mode", state.diaryFocusMode);
+  toggle.textContent = state.diaryFocusMode ? diaryText("showCalendar") : diaryText("hideCalendar");
+}
+
+function renderDiaryDraftSegment(segment, index) {
+  const isHidden = segment.type === "vibration";
+  const label = isHidden ? diaryText("hiddenDraft") : diaryText("textDraft");
+  return `<span class="diary-draft-piece ${isHidden ? "vibration-only" : "text-piece"}" title="${label}">
+    <span class="diary-draft-content">${isHidden ? '<span class="diary-hidden-blank" aria-hidden="true"></span>' : escapeHtml(segment.text)}</span>
+    <button type="button" class="diary-draft-remove" data-delete-diary-segment="${index}" aria-label="${diaryText("removePiece")}">×</button>
+  </span>`;
+}
+
 function renderDiary() {
   $("#diaryText").value = state.diaryText;
   $("#diarySignal").textContent = state.diarySignal ? diaryText("current", prettyMorse(state.diarySignal)) : diaryText("empty");
   renderDiaryCalendar();
+  renderDiaryFocusMode();
   $("#diaryDraftSegments").innerHTML = state.diaryDraftSegments.length ? state.diaryDraftSegments.map((segment, index) =>
-    `<button type="button" data-remove-diary-segment="${index}" class="${segment.type === "vibration" ? "vibration-only" : ""}" title="${segment.type === "vibration" ? diaryText("hiddenDraft") : diaryText("textDraft")}">${segment.type === "vibration" ? "&nbsp;" : escapeHtml(segment.text)}</button>`
+    renderDiaryDraftSegment(segment, index)
   ).join("") : `<small>${diaryText("draftHint")}</small>`;
   const entries = diaryEntriesForDate();
   if (!entries.length) {
@@ -5450,9 +5487,9 @@ $("#diaryYearPicker").addEventListener("click", event => {
 $("#appendDiaryText").addEventListener("click", () => appendDiarySegment("text"));
 $("#appendDiaryVibration").addEventListener("click", () => appendDiarySegment("vibration"));
 $("#diaryDraftSegments").addEventListener("click", event => {
-  const button = event.target.closest("[data-remove-diary-segment]");
+  const button = event.target.closest("[data-delete-diary-segment]");
   if (!button) return;
-  state.diaryDraftSegments.splice(Number(button.dataset.removeDiarySegment), 1);
+  state.diaryDraftSegments.splice(Number(button.dataset.deleteDiarySegment), 1);
   renderDiary();
 });
 $("#openDiaryList").addEventListener("click", () => {
