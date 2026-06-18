@@ -3959,7 +3959,7 @@ function renderDiary() {
   $("#diarySignal").textContent = state.diarySignal ? diaryText("current", prettyMorse(state.diarySignal)) : diaryText("empty");
   renderDiaryCalendar();
   $("#diaryDraftSegments").innerHTML = state.diaryDraftSegments.length ? state.diaryDraftSegments.map((segment, index) =>
-    `<button type="button" data-remove-diary-segment="${index}" class="${segment.type === "vibration" ? "vibration-only" : ""}"><strong>${segment.type === "vibration" ? diaryText("hiddenDraft") : diaryText("textDraft")}</strong><br>${segment.type === "vibration" ? "" : escapeHtml(segment.text)}</button>`
+    `<button type="button" data-remove-diary-segment="${index}" class="${segment.type === "vibration" ? "vibration-only" : ""}" title="${segment.type === "vibration" ? diaryText("hiddenDraft") : diaryText("textDraft")}">${segment.type === "vibration" ? "&nbsp;" : escapeHtml(segment.text)}</button>`
   ).join("") : `<small>${diaryText("draftHint")}</small>`;
   const entries = diaryEntriesForDate();
   if (!entries.length) {
@@ -3971,7 +3971,7 @@ function renderDiary() {
 
 function renderDiaryEntryCard(entry, index) {
   const segments = entry.segments?.length ? entry.segments : [{ type: entry.vibrationOnly ? "vibration" : "text", text: entry.text }];
-  return `<article class="diary-note"><time>${entry.date || new Date(entry.createdAt).toLocaleDateString()} ? ${new Date(entry.createdAt).toLocaleTimeString()}</time><div class="diary-segment-list">${segments.map(segment => segment.type === "vibration"
+  return `<article class="diary-note"><time>${entry.date || new Date(entry.createdAt).toLocaleDateString()} ? ${new Date(entry.createdAt).toLocaleTimeString()}</time><div class="diary-segment-list inline">${segments.map(segment => segment.type === "vibration"
     ? `<button type="button" class="diary-segment-vibration" data-diary-segment-play="${index}" data-segment-text="${escapeHtml(segment.text)}">${diaryText("playHidden")}</button>`
     : `<p data-no-i18n>${escapeHtml(segment.text)}</p>`).join("")}</div><button type="button" data-delete-diary="${index}" aria-label="Delete diary">?</button></article>`;
 }
@@ -4023,30 +4023,21 @@ function addDiarySignal(mark) {
 
 function appendDiarySegment(type) {
   commitDiaryLetter();
-  if (type !== "vibration") {
-    $("#diaryText").focus();
-    return;
-  }
   const input = $("#diaryText");
-  const start = input.selectionStart ?? 0;
-  const end = input.selectionEnd ?? 0;
-  const selected = start !== end ? state.diaryText.slice(start, end) : state.diaryText;
-  const text = selected.trim();
+  const rawText = state.diaryText;
+  const text = type === "vibration" ? rawText.trim() : rawText;
   if (!text) return;
-  if (!/^[A-Za-z0-9 ]+$/.test(text)) {
+  if (type === "vibration" && !/^[A-Za-z0-9 ]+$/.test(text)) {
     showToast(diaryText("vibrationOnlyRule"));
     return;
   }
-  state.diaryDraftSegments.push({ type: "vibration", text });
-  state.diaryText = start !== end
-    ? `${state.diaryText.slice(0, start)}${state.diaryText.slice(end)}`.replace(/[ \t]{2,}/g, " ")
-    : "";
+  state.diaryDraftSegments.push({ type: type === "vibration" ? "vibration" : "text", text });
+  state.diaryText = "";
   state.diarySignal = "";
   state.diaryDirty = true;
   renderDiary();
   requestAnimationFrame(() => {
     input.focus();
-    input.selectionStart = input.selectionEnd = Math.min(start, state.diaryText.length);
   });
 }
 
@@ -6233,6 +6224,14 @@ renderShop = function renderShop() {
   setElementText("#shopCoinBalance", state.shopCoins.toLocaleString());
   setElementText("#buyCoins100 strong", text.coins100);
   setElementText("#buyCoins100 small", "");
+  const dailyRewardText = state.language === "ko"
+    ? "매일 접속하면 50개 지급"
+    : state.language === "ja" ? "毎日ログインで50コイン付与" : "Get 50 coins every day";
+  const walletInfo = $(".shop-wallet-card > div");
+  if (walletInfo && !walletInfo.querySelector(".shop-daily-reward-note")) {
+    walletInfo.insertAdjacentHTML("beforeend", '<small class="shop-daily-reward-note"></small>');
+  }
+  setElementText(".shop-daily-reward-note", dailyRewardText);
 
   drawGrid.innerHTML = SHOP_CATEGORIES.map(category => {
     const categoryItems = SHOP_ITEMS.filter(item => item.category === category.id && !item.free);
