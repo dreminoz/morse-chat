@@ -1070,13 +1070,14 @@ function localizeMainUI() {
   if (!state.diaryUnlocked) setElementText("#unlockDiary", mainText("openDiary"));
   setElementText("#lockDiary", mainText("lock"));
   setElementText("#openDiaryList", mainText("diaryList"));
-  setElementText("#diaryListOverlay h2", mainText("diaryList"));
+  setElementText("#diaryListPanel h2", mainText("diaryList"));
   setElementText("#secretDiaryWorld .diary-header h2", mainText("secretDiary"));
   setElementText("#diaryEntriesSection .section-heading strong", mainText("selectedDiary"));
   setElementText("#diaryEntriesSection .section-heading small", mainText("savedEntries"));
   setElementText("#diaryEditorSection .section-heading strong", mainText("writingDiary"));
   setElementText("#diaryEditorSection .section-heading small", mainText("saveDiaryNote"));
   setElementText("#saveDiaryEntry", mainText("saveDiary"));
+  setElementText("#appendDiaryText", mainText("send"));
   setElementText("#addDiaryHidden", mainText("vibrationOnly"));
   setElementText("#secretDiaryWorld .diary-header h2", mainText("secretDiary"));
   setElementText("#openDiaryList", mainText("diaryList"));
@@ -3886,6 +3887,49 @@ function diaryEntriesForDate(date = state.diarySelectedDate) {
   return state.diaryEntries.filter(entry => (entry.date || new Date(entry.createdAt).toLocaleDateString("en-CA")) === date);
 }
 
+function diaryText(key, ...args) {
+  const table = {
+    ko: {
+      current: value => `?? ??: ${value}`,
+      empty: "?? ??: ?? ??",
+      hiddenDraft: "?? ??",
+      textDraft: "??",
+      draftHint: "?? ??? ??, ?? ??/??? ??? ? ?? ??? ????.",
+      selectedEmpty: "??? ??? ??? ??? ????.",
+      listEmpty: "??? ??? ????.",
+      playHidden: "?? ?? ? ??? ??",
+      vibrationOnlyRule: "?? ???? ??? ??? ??? ? ????.",
+      saveFail: "??? ??? ???? ?????."
+    },
+    en: {
+      current: value => `Current letter: ${value}`,
+      empty: "Current letter: empty",
+      hiddenDraft: "Vibration only",
+      textDraft: "Text",
+      draftHint: "Keep writing. Select words or sentences, then tap Vibration only to hide them.",
+      selectedEmpty: "No diary entries saved for the selected date.",
+      listEmpty: "No saved diary entries.",
+      playHidden: "Vibration only ? tap to play",
+      vibrationOnlyRule: "Vibration-only diary parts can contain only English letters and numbers.",
+      saveFail: "Could not save the diary on the server."
+    },
+    ja: {
+      current: value => `?????: ${value}`,
+      empty: "?????: ?",
+      hiddenDraft: "????",
+      textDraft: "??",
+      draftHint: "???????????????????????????????????",
+      selectedEmpty: "?????????????????????",
+      listEmpty: "??????????????",
+      playHidden: "???? ? ???????",
+      vibrationOnlyRule: "????????????????????",
+      saveFail: "???????????????????"
+    }
+  }[state.language] || {};
+  const value = table[key];
+  return typeof value === "function" ? value(...args) : value || key;
+}
+
 function selectDiaryDate(date) {
   state.diarySelectedDate = date;
   state.diaryText = "";
@@ -3912,14 +3956,14 @@ function renderDiaryCalendar() {
 
 function renderDiary() {
   $("#diaryText").value = state.diaryText;
-  $("#diarySignal").textContent = state.diarySignal ? `현재 글자: ${prettyMorse(state.diarySignal)}` : "현재 글자: 비어 있음";
+  $("#diarySignal").textContent = state.diarySignal ? diaryText("current", prettyMorse(state.diarySignal)) : diaryText("empty");
   renderDiaryCalendar();
   $("#diaryDraftSegments").innerHTML = state.diaryDraftSegments.length ? state.diaryDraftSegments.map((segment, index) =>
-    `<button type="button" data-remove-diary-segment="${index}" class="${segment.type === "vibration" ? "vibration-only" : ""}"><strong>${segment.type === "vibration" ? "진동 전용" : "문자"}</strong><br>${escapeHtml(segment.text)}</button>`
-  ).join("") : '<small>보내기 또는 진동 전용을 눌러 일기 조각을 추가하세요.</small>';
+    `<button type="button" data-remove-diary-segment="${index}" class="${segment.type === "vibration" ? "vibration-only" : ""}"><strong>${segment.type === "vibration" ? diaryText("hiddenDraft") : diaryText("textDraft")}</strong><br>${segment.type === "vibration" ? "" : escapeHtml(segment.text)}</button>`
+  ).join("") : `<small>${diaryText("draftHint")}</small>`;
   const entries = diaryEntriesForDate();
   if (!entries.length) {
-    $("#diaryEntries").innerHTML = '<p class="chat-empty">선택한 날짜에 저장된 일기가 없습니다.</p>';
+    $("#diaryEntries").innerHTML = `<p class="chat-empty">${diaryText("selectedEmpty")}</p>`;
     return;
   }
   $("#diaryEntries").innerHTML = entries.map(entry => renderDiaryEntryCard(entry, state.diaryEntries.indexOf(entry))).join("");
@@ -3927,15 +3971,15 @@ function renderDiary() {
 
 function renderDiaryEntryCard(entry, index) {
   const segments = entry.segments?.length ? entry.segments : [{ type: entry.vibrationOnly ? "vibration" : "text", text: entry.text }];
-  return `<article class="diary-note"><time>${entry.date || new Date(entry.createdAt).toLocaleDateString()} · ${new Date(entry.createdAt).toLocaleTimeString()}</time><div class="diary-segment-list">${segments.map(segment => segment.type === "vibration"
-    ? `<button type="button" class="diary-segment-vibration" data-diary-segment-play="${index}" data-segment-text="${escapeHtml(segment.text)}">진동 전용 · 탭해서 듣기</button>`
-    : `<p data-no-i18n>${escapeHtml(segment.text)}</p>`).join("")}</div><button type="button" data-delete-diary="${index}" aria-label="일기 삭제">×</button></article>`;
+  return `<article class="diary-note"><time>${entry.date || new Date(entry.createdAt).toLocaleDateString()} ? ${new Date(entry.createdAt).toLocaleTimeString()}</time><div class="diary-segment-list">${segments.map(segment => segment.type === "vibration"
+    ? `<button type="button" class="diary-segment-vibration" data-diary-segment-play="${index}" data-segment-text="${escapeHtml(segment.text)}">${diaryText("playHidden")}</button>`
+    : `<p data-no-i18n>${escapeHtml(segment.text)}</p>`).join("")}</div><button type="button" data-delete-diary="${index}" aria-label="Delete diary">?</button></article>`;
 }
 
 function renderDiaryList() {
   $("#diaryAllEntries").innerHTML = state.diaryEntries.length
     ? [...state.diaryEntries].sort((a, b) => b.createdAt - a.createdAt).map(entry => renderDiaryEntryCard(entry, state.diaryEntries.indexOf(entry))).join("")
-    : '<p class="chat-empty">저장된 일기가 없습니다.</p>';
+    : `<p class="chat-empty">${diaryText("listEmpty")}</p>`;
 }
 
 function commitDiaryLetter(uppercase = false) {
@@ -3979,27 +4023,43 @@ function addDiarySignal(mark) {
 
 function appendDiarySegment(type) {
   commitDiaryLetter();
-  const text = state.diaryText.trim();
-  if (!text) return;
-  if (type === "vibration" && !/^[A-Za-z0-9 ]+$/.test(text)) {
-    showToast("진동 전용에는 영어와 숫자만 사용할 수 있습니다.");
+  if (type !== "vibration") {
+    $("#diaryText").focus();
     return;
   }
-  state.diaryDraftSegments.push({ type, text });
-  state.diaryText = "";
+  const input = $("#diaryText");
+  const start = input.selectionStart ?? 0;
+  const end = input.selectionEnd ?? 0;
+  const selected = start !== end ? state.diaryText.slice(start, end) : state.diaryText;
+  const text = selected.trim();
+  if (!text) return;
+  if (!/^[A-Za-z0-9 ]+$/.test(text)) {
+    showToast(diaryText("vibrationOnlyRule"));
+    return;
+  }
+  state.diaryDraftSegments.push({ type: "vibration", text });
+  state.diaryText = start !== end
+    ? `${state.diaryText.slice(0, start)}${state.diaryText.slice(end)}`.replace(/[ \t]{2,}/g, " ")
+    : "";
   state.diarySignal = "";
   state.diaryDirty = true;
   renderDiary();
+  requestAnimationFrame(() => {
+    input.focus();
+    input.selectionStart = input.selectionEnd = Math.min(start, state.diaryText.length);
+  });
 }
 
 async function storeDiaryEntry() {
   commitDiaryLetter();
-  if (state.diaryText.trim()) appendDiarySegment("text");
-  if (!state.diaryDraftSegments.length) return;
+  const segments = [];
+  if (state.diaryText.trim()) segments.push({ type: "text", text: state.diaryText.trim() });
+  segments.push(...state.diaryDraftSegments);
+  if (!segments.length) return;
   try {
     const { entries } = await api("/api/diary/entries", {
       method: "POST",
-      body: JSON.stringify(diaryAuthPayload({ segments: state.diaryDraftSegments, date: state.diarySelectedDate }))
+      body: JSON.stringify(diaryAuthPayload({ segments, date: state.diarySelectedDate }))
     });
     entries.forEach(entry => {
       const index = state.diaryEntries.findIndex(item => item.id === entry.id);
@@ -4012,7 +4072,7 @@ async function storeDiaryEntry() {
     state.diaryDirty = false;
     renderDiary();
   } catch (error) {
-    showApiFailure(error, "일기를 서버에 저장하지 못했습니다.");
+    showApiFailure(error, diaryText("saveFail"));
   }
 }
 
