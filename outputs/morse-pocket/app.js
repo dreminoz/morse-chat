@@ -585,23 +585,7 @@ function safeMainText(key) {
   return (SAFE_MAIN_TEXT[state.language] || SAFE_MAIN_TEXT.en)[key] || SAFE_MAIN_TEXT.en[key] || key;
 }
 
-function rebuildWorldTabs() {
-  const rows = [
-    [document.querySelector(".primary-world-tabs"), ["friends", "hall", "space", "randomSignal", "profile"]],
-    [document.querySelector(".secondary-world-tabs"), ["dailyGroup", "games", "secretDiary", "shop"]]
-  ];
-  const labels = { friends: "conversations", hall: "training", space: "space", randomSignal: "randomSignal", profile: "profile", dailyGroup: "dailyGroup", games: "games", secretDiary: "secretDiary", shop: "shop" };
-  rows.forEach(([row, worlds]) => {
-    if (!row) return;
-    row.replaceChildren(...worlds.map(world => {
-      const button = document.createElement("button");
-      button.className = "world-tab" + (state.world === world ? " active" : "");
-      button.type = "button";
-      button.dataset.world = world;
-      button.textContent = safeMainText(labels[world]);
-      return button;
-    }));
-  });
+function repairWorldTabs() {
   const settingsButton = $("#openSettings");
   if (settingsButton) {
     settingsButton.textContent = "...";
@@ -617,7 +601,7 @@ function keyerModeHint() {
 }
 
 function localizeMainUI() {
-  rebuildWorldTabs();
+  repairWorldTabs();
     document.querySelector("[data-world='friends']") && (document.querySelector("[data-world='friends']").textContent = safeMainText("conversations"));
   document.querySelector("[data-world='hall']") && (document.querySelector("[data-world='hall']").textContent = safeMainText("training"));
   document.querySelector("[data-world='space']") && (document.querySelector("[data-world='space']").textContent = safeMainText("space"));

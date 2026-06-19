@@ -100,7 +100,7 @@
         <div id="chatMessages" class="chat-messages"></div>
         <div id="chatMorseComposer" class="chat-morse-composer">
           <div class="chat-morse-display">
-            <textarea id="chatMorseText" rows="1" maxlength="100" placeholder="紐⑥뒪肄붾뱶瑜??낅젰?섏꽭?? autocomplete="off"></textarea>
+            <textarea id="chatMorseText" rows="1" maxlength="100" placeholder="Enter Morse code" autocomplete="off"></textarea>
             <small id="chatMorseSignal">?꾩옱 湲?? 鍮꾩뼱 ?덉쓬</small>
           </div>
           <button id="chatKeyer" class="morse-keyer chat-keyer" type="button">
@@ -110,7 +110,7 @@
           </button>
           <div class="chat-morse-actions">
             <button id="clearChatMorse" class="light-button" type="button">吏?곌린</button>
-            <label class="photo-send-button" for="chatPhotoInput" aria-label="?ъ쭊??ASCII ?꾪듃濡?蹂대궡湲?>
+            <label class="photo-send-button" for="chatPhotoInput" aria-label="Send photo as ASCII art">
               <span>?ъ쭊</span>
             </label>
             <div class="send-control">
@@ -143,7 +143,7 @@
         </header>
         <div id="groupMessages" class="chat-messages"></div>
         <form id="groupMessageForm" class="chat-morse-composer group-chat-composer">
-          <div class="chat-morse-display"><textarea id="groupMessageInput" rows="1" maxlength="1000" placeholder="紐⑥뒪肄붾뱶瑜??낅젰?섏꽭??></textarea><small id="groupMessageSignal">?꾩옱 湲?? 鍮꾩뼱 ?덉쓬</small></div>
+          <div class="chat-morse-display"><textarea id="groupMessageInput" rows="1" maxlength="1000" placeholder="Enter Morse code"></textarea><small id="groupMessageSignal">Current letter: empty</small></div>
           <button id="groupMessageKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>Short press: dot / Long press: dash</span><small></small></button>
           <div class="chat-morse-actions">
             <button id="clearGroupMessage" class="light-button" type="button">吏?곌린</button>
@@ -184,8 +184,8 @@
 
     <section id="library" class="view active">
       <form id="phraseForm" class="composer">
-        <input id="phraseInput" maxlength="100" placeholder="?꾨떖??臾멸뎄瑜??낅젰?섏꽭?? autocomplete="off">
-        <button type="submit" aria-label="臾멸뎄 ???>+</button>
+        <input id="phraseInput" maxlength="100" placeholder="Enter a phrase to send" autocomplete="off">
+        <button type="submit" aria-label="Save phrase">+</button>
       </form>
       <p class="support-note">?곷Ц, ?レ옄, 二쇱슂 臾몄옣遺?몃? 吏?먰빀?덈떎.</p>
       <div id="phraseList" class="phrase-list"></div>
@@ -408,7 +408,7 @@
           <div id="randomChatMessages" class="random-chat-messages"></div>
           <div class="random-chat-composer">
             <div class="chat-morse-display">
-              <textarea id="randomChatInput" rows="1" maxlength="300" autocomplete="off" placeholder="紐⑥뒪肄붾뱶瑜??낅젰?섏꽭??></textarea>
+              <textarea id="randomChatInput" rows="1" maxlength="300" autocomplete="off" placeholder="Enter Morse code"></textarea>
               <small id="randomChatSignal">?꾩옱 湲?? 鍮꾩뼱 ?덉쓬</small>
             </div>
             <button id="randomChatKeyer" class="morse-keyer chat-keyer" type="button">
@@ -418,7 +418,7 @@
             </button>
             <div class="random-chat-actions">
               <button id="clearRandomChat" class="light-button" type="button">吏?곌린</button>
-              <label class="photo-send-button" for="randomPhotoInput" aria-label="?ъ쭊??ASCII ?꾪듃濡?蹂대궡湲?><span>?ъ쭊</span></label>
+              <label class="photo-send-button" for="randomPhotoInput" aria-label="Send photo as ASCII art"><span>Photo</span></label>
               <div class="send-control">
                 <div id="randomHiddenPicker" class="hidden-view-picker" hidden>
                   <span>?쒓렇???ъ깮 ?잛닔</span>
@@ -444,7 +444,7 @@
           <strong>?쇱뒪???쒓렇?</strong>
           <p>?곌껐???딄꼈?듬땲?? 留덉?留?臾몄옣??蹂대궪吏 ?좏깮?섏꽭??</p>
           <form id="lastSignalForm" class="last-signal-form">
-            <input id="lastSignalInput" type="text" maxlength="300" autocomplete="off" placeholder="留덉?留?臾몄옣???낅젰?섏꽭??>
+            <input id="lastSignalInput" type="text" maxlength="300" autocomplete="off" placeholder="Enter your last signal">
             <div class="last-signal-actions">
               <button id="skipLastSignal" class="light-button" type="button">蹂대궡吏 ?딄린</button>
               <button type="submit">蹂대궡湲</button>
@@ -484,7 +484,7 @@
       </header>
       <div id="dailyGroupMessages" class="chat-messages daily-group-messages"></div>
       <form id="dailyGroupForm" class="chat-morse-composer group-chat-composer">
-        <div class="chat-morse-display"><textarea id="dailyGroupInput" rows="1" maxlength="1000" placeholder="紐⑥뒪肄붾뱶瑜??낅젰?섏꽭??></textarea><small id="dailyGroupSignal">?꾩옱 湲?? 鍮꾩뼱 ?덉쓬</small></div>
+        <div class="chat-morse-display"><textarea id="dailyGroupInput" rows="1" maxlength="1000" placeholder="Enter Morse code"></textarea><small id="dailyGroupSignal">Current letter: empty</small></div>
         <button id="dailyGroupKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>Short press: dot / Long press: dash</span><small></small></button>
         <div class="chat-morse-actions">
           <button id="clearDailyGroupMessage" class="light-button" type="button">吏?곌린</button>
@@ -546,7 +546,7 @@
           <div class="section-heading"><strong>?묒꽦 以묒씤 ?쇨린</strong><small>?쇨린 ??μ쓣 ?뚮윭???쒕쾭????λ맗?덈떎</small></div>
           <div id="diaryDraftSegments" class="diary-draft-segments" contenteditable="true" role="textbox" aria-multiline="true"></div>
           <div class="chat-morse-display">
-            <textarea id="diaryText" rows="4" maxlength="5000" placeholder="?쇨린瑜??낅젰?섏꽭??></textarea>
+            <textarea id="diaryText" rows="4" maxlength="5000" placeholder="Write your diary"></textarea>
             <small id="diarySignal">?꾩옱 湲?? 鍮꾩뼱 ?덉쓬</small>
           </div>
           <button id="diaryKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>Short press: dot / Long press: dash</span><small>Uses conversation input settings</small></button>
@@ -649,7 +649,7 @@
       <p class="eyebrow">morsiq</p>
       <h2>移쒓뎄 異붽?</h2>
       <form id="friendForm" class="group-create-form">
-        <input id="friendInput" maxlength="24" placeholder="移쒓뎄 ?됰꽕?? autocomplete="off">
+        <input id="friendInput" maxlength="24" placeholder="Friend nickname" autocomplete="off">
         <button type="submit">移쒓뎄 ?붿껌 蹂대궡湲</button>
       </form>
     </section>
@@ -810,7 +810,7 @@
       </div>
       <div class="settings-section suggestion-settings">
         <p class="label">嫄댁쓽?섍린</p>
-        <textarea id="suggestionText" maxlength="2000" placeholder="異붽??덉쑝硫??섎뒗 湲곕뒫?대굹 遺덊렪???먯쓣 ?곸뼱二쇱꽭??></textarea>
+        <textarea id="suggestionText" maxlength="2000" placeholder="Tell us what you want improved"></textarea>
         <button id="submitSuggestion" type="button">Send suggestion</button>
         <p id="suggestionStatus" class="nickname-change-status" role="status" hidden></p>
       </div>
@@ -819,7 +819,7 @@
 
   <div id="secretComm" class="secret-comm" hidden>
     <button id="secretCommSurface" class="secret-comm-surface" type="button" aria-label="?꾨Ⅴ???숈븞 ?곷??먭쾶 吏꾨룞 ?꾨떖"></button>
-    <button id="exitSecretComm" class="secret-comm-exit" type="button" aria-label="鍮꾨? ?듭떊 ?섍?湲?>횞</button>
+    <button id="exitSecretComm" class="secret-comm-exit" type="button" aria-label="Exit secret communication">X</button>
   </div>
 
   <div id="toast" class="toast" role="status"></div>
