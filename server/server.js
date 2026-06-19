@@ -10,6 +10,8 @@ const PORT = Number(process.env.PORT) || 8787;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_PLAY_PACKAGE_NAME = process.env.GOOGLE_PLAY_PACKAGE_NAME || "com.morsepocket.app";
 const GOOGLE_PLAY_SERVICE_ACCOUNT_JSON = process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON || "";
+const OPERATOR_EMAIL = "toywogh@gmail.com";
+const OPERATOR_NICKNAME = "dreminoz";
 const SHOP_DRAW_COST = 50;
 const SHOP_COIN_PRODUCT = "coins_100";
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "";
@@ -214,8 +216,27 @@ function publicAccount(account) {
     loginStreak: Number(account.loginStreak || 0),
     badges: account.badges || [],
     specials: account.specials || [],
-    dailyGroupEnabled: account.dailyGroupEnabled !== false
+    dailyGroupEnabled: account.dailyGroupEnabled !== false,
+    isOperator: isOperatorAccount(account)
   };
+}
+
+function isOperatorAccount(account) {
+  return Boolean(account && (
+    String(account.email || "").toLowerCase() === OPERATOR_EMAIL
+    || String(account.nickname || "").toLowerCase() === OPERATOR_NICKNAME
+  ));
+}
+
+async function operatorAccount() {
+  const accounts = await store.allAccounts();
+  return accounts.find(isOperatorAccount) || null;
+}
+
+async function canDirectMessage(from, to) {
+  const operator = await operatorAccount();
+  if (operator && (operator.signalId === from || operator.signalId === to)) return true;
+  return store.areFriends(from, to);
 }
 
 function json(res, status, body) {
@@ -638,7 +659,11 @@ const server = http.createServer(async (req, res) => {
     });
   }
   if (req.method === "GET" && url.pathname === "/api/friends") {
-    const friends = await store.friendIds(account.signalId);
+    let friends = await store.friendIds(account.signalId);
+    const operator = await operatorAccount();
+    if (operator && operator.signalId !== account.signalId && !friends.includes(operator.signalId)) {
+      friends = [operator.signalId, ...friends];
+    }
     const profiles = await Promise.all(friends.map(async signalId => {
       const profile = await store.findAccountBySignalId(signalId);
       return publicAccount(profile || { signalId, nickname: signalId });
@@ -772,7 +797,7 @@ const server = http.createServer(async (req, res) => {
     const { to, message } = await readBody(req);
     const from = account.signalId;
     if (!to || !message) return json(res, 400, { error: "to and message required" });
-    if (!await store.areFriends(from, to)) return json(res, 403, { error: "friends-only" });
+    if (!await canDirectMessage(from, to)) return json(res, 403, { error: "friends-only" });
     const target = await store.findAccountBySignalId(to);
     const decoratedMessage = typeof message === "object"
       ? { ...message, senderSound: account.equipped?.morseSound || "", createdAt: Date.now() }
@@ -932,8 +957,19 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && url.pathname === "/api/direct/history") {
     const user = account.signalId;
     const friend = url.searchParams.get("friend");
+    if (!friend || !await canDirectMessage(user, friend)) return json(res, 403, { error: "friends-only" });
     const messages = await store.directHistory(user, friend);
     return json(res, 200, { messages });
+  }
+  if (req.method === "GET" && url.pathname === "/api/operator/inbox") {
+    if (!isOperatorAccount(account)) return json(res, 403, { error: "operator-only" });
+    const messages = await store.directInbox(account.signalId);
+    const senders = [...new Set(messages.map(item => item.from).filter(Boolean))];
+    const profiles = await Promise.all(senders.map(async signalId => {
+      const profile = await store.findAccountBySignalId(signalId);
+      return publicAccount(profile || { signalId, nickname: signalId });
+    }));
+    return json(res, 200, { senders, profiles });
   }
   if (req.method === "GET" && url.pathname === "/api/direct/inbox") {
     const user = account.signalId;

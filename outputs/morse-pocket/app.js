@@ -754,6 +754,7 @@ function localizeMainUI() {
   setElementText("#openDiaryList", mainText("diaryList"));
   setElementText("#toggleReferenceDock", mainText("reference"));
   setElementText("#referenceDockTitle", mainText("reference"));
+  setElementText("#referenceDockMini", mainText("reference"));
   setElementText("#hideReferenceDock", uiText("\uC228\uAE30\uAE30", "Hide", "\u9589\u3058\u308B"));
   setElementText("#diaryListPanel h2", mainText("diaryList"));
   setElementText("#secretDiaryWorld .diary-header h2", mainText("secretDiary"));
@@ -1507,6 +1508,12 @@ const state = {
   chatMessageLongPressed: false,
   chatMessageHoldX: 0,
   chatMessageHoldY: 0,
+  referenceDockMinimized: localStorage.getItem("morse-reference-dock-minimized") === "true",
+  referenceDockPosition: JSON.parse(localStorage.getItem("morse-reference-dock-position") || "{\"left\":18,\"top\":140,\"width\":320,\"height\":360}"),
+  referenceDockDragging: false,
+  referenceDockResizing: false,
+  referenceDockDragStart: null,
+  operatorProfiles: [],
   backExitArmed: false,
   backExitTimer: null
 };
@@ -2630,17 +2637,18 @@ function renderSpeed() {
 
 function renderPhrases() {
   $("#emptyState").hidden = state.phrases.length > 0;
-  $("#phraseList").innerHTML = state.phrases.map((phrase, index) => `
-    <article class="phrase">
-      <span class="play-icon">▶</span>
-      <button class="phrase-main" data-play="${index}">
-        <strong data-no-i18n>${escapeHtml(phrase)}</strong>
-        <small>${textToMorse(phrase).replaceAll(".", "·").replaceAll("-", "−")}</small>
-      </button>
-      <button class="delete" data-delete="${index}" aria-label="문구 삭제">×</button>
-    </article>
-  `).join("");
+  $("#phraseList").innerHTML = state.phrases.map((phrase, index) =>
+    "<article class=\"phrase\">"
+      + "<span class=\"play-icon\">.-</span>"
+      + "<button class=\"phrase-main\" data-play=\"" + index + "\">"
+      + "<strong data-no-i18n>" + escapeHtml(phrase) + "</strong>"
+      + "<small data-no-i18n>" + prettyMorse(textToMorse(phrase)) + "</small>"
+      + "</button>"
+      + "<button class=\"delete\" data-delete=\"" + index + "\" aria-label=\"" + mainText("delete") + "\">&times;</button>"
+      + "</article>"
+  ).join("");
 }
+
 
 function escapeHtml(text) {
   const div = document.createElement("div");
@@ -2672,6 +2680,61 @@ function dailyTomorrowText() {
 function dailyMemberUnit() {
   return uiText("\uBA85", "people", "\u4EBA");
 }
+
+function operatorHelpText() {
+  return uiText(
+    "\uBB38\uC758\uD560 \uC810\uC774 \uC788\uAC70\uB098 \uADF8\uB0E5 \uB300\uD654\uD558\uACE0 \uC2F6\uC73C\uBA74 \uC6B4\uC601\uC790\uC5D0\uAC8C \uC544\uBB34 \uBA54\uC2DC\uC9C0\uB098 \uBCF4\uB0B4\uC138\uC694!",
+    "Send the operator any message if you need help or just want to chat!",
+    "\u56F0\u3063\u305F\u3053\u3068\u3084\u8A71\u3057\u305F\u3044\u3053\u3068\u304C\u3042\u308C\u3070\u904B\u55B6\u8005\u306B\u30E1\u30C3\u30BB\u30FC\u30B8\u3092\u9001\u3063\u3066\u304F\u3060\u3055\u3044\uFF01"
+  );
+}
+
+function isOperatorProfile(signalId) {
+  return Boolean(state.profileCache[signalId]?.isOperator || state.account?.signalId === signalId && state.account?.isOperator);
+}
+
+function ensureOperatorSection() {
+  const friendList = $("#friendList");
+  if (!friendList) return null;
+  let section = $("#operatorInboxSection");
+  if (!section) {
+    section = document.createElement("section");
+    section.id = "operatorInboxSection";
+    section.className = "operator-inbox-section";
+    section.innerHTML = "<h3>" + uiText("\uC6B4\uC601", "Operator", "\u904B\u55B6") + "</h3><div id=\"operatorInboxList\" class=\"friend-list\"></div>";
+    friendList.insertAdjacentElement("afterend", section);
+    section.addEventListener("click", event => {
+      const open = event.target.closest("[data-open-friend-id]");
+      const profile = event.target.closest("[data-profile-friend]");
+      if (profile) openFriendProfile(profile.dataset.profileFriend);
+      if (open) openChat(open.dataset.openFriendId);
+    });
+  }
+  section.querySelector("h3").textContent = uiText("\uC6B4\uC601", "Operator", "\u904B\u55B6");
+  return section;
+}
+
+function renderOperatorInbox() {
+  const section = ensureOperatorSection();
+  if (!section) return;
+  section.hidden = !state.account?.isOperator;
+  if (!state.account?.isOperator) return;
+  const list = section.querySelector("#operatorInboxList");
+  const profiles = [...state.operatorProfiles].filter(profile => profile?.signalId && profile.signalId !== state.account.signalId);
+  list.innerHTML = profiles.length ? profiles.map(profile => {
+    state.profileCache[profile.signalId] = profile;
+    const last = state.chats[profile.signalId]?.at(-1);
+    return "<article class=\"friend-card\" data-friend-id=\"" + escapeHtml(profile.signalId) + "\">"
+      + "<button type=\"button\" class=\"friend-profile-button\" data-profile-friend=\"" + escapeHtml(profile.signalId) + "\">" + profileAvatarHtml(profile, profile.signalId) + "</button>"
+      + "<button type=\"button\" class=\"friend-conversation-button\" data-open-friend-id=\"" + escapeHtml(profile.signalId) + "\"><div class=\"friend-info\">"
+      + "<strong data-no-i18n>" + escapeHtml(profile.nickname || profile.signalId) + "</strong>"
+      + "<small>" + (last ? chatPreview(last) : readyToReceiveText()) + "</small>"
+      + "</div></button>"
+      + unreadBubble(Number(state.unreadDirect[profile.signalId] || 0))
+      + "</article>";
+  }).join("") : "<article class=\"record-item\"><strong>" + uiText("\uC544\uC9C1 \uC6B4\uC601 \uBA54\uC2DC\uC9C0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.", "No operator messages yet.", "\u904B\u55B6\u30E1\u30C3\u30BB\u30FC\u30B8\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002") + "</strong><span>" + uiText("\uC0AC\uC6A9\uC790\uAC00 \uC6B4\uC601\uC790\uC5D0\uAC8C \uBA54\uC2DC\uC9C0\uB97C \uBCF4\uB0B4\uBA74 \uC5EC\uAE30\uC5D0 \uD45C\uC2DC\uB429\uB2C8\uB2E4.", "Messages sent to the operator appear here.", "\u904B\u55B6\u5B9B\u3066\u306E\u30E1\u30C3\u30BB\u30FC\u30B8\u304C\u3053\u3053\u306B\u8868\u793A\u3055\u308C\u307E\u3059\u3002") + "</span></article>";
+}
+
 
 function isDailyGroupMessage(message) {
   return message?.groupType === "daily"
@@ -2714,26 +2777,48 @@ function updateWorldUnreadBadges() {
 
 function renderFriends() {
   const noFriendsHtml = "<article class=\"record-item\"><strong>" + uiText("\uC544\uC9C1 \uCE5C\uAD6C\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.", "No friends yet.", "\u53CB\u9054\u306F\u307E\u3060\u3044\u307E\u305B\u3093\u3002") + "</strong><span>" + uiText("\uC774\uB984\uC744 \uC785\uB825\uD574 \uCE5C\uAD6C\uB97C \uCD94\uAC00\uD558\uC138\uC694.", "Enter a name to add a friend.", "\u540D\u524D\u3067\u53CB\u9054\u3092\u8FFD\u52A0\u3057\u307E\u3057\u3087\u3046\u3002") + "</span></article>";
-  const sortedFriends = [...state.friends].sort((a, b) =>
-    Number(state.chats[b]?.at(-1)?.createdAt || 0) - Number(state.chats[a]?.at(-1)?.createdAt || 0)
-  );
-  $("#friendList").innerHTML = sortedFriends.length
-    ? sortedFriends.map(friend => {
-      const last = state.chats[friend]?.at(-1);
-      const label = uiText("\uCE5C\uAD6C \uD504\uB85C\uD544 \uBCF4\uAE30", "View friend profile", "\u53CB\u9054\u306E\u30D7\u30ED\u30D5\u30A3\u30FC\u30EB\u3092\u8868\u793A");
-      return "<article class=\"friend-card\" data-friend-id=\"" + escapeHtml(friend) + "\">"
-        + "<button type=\"button\" class=\"friend-profile-button\" data-profile-friend=\"" + escapeHtml(friend) + "\" aria-label=\"" + label + "\">"
-        + profileAvatarHtml(state.profileCache[friend], friend)
-        + "</button>"
-        + "<button type=\"button\" class=\"friend-conversation-button\" data-open-friend-id=\"" + escapeHtml(friend) + "\"><div class=\"friend-info\">"
-        + "<strong data-no-i18n>" + escapeHtml(state.profileCache[friend]?.nickname || friend) + "</strong>"
-        + "<small>" + (last ? chatPreview(last) : readyToReceiveText()) + "</small>"
-        + "</div></button>"
-        + unreadBubble(Number(state.unreadDirect[friend] || 0))
-        + "</article>";
-    }).join("")
-    : noFriendsHtml;
+  const normalFriends = state.friends.filter(friend => friend !== state.account?.signalId && (state.account?.isOperator || !isOperatorProfile(friend)));
+  const sortedFriends = [...normalFriends].sort((a, b) => Number(state.chats[b]?.at(-1)?.createdAt || 0) - Number(state.chats[a]?.at(-1)?.createdAt || 0));
+  $("#friendList").innerHTML = sortedFriends.length ? sortedFriends.map(friend => {
+    const last = state.chats[friend]?.at(-1);
+    const label = uiText("\uCE5C\uAD6C \uD504\uB85C\uD544 \uBCF4\uAE30", "View friend profile", "\u53CB\u9054\u306E\u30D7\u30ED\u30D5\u30A3\u30FC\u30EB\u3092\u8868\u793A");
+    return "<article class=\"friend-card\" data-friend-id=\"" + escapeHtml(friend) + "\">"
+      + "<button type=\"button\" class=\"friend-profile-button\" data-profile-friend=\"" + escapeHtml(friend) + "\" aria-label=\"" + label + "\">" + profileAvatarHtml(state.profileCache[friend], friend) + "</button>"
+      + "<button type=\"button\" class=\"friend-conversation-button\" data-open-friend-id=\"" + escapeHtml(friend) + "\"><div class=\"friend-info\">"
+      + "<strong data-no-i18n>" + escapeHtml(state.profileCache[friend]?.nickname || friend) + "</strong>"
+      + "<small>" + (last ? chatPreview(last) : readyToReceiveText()) + "</small>"
+      + "</div></button>" + unreadBubble(Number(state.unreadDirect[friend] || 0)) + "</article>";
+  }).join("") : noFriendsHtml;
+  const operator = state.friends.find(friend => isOperatorProfile(friend) && friend !== state.account?.signalId);
+  let operatorCard = $("#operatorFriendCard");
+  if (!operatorCard) {
+    operatorCard = document.createElement("section");
+    operatorCard.id = "operatorFriendCard";
+    operatorCard.className = "operator-friend-card";
+    $("#friendList").insertAdjacentElement("beforebegin", operatorCard);
+    operatorCard.addEventListener("click", event => {
+      const profile = event.target.closest("[data-profile-friend]");
+      const open = event.target.closest("[data-open-friend-id]");
+      if (profile) openFriendProfile(profile.dataset.profileFriend);
+      if (open) openChat(open.dataset.openFriendId);
+    });
+  }
+  operatorCard.hidden = !operator || state.account?.isOperator;
+  if (operator && !state.account?.isOperator) {
+    const profile = state.profileCache[operator];
+    const last = state.chats[operator]?.at(-1);
+    operatorCard.innerHTML = "<h3>" + uiText("\uC6B4\uC601\uC790", "Operator", "\u904B\u55B6\u8005") + "</h3>"
+      + "<article class=\"friend-card\" data-friend-id=\"" + escapeHtml(operator) + "\">"
+      + "<button type=\"button\" class=\"friend-profile-button\" data-profile-friend=\"" + escapeHtml(operator) + "\">" + profileAvatarHtml(profile, operator) + "</button>"
+      + "<button type=\"button\" class=\"friend-conversation-button\" data-open-friend-id=\"" + escapeHtml(operator) + "\"><div class=\"friend-info\">"
+      + "<strong data-no-i18n>" + escapeHtml(profile?.nickname || "dreminoz") + "</strong>"
+      + "<small>" + (last ? chatPreview(last) : operatorHelpText()) + "</small>"
+      + "</div></button>" + unreadBubble(Number(state.unreadDirect[operator] || 0)) + "</article>";
+  }
+  renderOperatorInbox();
 }
+
+
 function renderGroups() {
   const sortedGroups = [...state.groups].sort((a, b) => Number(b.lastMessageAt || 0) - Number(a.lastMessageAt || 0));
   const memberText = count => uiText(count + "\uBA85 \uCC38\uC5EC \uC911", count + " members", count + "\u4EBA\u53C2\u52A0\u4E2D");
@@ -3036,6 +3121,22 @@ function loadFriends() {
     localStorage.setItem("morse-friends", JSON.stringify(state.friends));
     renderFriends();
     loadFriendProfiles();
+    loadOperatorInbox();
+  }).catch(() => {});
+}
+
+function loadOperatorInbox() {
+  if (!state.authToken || !state.account?.isOperator) {
+    state.operatorProfiles = [];
+    renderOperatorInbox();
+    return;
+  }
+  api("/api/operator/inbox").then(({ profiles = [] }) => {
+    state.operatorProfiles = profiles;
+    profiles.forEach(profile => {
+      if (profile?.signalId) state.profileCache[profile.signalId] = profile;
+    });
+    renderOperatorInbox();
   }).catch(() => {});
 }
 
@@ -3415,8 +3516,9 @@ function handleAutoVerticalSwipe(deltaX, deltaY, commitLetter, commitNewline) {
 
 function sendChatMessage(message, hidden = false) {
   if (!message || !state.activeFriend) return;
-  if (!state.friends.includes(state.activeFriend)) {
-    showToast(state.language === "en" ? "You must be friends to send messages." : "다시 친구가 되어야 메시지를 보낼 수 있습니다.");
+  const activeProfile = state.profileCache[state.activeFriend] || {};
+  if (!state.friends.includes(state.activeFriend) && !state.account?.isOperator && !activeProfile.isOperator) {
+    showToast(uiText("\uCE5C\uAD6C\uAC00 \uB418\uC5B4\uC57C \uBA54\uC2DC\uC9C0\uB97C \uBCF4\uB0BC \uC218 \uC788\uC2B5\uB2C8\uB2E4.", "You must be friends to send messages.", "\u53CB\u9054\u306B\u306A\u308B\u3068\u30E1\u30C3\u30BB\u30FC\u30B8\u3092\u9001\u308C\u307E\u3059\u3002"));
     return;
   }
   const outgoing = hidden
@@ -3439,8 +3541,8 @@ function sendChatMessage(message, hidden = false) {
 
 function imageToAscii(image, options = {}) {
   const aspect = image.height / image.width;
-  const width = aspect > 1.15 ? 72 : aspect < .72 ? 92 : 82;
-  const height = Math.min(260, Math.max(24, Math.round(aspect * width * 0.82)));
+  const width = aspect > 1.15 ? 76 : aspect < .72 ? 98 : 88;
+  const height = Math.min(320, Math.max(28, Math.round(aspect * width * 0.95)));
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -3458,19 +3560,21 @@ function imageToAscii(image, options = {}) {
   for (let offset = 0; offset < pixels.length; offset += 4) {
     const r = pixels[offset], g = pixels[offset + 1], b = pixels[offset + 2];
     const max = Math.max(r, g, b), min = Math.min(r, g, b);
-    brightnessValues.push(r * .299 + g * .587 + b * .114);
+    const brightness = r * .299 + g * .587 + b * .114;
+    brightnessValues.push(options.autoEnhance ? Math.max(0, brightness - 65) : brightness);
     saturationValues.push((max - min) / 255);
   }
   const sorted = [...brightnessValues].sort((a, b) => a - b);
-  const lowCut = options.autoEnhance ? .01 : .02;
-  const highCut = options.autoEnhance ? .90 : .97;
-  const dark = sorted[Math.floor(sorted.length * lowCut)];
-  const light = sorted[Math.floor(sorted.length * highCut)];
-  const range = Math.max(18, light - dark);
-  const shades = "@%#8&$*+=-:. ";
+  const lowCut = options.autoEnhance ? .015 : .025;
+  const highCut = options.autoEnhance ? .985 : .97;
+  const dark = sorted[Math.floor(sorted.length * lowCut)] ?? 0;
+  const light = sorted[Math.floor(sorted.length * highCut)] ?? 255;
+  const range = Math.max(12, light - dark);
+  const shades = "MWN@%#8&$0QOZCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,^'. ";
+  const contrast = options.autoEnhance ? 2.05 : 1.45;
   const normalizedValues = brightnessValues.map(value => {
-    const balanced = options.autoEnhance ? value - 100 : value;
-    return Math.max(0, Math.min(1, (balanced - dark) / range));
+    const normalized = Math.max(0, Math.min(1, (value - dark) / range));
+    return Math.max(0, Math.min(1, (normalized - .5) * contrast + .5));
   });
   const cornerSamples = [];
   const cornerSize = Math.max(3, Math.round(Math.min(width, height) * .14));
@@ -3500,22 +3604,16 @@ function imageToAscii(image, options = {}) {
       const edgeY = down - up;
       const edge = Math.sqrt(edgeX * edgeX + edgeY * edgeY);
       const localAverage = (left + right + up + down + normalized) / 5;
-      const localContrast = (normalized - localAverage) * (options.autoEnhance ? 3.4 : 2.1);
-      const backgroundDistance = Math.abs(normalized - background) + saturationValues[index] * .35 + edge * .65;
+      const localContrast = (normalized - localAverage) * (options.autoEnhance ? 3.8 : 2.2);
+      const backgroundDistance = Math.abs(normalized - background) + saturationValues[index] * .3 + edge * .7;
       const kept = keepMask[index];
-      if ((hasKeepMask && !kept) || (!kept && backgroundDistance < (options.autoEnhance ? .18 : .11) && edge < (options.autoEnhance ? .20 : .14))) {
+      if ((hasKeepMask && !kept) || (!kept && backgroundDistance < (options.autoEnhance ? .16 : .11) && edge < (options.autoEnhance ? .16 : .13))) {
         line += " ";
         continue;
       }
-      if (edge > (options.autoEnhance ? .12 : .17)) {
-        const horizontal = Math.abs(edgeX) > Math.abs(edgeY) * 1.65;
-        const vertical = Math.abs(edgeY) > Math.abs(edgeX) * 1.65;
-        line += horizontal ? "|" : vertical ? "_" : edgeX * edgeY > 0 ? "/" : "\\";
-      } else {
-        const detailed = Math.max(0, Math.min(1, normalized + localContrast));
-        const corrected = Math.pow(detailed, options.autoEnhance ? .62 : .82);
-        line += shades[Math.min(shades.length - 1, Math.floor(corrected * shades.length))];
-      }
+      const detailed = Math.max(0, Math.min(1, normalized + localContrast));
+      const corrected = Math.pow(detailed, options.autoEnhance ? .56 : .78);
+      line += shades[Math.min(shades.length - 1, Math.floor(corrected * shades.length))];
     }
     lines.push(line.replace(/\s+$/g, ""));
   }
@@ -4856,13 +4954,13 @@ $("#phraseForm").addEventListener("submit", event => {
   if (!value) return;
   const unsupported = unsupportedChars(value);
   if (unsupported.length) {
-    showToast(`지원하지 않는 문자: ${unsupported.slice(0, 5).join(" ")}`);
+    showToast(`${uiText("\uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 \uBB38\uC790", "Unsupported characters", "\u5BFE\u5FDC\u3057\u3066\u3044\u306A\u3044\u6587\u5B57")}: ${unsupported.slice(0, 5).join(" ")}`);
     return;
   }
   state.phrases.unshift(value);
   input.value = "";
   savePhrases();
-  showToast("문구를 저장했습니다.");
+  showToast(uiText("\uBB38\uAD6C\uB97C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.", "Phrase saved.", "\u30D5\u30EC\u30FC\u30BA\u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F\u3002"));
 });
 
 $("#phraseList").addEventListener("click", event => {
@@ -5484,13 +5582,27 @@ function cancelChatMessageHold() {
 
 function deleteChatMessage(index) {
   if (!state.activeFriend || index < 0 || index >= (state.chats[state.activeFriend]?.length || 0)) return;
-  const prompt = state.language === "en" ? "Delete this message?" : "이 메시지를 삭제할까요?";
-  if (!confirm(prompt)) return;
+  const message = state.chats[state.activeFriend][index];
+  if (!message?.mine) return copyChatMessage(index);
+  const prompt = uiText("\uC0AD\uC81C\uD560\uAE4C\uC694? \uCDE8\uC18C\uD558\uBA74 \uBCF5\uC0AC\uD569\uB2C8\uB2E4.", "Delete this message? Cancel copies it.", "\u524A\u9664\u3057\u307E\u3059\u304B\uFF1F\u30AD\u30E3\u30F3\u30BB\u30EB\u3067\u30B3\u30D4\u30FC\u3057\u307E\u3059\u3002");
+  if (!confirm(prompt)) return copyChatMessage(index);
   state.chats[state.activeFriend].splice(index, 1);
   saveChats();
   renderChat();
   renderFriends();
-  showToast("메시지를 삭제했습니다.");
+  showToast(uiText("\uBA54\uC2DC\uC9C0\uB97C \uC0AD\uC81C\uD588\uC2B5\uB2C8\uB2E4.", "Message deleted.", "\u30E1\u30C3\u30BB\u30FC\u30B8\u3092\u524A\u9664\u3057\u307E\u3057\u305F\u3002"));
+}
+
+async function copyChatMessage(index) {
+  if (!state.activeFriend || index < 0 || index >= (state.chats[state.activeFriend]?.length || 0)) return;
+  const text = chatMessageText(state.chats[state.activeFriend][index]);
+  if (!text) return;
+  try {
+    await navigator.clipboard?.writeText(text);
+    showToast(uiText("\uBA54\uC2DC\uC9C0\uB97C \uBCF5\uC0AC\uD588\uC2B5\uB2C8\uB2E4.", "Message copied.", "\u30E1\u30C3\u30BB\u30FC\u30B8\u3092\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F\u3002"));
+  } catch {
+    window.prompt(uiText("\uBCF5\uC0AC\uD560 \uBA54\uC2DC\uC9C0", "Copy this message", "\u3053\u306E\u30E1\u30C3\u30BB\u30FC\u30B8\u3092\u30B3\u30D4\u30FC"), text);
+  }
 }
 
 $("#chatMessages").addEventListener("pointerdown", event => {
@@ -6965,6 +7077,121 @@ renderWriter();
 renderSettings();
 renderGame();
 
+function clampReferenceDockPosition() {
+  const pos = state.referenceDockPosition || { left: 18, top: 140, width: 320, height: 360 };
+  pos.width = Math.min(Math.max(Number(pos.width) || 320, 220), Math.max(240, innerWidth - 20));
+  pos.height = Math.min(Math.max(Number(pos.height) || 360, 220), Math.max(240, innerHeight - 20));
+  pos.left = Math.min(Math.max(Number(pos.left) || 12, 8), Math.max(8, innerWidth - pos.width - 8));
+  pos.top = Math.min(Math.max(Number(pos.top) || 120, 8), Math.max(8, innerHeight - pos.height - 8));
+  state.referenceDockPosition = pos;
+  return pos;
+}
+
+function saveReferenceDockPosition() {
+  localStorage.setItem("morse-reference-dock-position", JSON.stringify(state.referenceDockPosition));
+}
+
+function applyReferenceDockPosition() {
+  const dock = $("#referenceDock");
+  const mini = $("#referenceDockMini");
+  const pos = clampReferenceDockPosition();
+  if (dock) {
+    dock.style.left = pos.left + "px";
+    dock.style.top = pos.top + "px";
+    dock.style.width = pos.width + "px";
+    dock.style.height = pos.height + "px";
+  }
+  if (mini) {
+    mini.style.left = pos.left + "px";
+    mini.style.top = pos.top + "px";
+  }
+}
+
+function setReferenceDockMinimized(minimized) {
+  state.referenceDockMinimized = minimized;
+  localStorage.setItem("morse-reference-dock-minimized", String(minimized));
+  const dock = $("#referenceDock");
+  const mini = $("#referenceDockMini");
+  if (dock) dock.hidden = minimized;
+  if (mini) mini.hidden = !minimized;
+  applyReferenceDockPosition();
+}
+
+function setupReferenceDockFloating() {
+  const dock = $("#referenceDock");
+  if (!dock || dock.dataset.floatingReady) return;
+  dock.dataset.floatingReady = "true";
+  document.body.appendChild(dock);
+  const mini = document.createElement("button");
+  mini.id = "referenceDockMini";
+  mini.type = "button";
+  mini.className = "reference-float-button";
+  mini.textContent = mainText("reference");
+  document.body.appendChild(mini);
+  const resizeHandle = document.createElement("span");
+  resizeHandle.className = "reference-resize-handle";
+  resizeHandle.setAttribute("aria-hidden", "true");
+  dock.appendChild(resizeHandle);
+  const header = dock.querySelector(".section-heading");
+  const startDrag = (event, targetMini = false) => {
+    if (event.target.closest("button") && !targetMini) return;
+    const pos = clampReferenceDockPosition();
+    state.referenceDockDragging = true;
+    state.referenceDockDragStart = { x: event.clientX, y: event.clientY, left: pos.left, top: pos.top };
+    (targetMini ? mini : header)?.setPointerCapture?.(event.pointerId);
+  };
+  header?.addEventListener("pointerdown", event => startDrag(event, false));
+  mini.addEventListener("pointerdown", event => startDrag(event, true));
+  mini.addEventListener("click", () => setReferenceDockMinimized(false));
+  resizeHandle.addEventListener("pointerdown", event => {
+    event.preventDefault();
+    const pos = clampReferenceDockPosition();
+    state.referenceDockResizing = true;
+    state.referenceDockDragStart = { x: event.clientX, y: event.clientY, width: pos.width, height: pos.height };
+    resizeHandle.setPointerCapture?.(event.pointerId);
+  });
+  document.addEventListener("pointermove", event => {
+    if (state.referenceDockResizing && state.referenceDockDragStart) {
+      const start = state.referenceDockDragStart;
+      state.referenceDockPosition.width = start.width + event.clientX - start.x;
+      state.referenceDockPosition.height = start.height + event.clientY - start.y;
+      applyReferenceDockPosition();
+      return;
+    }
+    if (!state.referenceDockDragging || !state.referenceDockDragStart) return;
+    const start = state.referenceDockDragStart;
+    state.referenceDockPosition.left = start.left + event.clientX - start.x;
+    state.referenceDockPosition.top = start.top + event.clientY - start.y;
+    applyReferenceDockPosition();
+  });
+  document.addEventListener("pointerup", () => {
+    if (state.referenceDockResizing) {
+      state.referenceDockResizing = false;
+      applyReferenceDockPosition();
+      saveReferenceDockPosition();
+      return;
+    }
+    if (!state.referenceDockDragging) return;
+    state.referenceDockDragging = false;
+    const rect = dock.getBoundingClientRect();
+    state.referenceDockPosition.width = rect.width || state.referenceDockPosition.width;
+    state.referenceDockPosition.height = rect.height || state.referenceDockPosition.height;
+    applyReferenceDockPosition();
+    saveReferenceDockPosition();
+  });
+  dock.addEventListener("mouseup", () => {
+    const rect = dock.getBoundingClientRect();
+    state.referenceDockPosition.width = rect.width;
+    state.referenceDockPosition.height = rect.height;
+    saveReferenceDockPosition();
+  });
+  window.addEventListener("resize", () => {
+    applyReferenceDockPosition();
+    saveReferenceDockPosition();
+  });
+  setReferenceDockMinimized(state.referenceDockMinimized);
+}
+
 function renderMorseReferenceList(target) {
   if (!target) return;
   target.innerHTML = REFERENCE_ITEMS.map(letter => `
@@ -6986,12 +7213,9 @@ renderMorseReferences();
     if (button) playMorse(button.dataset.referenceLetter);
   });
 });
-$("#toggleReferenceDock")?.addEventListener("click", () => {
-  $("#referenceDock").hidden = false;
-});
-$("#hideReferenceDock")?.addEventListener("click", () => {
-  $("#referenceDock").hidden = true;
-});
+setupReferenceDockFloating();
+$("#toggleReferenceDock")?.addEventListener("click", () => setReferenceDockMinimized(false));
+$("#hideReferenceDock")?.addEventListener("click", () => setReferenceDockMinimized(true));
 document.querySelectorAll(".writer-mode-button").forEach(button =>
   button.classList.toggle("active", button.dataset.writerMode === state.writerMode)
 );
