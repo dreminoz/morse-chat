@@ -308,11 +308,12 @@ async function publicGroup(group, viewer) {
 }
 
 function publicGroupMessage(group, item, viewer) {
-  if (group.type !== "daily") return { ...item, mine: item.from === viewer };
+  if (group.type !== "daily") return { ...item, groupType: group.type, mine: item.from === viewer };
   const index = group.members.indexOf(item.from);
   return {
     id: item.id,
     groupId: item.groupId,
+    groupType: group.type,
     from: `ANON-${index + 1}`,
     fromNickname: item.from === viewer ? "You" : `Anonymous ${index + 1}`,
     mine: item.from === viewer,

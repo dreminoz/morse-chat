@@ -51,22 +51,22 @@
         <p class="eyebrow">morsiq</p>
         <h1>morsiq</h1>
       </div>
-      <button id="openSettings" class="round-button" type="button" aria-label="?ㅼ젙 ?닿린">쨌쨌쨌</button>
+      <button id="openSettings" class="round-button" type="button" aria-label="Settings">...</button>
     </header>
 
-    <nav class="world-tabs" aria-label="?붾㈃ ?좏깮">
+    <nav class="world-tabs" aria-label="Screen">
       <div class="world-tab-row primary-world-tabs">
-        <button class="world-tab" data-world="friends">???/button>
-        <button class="world-tab active" data-world="hall">?덈젴??/button>
-        <button class="world-tab" data-world="space">?곗＜</button>
-        <button class="world-tab" data-world="randomSignal">?쒕뜡 ?쒓렇??/button>
-        <button class="world-tab" data-world="profile">?꾨줈??/button>
+        <button class="world-tab" data-world="friends" type="button">Conversations</button>
+        <button class="world-tab active" data-world="hall" type="button">Training</button>
+        <button class="world-tab" data-world="space" type="button">Space</button>
+        <button class="world-tab" data-world="randomSignal" type="button">Random Signal</button>
+        <button class="world-tab" data-world="profile" type="button">Profile</button>
       </div>
       <div class="world-tab-row secondary-world-tabs">
-        <button class="world-tab" data-world="dailyGroup">?곗씪由?洹몃９梨?/button>
-        <button class="world-tab" data-world="games">寃뚯엫</button>
-        <button class="world-tab" data-world="secretDiary">鍮꾨??쇨린</button>
-        <button class="world-tab" data-world="shop">?곸젏</button>
+        <button class="world-tab" data-world="dailyGroup" type="button">Daily Group Chat</button>
+        <button class="world-tab" data-world="games" type="button">Games</button>
+        <button class="world-tab" data-world="secretDiary" type="button">Secret Diary</button>
+        <button class="world-tab" data-world="shop" type="button">Shop</button>
       </div>
     </nav>
 
@@ -80,22 +80,22 @@
           <button id="openReceivedRequests" type="button"><span>諛쏆? ?붿껌</span><strong id="receivedRequestCount">0</strong></button>
           <button id="openSentRequests" type="button"><span>蹂대궦 ?붿껌</span><strong id="sentRequestCount">0</strong></button>
           <button id="openAddFriend" type="button"><span>移쒓뎄 異붽?</span><strong>+</strong></button>
-          <button id="openCreateGroup" type="button"><span>洹몃９梨?留뚮뱾湲?/span><strong>+</strong></button>
+          <button id="openCreateGroup" type="button"><span>洹몃９梨?留뚮뱾湲</span><strong>+</strong></button>
         </section>
-        <p class="label">洹몃９梨?/p>
+        <p class="label">洹몃９梨</p>
         <div id="groupList" class="friend-list group-list"></div>
         <p class="label friend-list-label">移쒓뎄</p>
         <div id="friendList" class="friend-list"></div>
       </div>
       <section id="chatRoom" class="chat-room" hidden>
         <header class="chat-header">
-          <button id="closeChat" type="button" aria-label="???紐⑸줉?쇰줈 ?뚯븘媛湲?>??/button>
+          <button id="closeChat" type="button" aria-label="Back to conversations">X</button>
           <button id="openChatProfile" class="chat-profile-avatar" type="button" aria-label="移쒓뎄 ?꾨줈??蹂닿린"><span id="chatAvatar" class="friend-avatar"></span></button>
           <button id="openChatProfileInfo" class="chat-profile-info" type="button">
             <strong id="chatFriendName"></strong>
             <small>留먰뭾?좎쓣 ?꾨Ⅴ硫?紐⑥뒪 吏꾨룞 ?ъ깮</small>
           </button>
-          <button id="openSecretComm" class="secret-comm-open" type="button" aria-label="?ㅼ떆媛?鍮꾨? ?듭떊">??/button>
+          <button id="openSecretComm" class="secret-comm-open" type="button" aria-label="Secret communication">...</button>
         </header>
         <div id="chatMessages" class="chat-messages"></div>
         <div id="chatMorseComposer" class="chat-morse-composer">
@@ -105,7 +105,7 @@
           </div>
           <button id="chatKeyer" class="morse-keyer chat-keyer" type="button">
             <strong>PRESS & HOLD</strong>
-            <span>吏㏐쾶 ?꾨Ⅴ硫?쨌 ??/ 湲멸쾶 ?꾨Ⅴ硫?????/span>
+            <span>吏㏐쾶 ?꾨Ⅴ硫?쨌 ??/ 湲멸쾶 ?꾨Ⅴ硫????</span>
             <small>3?⑥쐞 ?댁떇: 湲???뺤젙 쨌 7?⑥쐞 ?댁떇: ?꾩뼱?곌린</small>
           </button>
           <div class="chat-morse-actions">
@@ -120,12 +120,12 @@
                   <button type="button" data-hidden-limit="1">1</button>
                   <button type="button" data-hidden-limit="3">3</button>
                   <button type="button" data-hidden-limit="5">5</button>
-                  <button type="button" data-hidden-limit="unlimited">臾댁젣??/button>
+                  <button type="button" data-hidden-limit="unlimited">臾댁젣?</button>
                 </div>
               </div>
               <button id="sendChatMorse" class="primary-button swipe-send" type="button">
-                <strong>蹂대궡湲?/strong>
-                <small id="hiddenLimitHint">?ㅻⅨ履?諛湲? ?④? ?좏샇 쨌 1??/small>
+                <strong>蹂대궡湲</strong>
+                <small id="hiddenLimitHint">?ㅻⅨ履?諛湲? ?④? ?좏샇 쨌 1?</small>
               </button>
             </div>
           </div>
@@ -134,7 +134,7 @@
       </section>
       <section id="groupRoom" class="chat-room group-room" hidden>
         <header class="chat-header">
-          <button id="closeGroupChat" type="button" aria-label="洹몃９ 紐⑸줉?쇰줈 ?뚯븘媛湲?>??/button>
+          <button id="closeGroupChat" type="button" aria-label="Back to groups">X</button>
           <button id="openGroupManageAvatar" class="chat-profile-avatar group-chat-avatar" type="button" aria-label="洹몃９梨??뺣낫 蹂닿린"><span id="groupRoomAvatar" class="friend-avatar">#</span></button>
           <button id="openGroupManage" class="chat-profile-info" type="button">
             <strong id="groupRoomName"></strong>
@@ -144,16 +144,16 @@
         <div id="groupMessages" class="chat-messages"></div>
         <form id="groupMessageForm" class="chat-morse-composer group-chat-composer">
           <div class="chat-morse-display"><textarea id="groupMessageInput" rows="1" maxlength="1000" placeholder="紐⑥뒪肄붾뱶瑜??낅젰?섏꽭??></textarea><small id="groupMessageSignal">?꾩옱 湲?? 鍮꾩뼱 ?덉쓬</small></div>
-          <button id="groupMessageKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>吏㏐쾶 ?꾨Ⅴ硫?쨌 ??/ 湲멸쾶 ?꾨Ⅴ硫?????/span><small></small></button>
+          <button id="groupMessageKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>Short press: dot / Long press: dash</span><small></small></button>
           <div class="chat-morse-actions">
             <button id="clearGroupMessage" class="light-button" type="button">吏?곌린</button>
             <label class="photo-send-button" for="groupMessagePhotoInput"><span>?ъ쭊</span></label>
             <div class="send-control">
               <div id="groupHiddenViewPicker" class="hidden-view-picker" hidden>
                 <span>?④? ?좏샇 ?ъ깮 ?잛닔</span>
-                <div><button type="button" data-group-hidden-limit="1">1</button><button type="button" data-group-hidden-limit="3">3</button><button type="button" data-group-hidden-limit="5">5</button><button type="button" data-group-hidden-limit="unlimited">臾댁젣??/button></div>
+                <div><button type="button" data-group-hidden-limit="1">1</button><button type="button" data-group-hidden-limit="3">3</button><button type="button" data-group-hidden-limit="5">5</button><button type="button" data-group-hidden-limit="unlimited">臾댁젣?</button></div>
               </div>
-              <button id="sendGroupMessage" class="primary-button swipe-send" type="submit"><strong>蹂대궡湲?/strong><small id="groupHiddenLimitHint">?ㅻⅨ履?諛湲?쨌 ?④? ?좏샇 쨌 1??/small></button>
+              <button id="sendGroupMessage" class="primary-button swipe-send" type="submit"><strong>蹂대궡湲</strong><small id="groupHiddenLimitHint">?ㅻⅨ履?諛湲?쨌 ?④? ?좏샇 쨌 1?</small></button>
             </div>
           </div>
           <input id="groupMessagePhotoInput" class="visually-hidden" type="file" accept="image/*">
@@ -171,11 +171,11 @@
         <span class="pulse" aria-hidden="true"></span>
       </div>
       <input id="speed" type="range" min="60" max="300" step="10" value="120" aria-label="吏꾨룞 ?띾룄">
-      <div class="range-labels"><span>鍮좊Ⅴ寃?/span><span>?먮━寃?/span></div>
+      <div class="range-labels"><span>鍮좊Ⅴ寃</span><span>?먮━寃</span></div>
     </section>
 
     <nav class="tabs" aria-label="?붾㈃ ?좏깮">
-      <button class="tab active" data-view="library">???/button>
+      <button class="tab active" data-view="library">??</button>
       <button class="tab" data-view="training">?덈젴</button>
       <button class="tab" data-view="quiz">?댁쫰</button>
       <button class="tab" data-view="writer">?곌린</button>
@@ -210,7 +210,7 @@
         <p class="label">?ъ깮 諛⑹떇</p>
         <div class="segmented">
           <button class="mode-button active" data-mode="auto">?먮룞</button>
-          <button class="mode-button" data-mode="tap">??/button>
+          <button class="mode-button" data-mode="tap">?</button>
           <button class="mode-button" data-mode="loop">臾댄븳 諛섎났</button>
         </div>
       </div>
@@ -218,16 +218,16 @@
         <label id="repeatSetting">
           <span>??ぉ??諛섎났</span>
           <select id="repeatCount">
-            <option value="1">1??/option>
-            <option value="2">2??/option>
-            <option value="3">3??/option>
-            <option value="4">4??/option>
-            <option value="5">5??/option>
+            <option value="1">1?</option>
+            <option value="2">2?</option>
+            <option value="3">3?</option>
+            <option value="4">4?</option>
+            <option value="5">5?</option>
           </select>
         </label>
         <label>
           <span id="nextDelayTitle">?ㅼ쓬 ??ぉ源뚯?</span>
-          <strong id="nextDelayLabel">1.0珥?/strong>
+          <strong id="nextDelayLabel">1.0珥</strong>
           <input id="nextDelay" type="range" min="500" max="10000" step="500" value="1000">
         </label>
       </div>
@@ -235,7 +235,7 @@
       <button id="trainingCard" class="training-card" type="button">
         <span id="trainingKicker" class="card-kicker">?쒕뜡 ?뚰뙆踰?쨌 1/26</span>
         <strong id="trainingLetter">A</strong>
-        <span id="trainingMorse" class="training-morse">쨌 ??/span>
+        <span id="trainingMorse" class="training-morse">쨌 ?</span>
         <span id="trainingHint" class="training-hint">醫뚯슦濡?諛???댁쟾쨌?ㅼ쓬 ??ぉ 蹂닿린</span>
       </button>
       <div class="training-actions">
@@ -249,7 +249,7 @@
 
     <section id="quiz" class="view">
       <div class="quiz-modes">
-        <button class="quiz-mode active" data-quiz-mode="listen">吏꾨룞 ?ｊ퀬 留욏엳湲?/button>
+        <button class="quiz-mode active" data-quiz-mode="listen">吏꾨룞 ?ｊ퀬 留욏엳湲</button>
         <button class="quiz-mode" data-quiz-mode="send">湲??蹂닿퀬 ?낅젰?섍린</button>
       </div>
       <div class="exam-bar">
@@ -261,7 +261,7 @@
       <div id="quizCard" class="quiz-card">
         <span id="quizKicker" class="card-kicker">LISTEN</span>
         <strong id="quizPrompt">?</strong>
-        <span id="quizInputDisplay" class="quiz-code">吏꾨룞???ｊ퀬 ?뚰뙆踰녹쓣 ?낅젰?섏꽭??/span>
+        <span id="quizInputDisplay" class="quiz-code">吏꾨룞???ｊ퀬 ?뚰뙆踰녹쓣 ?낅젰?섏꽭?</span>
         <p id="quizFeedback" class="quiz-feedback"></p>
       </div>
       <div id="listenAnswer" class="quiz-answer">
@@ -278,8 +278,8 @@
         </div>
         <button id="quizKeyer" class="morse-keyer" type="button">
           <strong>PRESS & HOLD</strong>
-          <span>吏㏐쾶 ?꾨Ⅴ硫???쨌 湲멸쾶 ?꾨Ⅴ硫???/span>
-          <small id="quizKeyerHint">?щ㈃ ?먮룞?쇰줈 ?뺣떟???뺤씤?⑸땲??/small>
+          <span>吏㏐쾶 ?꾨Ⅴ硫???쨌 湲멸쾶 ?꾨Ⅴ硫??</span>
+          <small id="quizKeyerHint">?щ㈃ ?먮룞?쇰줈 ?뺣떟???뺤씤?⑸땲?</small>
         </button>
       </div>
       <p class="quiz-swipe-hint">移대뱶 ?? ?뺣떟 蹂닿린 쨌 醫뚯슦 ?ㅼ??댄봽: 臾몄젣 ?대룞</p>
@@ -292,9 +292,9 @@
       </div>
       <div class="writer-card">
         <span class="card-kicker">MORSE WRITER</span>
-        <strong id="writerText">湲?먮? ?낅젰?섏꽭??/strong>
+        <strong id="writerText">湲?먮? ?낅젰?섏꽭?</strong>
         <span id="writerCurrent" class="quiz-code">?꾩옱 湲?? 鍮꾩뼱 ?덉쓬</span>
-        <p id="writerMorse" class="writer-morse">쨌 ?먭낵 ???좎쓣 ?뚮윭 ?쒖옉?섏꽭??/p>
+        <p id="writerMorse" class="writer-morse">쨌 ?먭낵 ???좎쓣 ?뚮윭 ?쒖옉?섏꽭?</p>
       </div>
       <div class="keyer-settings writer-keyer-settings">
         <span>湲?먃룸쓣?댁벐湲??뺤젙</span>
@@ -305,13 +305,13 @@
       </div>
       <button id="writerKeyer" class="morse-keyer writer-keyer" type="button">
         <strong>PRESS & HOLD</strong>
-        <span>吏㏐쾶 ?꾨Ⅴ硫???쨌 湲멸쾶 ?꾨Ⅴ硫???/span>
+        <span>吏㏐쾶 ?꾨Ⅴ硫???쨌 湲멸쾶 ?꾨Ⅴ硫??</span>
         <small id="writerKeyerHint">3?⑥쐞 ?댁떇: 湲???뺤젙 쨌 7?⑥쐞 ?댁떇: ?꾩뼱?곌린</small>
       </button>
       <div class="writer-actions">
         <button id="writerBackspace" class="light-button">??移?吏?곌린</button>
         <button id="clearWriterCode" class="light-button">?꾩껜 吏?곌린</button>
-        <button id="resetWriter" class="light-button">珥덇린??/button>
+        <button id="resetWriter" class="light-button">珥덇린?</button>
       </div>
       <button id="playWriterText" class="primary-button writer-play">?묒꽦 臾몄옣 ?ъ깮</button>
     </section>
@@ -319,7 +319,7 @@
     <section id="reference" class="view">
       <div class="reference-heading">
         <p class="label">A TO Z 쨌 0 TO 10 REFERENCE</p>
-        <strong>?뚰뙆踰냈룹닽??紐⑥뒪遺??/strong>
+        <strong>?뚰뙆踰냈룹닽??紐⑥뒪遺?</strong>
       </div>
       <div id="morseReference" class="morse-reference"></div>
     </section>
@@ -349,7 +349,7 @@
           <small id="spaceSendSignal" class="space-send-signal">?꾩옱 湲?? 鍮꾩뼱 ?덉쓬</small>
           <button id="spaceSendKeyer" class="morse-keyer space-keyer" type="button">
             <strong>PRESS & HOLD</strong>
-            <span>吏㏐쾶 ?꾨Ⅴ硫?쨌 / 湲멸쾶 ?꾨Ⅴ硫???/span>
+            <span>吏㏐쾶 ?꾨Ⅴ硫?쨌 / 湲멸쾶 ?꾨Ⅴ硫??</span>
             <small>3?⑥쐞 ?댁떇: 湲???뺤젙 쨌 7?⑥쐞 ?댁떇: ?꾩뼱?곌린</small>
           </button>
           <button id="submitSpaceSignal" type="submit">?ㅻ뒛???쒓렇??諛쒖떊</button>
@@ -370,7 +370,7 @@
           <p class="label">RECEIVED FROM SPACE</p>
           <strong data-no-i18n></strong>
           <time id="spaceSignalDate" class="space-signal-date"></time>
-          <small id="spaceDecodeStatus">紐⑥뒪 吏꾨룞??留욎떠 ?댁꽍 以?/small>
+          <small id="spaceDecodeStatus">紐⑥뒪 吏꾨룞??留욎떠 ?댁꽍 以</small>
           <div class="space-received-actions">
             <button id="redecodeSpaceSignal" type="button">?ㅼ떆 ?댁꽍?섍린</button>
             <button id="reportSpaceSignal" type="button">?좉퀬</button>
@@ -385,14 +385,14 @@
         <header class="random-signal-header">
           <div>
             <p class="eyebrow">morsiq</p>
-            <h2>?쒕뜡 ?쒓렇??/h2>
+            <h2>?쒕뜡 ?쒓렇?</h2>
           </div>
-          <span id="randomSignalStatus" class="random-signal-status">?곌껐 ?湲?以?/span>
+          <span id="randomSignalStatus" class="random-signal-status">?곌껐 ?湲?以</span>
         </header>
 
         <section id="randomSignalIdle" class="random-signal-state">
           <div class="random-signal-orbit" aria-hidden="true"><span></span></div>
-          <strong>?쒕뜡???곷?? ?곌껐?⑸땲??/strong>
+          <strong>?쒕뜡???곷?? ?곌껐?⑸땲?</strong>
           <p>?곌껐?섎㈃ ?쒕줈 ?대쫫??怨듦컻?섏? ?딄퀬 ??뷀븷 ???덉뒿?덈떎.</p>
           <button id="connectRandomSignal" class="random-signal-primary" type="button">?쒓렇???곌껐</button>
         </section>
@@ -413,7 +413,7 @@
             </div>
             <button id="randomChatKeyer" class="morse-keyer chat-keyer" type="button">
               <strong>PRESS & HOLD</strong>
-              <span>吏㏐쾶 ?꾨Ⅴ硫?쨌 ??/ 湲멸쾶 ?꾨Ⅴ硫?????/span>
+              <span>吏㏐쾶 ?꾨Ⅴ硫?쨌 ??/ 湲멸쾶 ?꾨Ⅴ硫????</span>
               <small>3?⑥쐞 ?댁떇: 湲???뺤젙 쨌 7?⑥쐞 ?댁떇: ?꾩뼱?곌린</small>
             </button>
             <div class="random-chat-actions">
@@ -426,12 +426,12 @@
                     <button type="button" data-random-limit="1">1</button>
                     <button type="button" data-random-limit="3">3</button>
                     <button type="button" data-random-limit="5">5</button>
-                    <button type="button" data-random-limit="unlimited">臾댁젣??/button>
+                    <button type="button" data-random-limit="unlimited">臾댁젣?</button>
                   </div>
                 </div>
                 <button id="sendRandomChat" class="primary-button swipe-send" type="button">
-                  <strong>蹂대궡湲?/strong>
-                  <small id="randomHiddenLimitHint">?ㅻⅨ履?諛湲? ?④? ?좏샇 쨌 1??/small>
+                  <strong>蹂대궡湲</strong>
+                  <small id="randomHiddenLimitHint">?ㅻⅨ履?諛湲? ?④? ?좏샇 쨌 1?</small>
                 </button>
               </div>
             </div>
@@ -441,13 +441,13 @@
         </section>
 
         <section id="randomSignalLast" class="random-signal-state last-signal-state" hidden>
-          <strong>?쇱뒪???쒓렇??/strong>
+          <strong>?쇱뒪???쒓렇?</strong>
           <p>?곌껐???딄꼈?듬땲?? 留덉?留?臾몄옣??蹂대궪吏 ?좏깮?섏꽭??</p>
           <form id="lastSignalForm" class="last-signal-form">
             <input id="lastSignalInput" type="text" maxlength="300" autocomplete="off" placeholder="留덉?留?臾몄옣???낅젰?섏꽭??>
             <div class="last-signal-actions">
               <button id="skipLastSignal" class="light-button" type="button">蹂대궡吏 ?딄린</button>
-              <button type="submit">蹂대궡湲?/button>
+              <button type="submit">蹂대궡湲</button>
             </div>
           </form>
         </section>
@@ -470,7 +470,7 @@
           <button id="removeProfilePhoto" class="light-button" type="button">?ъ쭊 吏?곌린</button>
         </div>
         <input id="profilePhotoInput" class="visually-hidden" type="file" accept="image/*">
-        <button id="saveMyProfile" class="primary-button" type="button">?꾨줈?????/button>
+        <button id="saveMyProfile" class="primary-button" type="button">?꾨줈????</button>
       </section>
     </section>
 
@@ -479,22 +479,22 @@
         <strong id="dailyGroupStatus">硫ㅻ쾭瑜?遺덈윭?ㅻ뒗 以묒엯?덈떎.</strong>
         <div class="daily-group-controls">
           <button id="toggleDailyGroupJoin" type="button">ON</button>
-          <button id="leaveDailyGroup" type="button">?섍?湲?/button>
+          <button id="leaveDailyGroup" type="button">?섍?湲</button>
         </div>
       </header>
       <div id="dailyGroupMessages" class="chat-messages daily-group-messages"></div>
       <form id="dailyGroupForm" class="chat-morse-composer group-chat-composer">
         <div class="chat-morse-display"><textarea id="dailyGroupInput" rows="1" maxlength="1000" placeholder="紐⑥뒪肄붾뱶瑜??낅젰?섏꽭??></textarea><small id="dailyGroupSignal">?꾩옱 湲?? 鍮꾩뼱 ?덉쓬</small></div>
-        <button id="dailyGroupKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>吏㏐쾶 ?꾨Ⅴ硫?쨌 ??/ 湲멸쾶 ?꾨Ⅴ硫?????/span><small></small></button>
+        <button id="dailyGroupKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>Short press: dot / Long press: dash</span><small></small></button>
         <div class="chat-morse-actions">
           <button id="clearDailyGroupMessage" class="light-button" type="button">吏?곌린</button>
           <label class="photo-send-button" for="dailyGroupPhotoInput"><span>?ъ쭊</span></label>
           <div class="send-control">
             <div id="dailyGroupHiddenViewPicker" class="hidden-view-picker" hidden>
               <span>?④? ?좏샇 ?ъ깮 ?잛닔</span>
-              <div><button type="button" data-daily-hidden-limit="1">1</button><button type="button" data-daily-hidden-limit="3">3</button><button type="button" data-daily-hidden-limit="5">5</button><button type="button" data-daily-hidden-limit="unlimited">臾댁젣??/button></div>
+              <div><button type="button" data-daily-hidden-limit="1">1</button><button type="button" data-daily-hidden-limit="3">3</button><button type="button" data-daily-hidden-limit="5">5</button><button type="button" data-daily-hidden-limit="unlimited">臾댁젣?</button></div>
             </div>
-            <button id="sendDailyGroupMessage" class="primary-button swipe-send" type="submit"><strong>蹂대궡湲?/strong><small id="dailyGroupHiddenLimitHint">?ㅻⅨ履?諛湲?쨌 ?④? ?좏샇 쨌 1??/small></button>
+            <button id="sendDailyGroupMessage" class="primary-button swipe-send" type="submit"><strong>蹂대궡湲</strong><small id="dailyGroupHiddenLimitHint">?ㅻⅨ履?諛湲?쨌 ?④? ?좏샇 쨌 1?</small></button>
           </div>
         </div>
         <input id="dailyGroupPhotoInput" class="visually-hidden" type="file" accept="image/*">
@@ -502,17 +502,17 @@
     </section>
 
     <section id="gamesWorld" class="world-view games-world" hidden>
-      <header class="game-header"><div><p class="eyebrow">MORSE SPEED RACE</p><h2>10?⑥뼱 ?ㅽ뵾??/h2><p>紐⑥뒪遺?몃줈 10媛쒖쓽 ?⑥뼱瑜?媛??鍮좊Ⅴ寃??낅젰?섏꽭??</p></div><button id="openFullRanking" type="button">?꾩껜 ??궧</button></header>
+      <header class="game-header"><div><p class="eyebrow">MORSE SPEED RACE</p><h2>10?⑥뼱 ?ㅽ뵾?</h2><p>紐⑥뒪遺?몃줈 10媛쒖쓽 ?⑥뼱瑜?媛??鍮좊Ⅴ寃??낅젰?섏꽭??</p></div><button id="openFullRanking" type="button">?꾩껜 ??궧</button></header>
       <section class="game-status-card">
         <div><small>吏꾪뻾</small><strong id="gameProgress">0 / 10</strong></div>
-        <div><small>?쒓컙</small><strong id="gameTimer">0.00珥?/strong></div>
+        <div><small>?쒓컙</small><strong id="gameTimer">0.00珥</strong></div>
         <div><small>???쒖쐞</small><strong id="gameMyRank">湲곕줉 ?놁쓬</strong></div>
       </section>
       <section class="game-play-card">
-        <small id="gameWordNumber">?쒖옉 以鍮?/small>
+        <small id="gameWordNumber">?쒖옉 以鍮</small>
         <strong id="gameTargetWord">READY</strong>
         <div class="chat-morse-display"><input id="gameInput" maxlength="30" placeholder="?⑥뼱 ?낅젰" autocomplete="off"><small id="gameSignal">?꾩옱 湲?? 鍮꾩뼱 ?덉쓬</small></div>
-        <button id="gameKeyer" class="morse-keyer" type="button"><strong>PRESS & HOLD</strong><span>吏㏐쾶 ?꾨Ⅴ硫?쨌 ??/ 湲멸쾶 ?꾨Ⅴ硫?????/span><small></small></button>
+        <button id="gameKeyer" class="morse-keyer" type="button"><strong>PRESS & HOLD</strong><span>Short press: dot / Long press: dash</span><small></small></button>
         <div class="game-actions"><button id="clearGameInput" class="light-button" type="button">吏?곌린</button><button id="startGame" type="button">寃뚯엫 ?쒖옉</button></div>
         <p id="gameFeedback" class="game-feedback"></p>
       </section>
@@ -529,11 +529,11 @@
         <button id="unlockDiary" class="primary-button" type="button">鍮꾨??쇨린 ?닿린</button>
       </section>
       <section id="diaryDesk" class="diary-desk" hidden>
-        <header class="diary-header"><div><p class="eyebrow">SECRET DIARY</p><h2>鍮꾨??쇨린</h2></div><button id="lockDiary" type="button">?좉렇湲?/button></header>
+        <header class="diary-header"><div><p class="eyebrow">SECRET DIARY</p><h2>鍮꾨??쇨린</h2></div><button id="lockDiary" type="button">?좉렇湲</button></header>
         <button id="openDiaryList" class="diary-list-open" type="button">?쇨린 紐⑸줉</button>
         <section class="diary-calendar-card">
-          <div class="diary-calendar-nav"><button id="diaryPrevMonth" type="button">??/button><strong id="diaryCalendarTitle"></strong><button id="diaryNextMonth" type="button">??/button></div>
-          <div class="diary-weekdays"><span>??/span><span>??/span><span>??/span><span>??/span><span>紐?/span><span>湲?/span><span>??/span></div>
+          <div class="diary-calendar-nav"><button id="diaryPrevMonth" type="button">?</button><strong id="diaryCalendarTitle"></strong><button id="diaryNextMonth" type="button">?</button></div>
+          <div class="diary-weekdays"><span>?</span><span>?</span><span>?</span><span>?</span><span>紐</span><span>湲</span><span>?</span></div>
           <div id="diaryYearPicker" class="diary-year-picker" hidden></div>
           <div id="diaryCalendar" class="diary-calendar"></div>
           <strong id="diarySelectedDate" class="diary-selected-date"></strong>
@@ -549,12 +549,12 @@
             <textarea id="diaryText" rows="4" maxlength="5000" placeholder="?쇨린瑜??낅젰?섏꽭??></textarea>
             <small id="diarySignal">?꾩옱 湲?? 鍮꾩뼱 ?덉쓬</small>
           </div>
-          <button id="diaryKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>吏㏐쾶 ?꾨Ⅴ硫?쨌 ??/ 湲멸쾶 ?꾨Ⅴ硫?????/span><small>????낅젰 ?ㅼ젙???곕쫭?덈떎</small></button>
+          <button id="diaryKeyer" class="morse-keyer chat-keyer" type="button"><strong>PRESS & HOLD</strong><span>Short press: dot / Long press: dash</span><small>Uses conversation input settings</small></button>
           <div class="diary-actions">
-            <button id="appendDiaryText" type="button">蹂대궡湲?/button>
+            <button id="appendDiaryText" type="button">蹂대궡湲</button>
             <button id="appendDiaryVibration" type="button">吏꾨룞 ?꾩슜</button>
             <button id="clearDiaryText" type="button">吏?곌린</button>
-            <button id="saveDiaryEntry" class="primary-button" type="button">?쇨린 ???/button>
+            <button id="saveDiaryEntry" class="primary-button" type="button">?쇨린 ??</button>
           </div>
         </div>
       </section>
@@ -606,7 +606,7 @@
       <small id="friendProfileSignalId" class="profile-signal-id" data-no-i18n></small>
       <div id="friendProfileBadges" class="profile-badges"></div>
       <p id="friendProfileDescription" class="profile-description"></p>
-      <button id="chatFromProfile" class="primary-button" type="button">??뷀븯湲?/button>
+      <button id="chatFromProfile" class="primary-button" type="button">??뷀븯湲</button>
       <button id="removeFriend" class="danger-button" type="button">移쒓뎄 ?딄린</button>
     </section>
   </div>
@@ -634,11 +634,11 @@
     <section class="request-panel-card">
       <button id="closeCreateGroup" class="profile-close" type="button">횞</button>
       <p class="eyebrow">NEW GROUP CHAT</p>
-      <h2>洹몃９梨?留뚮뱾湲?/h2>
+      <h2>洹몃９梨?留뚮뱾湲</h2>
       <form id="createGroupForm" class="group-create-form">
         <input id="groupNameInput" maxlength="40" placeholder="洹몃９ ?대쫫">
         <div id="groupFriendChoices" class="group-friend-choices"></div>
-        <button type="submit">?좏깮??移쒓뎄? 留뚮뱾湲?/button>
+        <button type="submit">?좏깮??移쒓뎄? 留뚮뱾湲</button>
       </form>
     </section>
   </div>
@@ -650,16 +650,16 @@
       <h2>移쒓뎄 異붽?</h2>
       <form id="friendForm" class="group-create-form">
         <input id="friendInput" maxlength="24" placeholder="移쒓뎄 ?됰꽕?? autocomplete="off">
-        <button type="submit">移쒓뎄 ?붿껌 蹂대궡湲?/button>
+        <button type="submit">移쒓뎄 ?붿껌 蹂대궡湲</button>
       </form>
     </section>
   </div>
 
   <div id="groupManagePanel" class="profile-overlay" hidden>
     <section class="request-panel-card">
-      <button id="closeGroupManage" class="profile-close" type="button">횞</button>
+      <button id="closeGroupManage" type="button" aria-label="Close">X</button>
       <p class="eyebrow">GROUP CHAT</p>
-      <h2 id="groupManageName">洹몃９梨?/h2>
+      <h2 id="groupManageName">洹몃９梨</h2>
       <div id="groupManageVisual" class="group-manage-visual"></div>
       <label id="groupPhotoLabel" class="profile-photo-button" for="groupPhotoInput">洹몃９ ?ъ쭊 ?ㅼ젙</label>
       <input id="groupPhotoInput" class="visually-hidden" type="file" accept="image/*">
@@ -669,16 +669,16 @@
       </section>
       <div id="groupManageMembers" class="group-member-grid"></div>
       <div id="groupAddFriendChoices" class="group-friend-choices"></div>
-      <button id="leaveGroup" class="danger-button" type="button">洹몃９梨??섍?湲?/button>
+      <button id="leaveGroup" class="danger-button" type="button">Leave group chat</button>
     </section>
   </div>
 
   <div id="player" class="player" hidden>
     <div>
       <span id="playerPulse" class="player-dot"></span>
-      <div><small>?ъ깮 以?/small><strong id="playerText"></strong></div>
+      <div><small>?ъ깮 以</small><strong id="playerText"></strong></div>
     </div>
-    <button id="stopPlayer">以묒?</button>
+    <button id="stopPlayer" type="button">Stop</button>
   </div>
 
   <div id="asciiPreview" class="ascii-preview-overlay" hidden>
@@ -699,7 +699,7 @@
       <pre id="asciiPreviewText"></pre>
       <div class="ascii-preview-actions">
         <button id="cancelAscii" class="light-button" type="button">痍⑥냼</button>
-        <button id="sendAscii" class="primary-button" type="button">蹂대궡湲?/button>
+        <button id="sendAscii" class="primary-button" type="button">Send</button>
       </div>
     </section>
   </div>
@@ -716,20 +716,20 @@
       <div class="settings-section account-settings">
         <p class="label">怨꾩젙</p>
         <strong id="accountStatus">濡쒓렇?명븯吏 ?딆쓬</strong>
-        <button id="openAuthSettings" type="button">濡쒓렇??/ ?뚯썝媛??/button>
+        <button id="openAuthSettings" type="button">Login / Sign up</button>
         <button id="logoutAccount" class="light-button" type="button" hidden>濡쒓렇?꾩썐</button>
       </div>
       <div id="nicknameSettings" class="settings-section nickname-settings" hidden>
-        <p class="label">?됰꽕??蹂寃?/p>
+        <p class="label">?됰꽕??蹂寃</p>
         <input id="settingsNickname" maxlength="24" autocomplete="nickname">
         <p id="nicknameChangeStatus" class="nickname-change-status" role="status" hidden></p>
-        <button id="saveNickname" type="button">?됰꽕?????/button>
+        <button id="saveNickname" type="button">Save nickname</button>
       </div>
       <div class="settings-section">
         <p class="label">?몄뼱</p>
         <div class="settings-options language-options">
           <button type="button" data-language="ko">
-            <strong>?쒓뎅??/strong>
+            <strong>?쒓뎅?</strong>
             <small>???꾩껜瑜??쒓뎅?대줈 ?쒖떆</small>
           </button>
           <button type="button" data-language="en">
@@ -737,7 +737,7 @@
             <small>Show the entire app in English</small>
           </button>
           <button type="button" data-language="ja">
-            <strong>?ζ쑍沃?/strong>
+            <strong>?ζ쑍沃</strong>
             <small>?㏂깤?ゅ뀲鵝볝굮?ζ쑍沃욁겎烏①ㅊ</small>
           </button>
         </div>
@@ -748,7 +748,7 @@
           <strong id="settingsSpeedLabel">蹂댄넻 쨌 120ms</strong>
         </div>
         <input id="settingsSpeed" type="range" min="60" max="300" step="10" value="120" aria-label="?ㅼ젙 吏꾨룞 ?띾룄">
-        <div class="range-labels"><span>鍮좊Ⅴ寃?/span><span>?먮━寃?/span></div>
+        <div class="range-labels"><span>鍮좊Ⅴ寃</span><span>?먮━寃</span></div>
       </div>
       <label class="settings-switch">
         <div>
@@ -796,12 +796,12 @@
             <textarea id="autocompleteText" maxlength="300" placeholder="?낅젰???⑥뼱 ?먮뒗 臾몄옣"></textarea>
             <button id="autocompleteKeyer" class="morse-keyer autocomplete-keyer" type="button">
               <strong>PRESS &amp; HOLD</strong>
-              <span>吏㏐쾶 ?꾨Ⅴ硫?쨌 ??/ 湲멸쾶 ?꾨Ⅴ硫?????/span>
+              <span>吏㏐쾶 ?꾨Ⅴ硫?쨌 ??/ 湲멸쾶 ?꾨Ⅴ硫????</span>
               <small>理쒕? 10媛??낅젰</small>
             </button>
             <div class="autocomplete-keyer-actions">
               <button id="autocompleteBackspace" type="button">??移?吏?곌린</button>
-              <button id="autocompleteClear" type="button">珥덇린??/button>
+              <button id="autocompleteClear" type="button">Clear</button>
             </div>
             <button type="submit">?먮룞?꾩꽦 異붽?</button>
           </form>
@@ -811,7 +811,7 @@
       <div class="settings-section suggestion-settings">
         <p class="label">嫄댁쓽?섍린</p>
         <textarea id="suggestionText" maxlength="2000" placeholder="異붽??덉쑝硫??섎뒗 湲곕뒫?대굹 遺덊렪???먯쓣 ?곸뼱二쇱꽭??></textarea>
-        <button id="submitSuggestion" type="button">嫄댁쓽?ы빆 蹂대궡湲?/button>
+        <button id="submitSuggestion" type="button">Send suggestion</button>
         <p id="suggestionStatus" class="nickname-change-status" role="status" hidden></p>
       </div>
     </section>

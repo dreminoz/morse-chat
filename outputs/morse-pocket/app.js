@@ -61,386 +61,10 @@ if (localStorage.getItem("morse-training-default-applied") !== DEFAULT_TRAINING_
 }
 
 const $ = (selector) => document.querySelector(selector);
-const I18N_PAIRS = [
-  ["비밀일기", "Secret Diary"],
-  ["비밀번호 입력", "Enter password"],
-  ["비밀번호 설정", "Set password"],
-  ["비밀번호 확인", "Confirm password"],
-  ["비밀일기 열기", "Open Secret Diary"],
-  ["비밀일기를 열려면 비밀번호를 입력하세요.", "Enter your password to open the Secret Diary."],
-  ["처음 사용할 비밀번호를 설정하세요. 잊으면 일기를 열 수 없습니다.", "Set your first password. A forgotten password cannot be recovered."],
-  ["일기를 입력하세요", "Write your diary entry"],
-  ["대화 입력 설정을 따릅니다", "Uses conversation input settings"],
-  ["모스부호 소리", "Morse code sound"],
-  ["끄면 진동은 유지되고 삐 소리만 나지 않습니다.", "Turn this off to keep vibration without beep sounds."],
-  ["오른쪽 밀기: 진동 전용", "Swipe right: vibration only"],
-  ["진동 전용 일기", "Vibration-only entry"],
-  ["탭해서 모스 진동으로 듣기 · 무제한", "Tap to play Morse vibration · Unlimited"],
-  ["아직 작성한 일기가 없습니다.", "No diary entries yet."],
-  ["잠그기", "Lock"],
-  ["그룹 사진 설정", "Set group photo"],
-  ["강퇴", "Remove"],
-  ["나가기", "Leave"],
-  ["멤버를 불러오는 중입니다.", "Loading members."],
-  ["짧게: 점 · 길게: 선", "Short: dot · Long: dash"],
-  ["알림 켜기", "Enable notifications"],
-  ["알림", "Notifications"],
-  ["알림을 켰습니다.", "Notifications enabled."],
-  ["브라우저 설정에서 알림을 허용해 주세요.", "Please allow notifications in your browser settings."],
-  ["이 기기에서는 진동 재생을 지원하지 않습니다.", "This device does not support vibration playback."],
-  ["이 숨김 신호는 재생 횟수를 모두 사용했습니다.", "This hidden signal has no plays remaining."],
-  ["스와이프할 때까지 현재 항목 무한 반복", "Repeat the current item until you swipe"],
-  ["좌우 스와이프 · 재생 후 자동 이동", "Swipe left or right · Move automatically after playback"],
-  ["좌우 스와이프 · 탭하면 현재 항목 재생", "Swipe left or right · Tap to replay the current item"],
-  ["카드 탭: 정답 보기 · 좌우 스와이프: 문제 이동", "Tap card: reveal answer · Swipe: move between questions"],
-  ["문장 훈련은 저장한 영문 문장을 우선 사용합니다.", "Sentence training uses your saved English sentences first."],
-  ["왼쪽 스와이프: 정답 확인 · 오른쪽: 지우기", "Swipe left: submit answer · Right: clear"],
-  ["3단위 휴식: 글자 확정 · 7단위 휴식: 띄어쓰기", "3-unit pause: confirm letter · 7-unit pause: add space"],
-  ["오른쪽: 글자 확정 · 왼쪽: 띄어쓰기", "Right: confirm letter · Left: add space"],
-  ["왼쪽: 글자 확정 · 오른쪽: 띄어쓰기", "Left: confirm letter · Right: add space"],
-  ["오른쪽 스와이프: 글자 확정 · 왼쪽: 띄어쓰기", "Swipe right: confirm letter · Left: add space"],
-  ["왼쪽 스와이프: 글자 확정 · 오른쪽: 띄어쓰기", "Swipe left: confirm letter · Right: add space"],
-  ["쉬는 시간으로 글자·띄어쓰기 확정", "Confirm letters and spaces after a pause"],
-  ["상하좌우 스와이프로 직접 입력", "Enter manually with four-way swipes"],
-  ["말풍선을 누르면 모스 진동 재생", "Tap a bubble to play Morse vibration"],
-  ["친구를 눌러 모스 메시지를 보내보세요.", "Tap a friend to send a Morse message."],
-  ["사진을 ASCII 아트로 보내기", "Send photo as ASCII art"],
-  ["사진", "Photo"],
-  ["우주", "Space"],
-  ["랜덤 시그널", "Random Signal"],
-  ["연결되면 서로 이름을 공개하지 않고 대화할 수 있습니다.", "Once connected, you can chat without revealing your names."],
-  ["근처의 새로운 시그널을 탐색하고 있습니다.", "Searching for a new nearby signal."],
-  ["랜덤한 상대와 연결합니다", "Connect with a random person"],
-  ["상대를 찾는 중...", "Searching for someone..."],
-  ["연결 대기 중", "Waiting to connect"],
-  ["시그널이 연결되었습니다.", "Signal connected."],
-  ["첫 메시지를 보내보세요.", "Send the first message."],
-  ["시그널 연결이 취소되었습니다.", "Signal connection canceled."],
-  ["시그널 연결이 끊어졌습니다.", "Signal disconnected."],
-  ["연결이 끊겼습니다. 마지막 문장을 보낼지 선택하세요.", "Disconnected. Choose whether to send one final sentence."],
-  ["라스트 시그널을 보냈습니다.", "Last Signal sent."],
-  ["마지막 문장을 입력하세요", "Enter your final sentence"],
-  ["라스트 시그널 보내기", "Send Last Signal"],
-  ["라스트 시그널", "Last Signal"],
-  ["보내지 않기", "Do not send"],
-  ["하루에 하나의 시그널을 우주로 보내고, 누군가의 시그널을 수신합니다.", "Send one signal into space each day and receive someone else's signal."],
-  ["오늘의 시그널 발신", "Transmit today's signal"],
-  ["랜덤 시그널 수신", "Receive random signal"],
-  ["모스 진동으로 읽기", "Read as Morse vibration"],
-  ["우주로 보낼 문장을 입력하세요", "Enter a sentence to send into space"],
-  ["Letters, numbers, and Morse symbols", "Letters, numbers, and Morse symbols"],
-  ["오늘은 이미 시그널을 발신했습니다.", "You already transmitted a signal today."],
-  ["오늘 아직 시그널을 발신하지 않았습니다.", "You have not transmitted a signal today."],
-  ["우주로 시그널을 발신했습니다.", "Signal transmitted into space."],
-  ["레이더가 우주 시그널을 탐색하고 있습니다.", "Radar is scanning for a Space signal."],
-  ["레이더가 시그널을 추적하고 있습니다.", "Radar is tracking a signal."],
-  ["우주 시그널을 수신했습니다.", "Space signal received."],
-  ["모스 진동에 맞춰 해석 중", "Decoding with Morse vibration"],
-  ["해석 완료", "Decoding complete"],
-  ["다시 해석하기", "Decode again"],
-  ["프로필", "Profile"],
-  ["자기소개", "About me"],
-  ["자신을 소개해보세요", "Tell others about yourself"],
-  ["프로필 사진 선택", "Choose profile photo"],
-  ["사진 지우기", "Remove photo"],
-  ["프로필 저장", "Save profile"],
-  ["닉네임 변경", "Change nickname"],
-  ["닉네임 저장", "Save nickname"],
-  ["친구 프로필 보기", "View friend profile"],
-  ["프로필 닫기", "Close profile"],
-  ["아직 자기소개가 없습니다.", "No introduction yet."],
-  ["대화하기", "Chat"],
-  ["닉네임을 변경했습니다.", "Nickname changed."],
-  ["이미 사용 중인 닉네임입니다.", "That nickname is already in use."],
-  ["프로필을 저장했습니다.", "Profile saved."],
-  ["시그널 발신", "Signal Transmit"],
-  ["시그널 수신", "Signal Receive"],
-  ["시그널 재생 횟수", "Signal play limit"],
-  ["친구의 닉네임을 입력하세요.", "Enter your friend's nickname."],
-  ["서버 연결에 실패했습니다.", "Failed to connect to the server."],
-  ["서버에 연결되었습니다.", "Connected to server."],
-  ["연결 확인 중", "Checking connection"],
-  ["연결 안 됨", "Disconnected"],
-  ["내 시그널 ID", "My Signal ID"],
-  ["친구 닉네임", "Friend nickname"],
-  ["수신할 우주 시그널이 아직 없습니다.", "There are no Space signals to receive yet."],
-  ["Google 계정으로 계속한 뒤, 최초 한 번만 닉네임을 설정합니다.", "Continue with Google, then choose a nickname once."],
-  ["Google 계정을 먼저 선택하세요.", "Select a Google account first."],
-  ["Google 로그인이 설정되지 않았습니다.", "Google Sign-In is not configured."],
-  ["닉네임은 2자 이상 입력하세요.", "Enter a nickname of at least 2 characters."],
-  ["Google 계정으로 계속하기", "Continue with Google"],
-  ["훈련장으로 돌아가기", "Return to Training"],
-  ["로그인하지 않음", "Not signed in"],
-  ["계정 연결", "Connect account"],
-  ["로그인", "Sign in"],
-  ["로그아웃", "Sign out"],
-  ["닉네임", "Nickname"],
-  ["Google 계정이 확인되었습니다.", "Google account verified."],
-  ["로그인되었습니다.", "Signed in."],
-  ["닉네임 설정", "Set nickname"],
-  ["Google 계정을 확인하고 있습니다.", "Checking your Google account."],
-  ["처음 로그인입니다. 사용할 닉네임을 설정하세요.", "First sign-in. Choose a nickname to use."],
-  ["Google 로그인에 실패했습니다.", "Google sign-in failed."],
-  ["닉네임이 설정되었습니다.", "Nickname set."],
-  ["닉네임 설정에 실패했습니다.", "Failed to set nickname."],
-  ["계정", "Account"],
-  ["시그널 연결", "Connect Signal"],
-  ["시그널 끊기", "Disconnect Signal"],
-  ["연결됨", "Connected"],
-  ["메시지를 입력하세요", "Enter a message"],
-  ["은하 너머로 모스 신호를 보내고 받아보세요.", "Send and receive Morse signals across the galaxy."],
-  ["정체를 알 수 없는 A-Z 신호를 주고받습니다.", "Exchange unknown A-Z signals."],
-  ["신호 보내기", "Send Signal"],
-  ["신호 받기", "Receive Signal"],
-  ["랜덤 신호 보내기", "Send Random Signal"],
-  ["랜덤 신호 받기", "Receive Random Signal"],
-  ["기능 선택", "Choose feature"],
-  ["메인으로", "Back to main"],
-  ["준비 중", "Coming soon"],
-  ["신호를 입력하세요.", "Enter a signal."],
-  ["우주 신호를 보냈습니다.", "Space signal sent."],
-  ["랜덤 신호를 보냈습니다.", "Random signal sent."],
-  ["신호를 수신했습니다.", "Signal received."],
-  ["사진 원본은 저장되지 않습니다", "The original photo is not saved"],
-  ["오른쪽 밀기: 숨김 신호", "Swipe right: hidden signal"],
-  ["짧게 누르면 · 점 / 길게 누르면 − 선", "Short press: dot · Long press: dash"],
-  ["짧게 누르면 점 · 길게 누르면 선", "Short press: dot · Long press: dash"],
-  ["쉬면 자동으로 정답을 확인합니다", "Pause to check the answer automatically"],
-  ["3단위 쉬면 자동으로 정답 확인", "Pause 3 units to check the answer"],
-  ["영문, 숫자, 주요 문장부호를 지원합니다.", "Supports English letters, numbers, and common punctuation."],
-  ["문구를 저장하면", "Save a phrase and"],
-  ["여기에 차곡차곡 모입니다.", "it will appear here."],
-  ["좌우로 밀어 이전·다음 항목 보기", "Swipe to view previous or next item"],
-  ["시험 중에는 이전 문제로 갈 수 없습니다.", "You cannot return to a previous question during an exam."],
-  ["시험 중에는 퀴즈 유형을 바꿀 수 없습니다.", "You cannot change quiz type during an exam."],
-  ["해당 모스 조합의 알파벳이 없습니다.", "No letter matches this Morse sequence."],
-  ["진동을 듣고 알파벳을 입력하세요", "Listen to the vibration and enter the letter"],
-  ["사진을 ASCII 아트로 보냈습니다.", "Photo sent as ASCII art."],
-  ["숨김 신호 재생 횟수", "Hidden signal play limit"],
-  ["숨김 신호를", "Hidden signal can be played"],
-  ["재생할 수 있습니다.", "times."],
-  ["사진 파일만 선택할 수 있습니다.", "Only image files can be selected."],
-  ["사진을 읽을 수 없습니다.", "Could not read the photo."],
-  ["지원하지 않는 문자:", "Unsupported characters:"],
-  ["아직 친구가 없습니다.", "No friends yet."],
-  ["이름을 입력해 친구를 추가하세요.", "Enter a name to add a friend."],
-  ["아직 메시지가 없습니다.", "No messages yet."],
-  ["첫 모스 메시지를 보내보세요.", "Send your first Morse message."],
-  ["아직 시험 기록이 없습니다.", "No exam records yet."],
-  ["메시지를 삭제했습니다.", "Message deleted."],
-  ["문구를 저장했습니다.", "Phrase saved."],
-  ["신호 받을 준비 완료", "Ready to receive a signal"],
-  ["숨김 모스 신호", "Hidden Morse signal"],
-  ["만료된 숨김 모스 신호", "Expired hidden Morse signal"],
-  ["ASCII 아트 사진", "ASCII art photo"],
-  ["문자 메시지", "Text message"],
-  ["모스코드를 입력하세요", "Enter Morse code"],
-  ["현재 글자: 비어 있음", "Current letter: empty"],
-  ["현재 글자:", "Current letter:"],
-  ["글자를 입력하세요", "Enter a letter"],
-  ["문장을 입력하세요", "Enter a sentence"],
-  ["점과 선을 입력하세요", "Enter dots and dashes"],
-  ["· 점과 − 선을 눌러 시작하세요", "Press · dot and − dash to begin"],
-  ["작성 문장 재생", "Play written sentence"],
-  ["글자·띄어쓰기 확정", "Confirm letters and spaces"],
-  ["글자 확정", "Confirm letter"],
-  ["띄어쓰기", "Add space"],
-  ["스와이프", "Swipe"],
-  ["오른쪽", "Right"],
-  ["왼쪽", "Left"],
-  ["대화 모스 입력 확정", "Chat Morse confirmation"],
-  ["좌우 방향 반전", "Reverse left and right"],
-  ["앱 전체를 한국어로 표시", "Show the entire app in Korean"],
-  ["설정 열기", "Open settings"],
-  ["설정 닫기", "Close settings"],
-  ["대화 목록으로 돌아가기", "Back to conversations"],
-  ["대화와 훈련장 선택", "Choose conversations or training room"],
-  ["화면 선택", "Choose screen"],
-  ["진동 속도", "Vibration speed"],
-  ["훈련 유형", "Training type"],
-  ["재생 방식", "Playback mode"],
-  ["항목당 반복", "Repeats per item"],
-  ["다음 항목까지", "Until next item"],
-  ["반복 간격", "Repeat interval"],
-  ["모스부호 답 보기", "Show Morse answer"],
-  ["진동 듣고 맞히기", "Guess from vibration"],
-  ["글자 보고 입력하기", "Enter Morse from a letter"],
-  ["시험 시작 · A-Z 전체", "Start exam · All A-Z"],
-  ["시험 종료", "End exam"],
-  ["기록 보기", "View records"],
-  ["정답 확인", "Check answer"],
-  ["입력 확정", "Input confirmation"],
-  ["한 글자 확인", "Check one letter"],
-  ["문장 입력", "Sentence input"],
-  ["한 칸 지우기", "Delete one"],
-  ["전체 지우기", "Clear current code"],
-  ["사진 변환 결과", "Photo conversion result"],
-  ["알파벳 모스부호", "Alphabet Morse code"],
-  ["알파벳·숫자 모스부호", "Alphabet and number Morse code"],
-  ["건의하기", "Send suggestion"],
-  ["추가했으면 하는 기능이나 불편한 점을 적어주세요", "Tell us about a feature request or inconvenience"],
-  ["건의사항 보내기", "Send suggestion"],
-  ["작성 중인 일기", "Diary draft"],
-  ["선택한 날짜의 일기", "Entries for selected date"],
-  ["저장된 내용", "Saved entries"],
-  ["일기 저장을 눌러야 서버에 저장됩니다", "Press Save Diary to store it on the server"],
-  ["모스부호순", "Morse order"],
-  ["알파벳순", "Alphabetical"],
-  ["문장 훈련", "Sentence training"],
-  ["랜덤 알파벳", "Random alphabet"],
-  ["무한 반복", "Infinite repeat"],
-  ["훈련 시작", "Start training"],
-  ["훈련 끝내기", "End training"],
-  ["모두 정답", "All correct"],
-  ["틀린 항목:", "Wrong items:"],
-  ["정답 보기", "Reveal answer"],
-  ["미응답", "No answer"],
-  ["정답:", "Answer:"],
-  ["정답!", "Correct!"],
-  ["오답!", "Wrong!"],
-  ["오답", "Wrong"],
-  ["현재 오답", "Current wrong"],
-  ["시험 완료", "Exam complete"],
-  ["시험", "Exam"],
-  ["듣기", "Listen"],
-  ["입력", "Input"],
-  ["문구 삭제", "Delete phrase"],
-  ["메시지 삭제", "Delete message"],
-  ["친구 이름", "Friend name"],
-  ["친구 요청 보내기", "Send friend request"],
-  ["친구 닉네임", "Friend nickname"],
-  ["네이티브 광고", "Native ad"],
-  ["친구 추가", "Add friend"],
-  ["문구 저장", "Save phrase"],
-  ["전달할 문구를 입력하세요", "Enter a phrase to send"],
-  ["사진을 ASCII 아트로 보내기", "Send photo as ASCII art"],
-  ["숨김 신호 재생", "Play hidden signal"],
-  ["재생 중", "Playing"],
-  ["재생", "Play"],
-  ["아주 빠름", "Very fast"],
-  ["아주 느림", "Very slow"],
-  ["빠르게", "Faster"],
-  ["느리게", "Slower"],
-  ["보통", "Normal"],
-  ["느림", "Slow"],
-  ["설정", "Settings"],
-  ["언어", "Language"],
-  ["한국어", "Korean"],
-  ["대화", "Conversations"],
-  ["훈련장", "Training"],
-  ["저장", "Saved"],
-  ["훈련", "Training"],
-  ["퀴즈", "Quiz"],
-  ["쓰기", "Writer"],
-  ["목록", "Reference"],
-  ["랜덤", "Random"],
-  ["문장", "Sentence"],
-  ["자동", "Auto"],
-  ["수동", "Manual"],
-  ["탭", "Tap"],
-  ["무제한", "Unlimited"],
-  ["지우기", "Delete"],
-  ["보내기", "Send"],
-  ["초기화", "Reset"],
-  ["중지", "Stop"],
-  ["취소", "Cancel"],
-  ["회", " times"],
-  ["초", "s"],
-  ["개", ""]
-];
-const I18N_TRIPLES = [
-  { ko: "로그인 / 회원가입", en: "Login / Sign up", ja: "ログイン / 新規登録" },
-  { ko: "morsiq account", en: "morsiq account", ja: "morsiqアカウント" },
-  { ko: "ID로 로그인하거나 계정을 만들거나 Google로 계속하세요.", en: "Sign in with your ID, create an account, or continue with Google.", ja: "IDでログイン、新規登録、またはGoogleで続行できます。" },
-  { ko: "Google로 계속하기", en: "Continue with Google", ja: "Googleで続行" },
-  { ko: "ID 확인", en: "Check ID", ja: "ID確認" },
-  { ko: "비밀번호", en: "Password", ja: "パスワード" },
-  { ko: "비밀번호 확인", en: "Confirm password", ja: "パスワード確認" },
-  { ko: "닉네임 설정", en: "Set nickname", ja: "ニックネーム設定" },
-  { ko: "로그인 방법을 선택하세요.", en: "Choose a sign-in method.", ja: "ログイン方法を選択してください。" },
-  { ko: "훈련장으로 돌아가기", en: "Back to training", ja: "トレーニングに戻る" },
-  { ko: "로그인", en: "Login", ja: "ログイン" },
-  { ko: "회원가입", en: "Sign up", ja: "新規登録" },
-  { ko: "로그인하지 않음", en: "Not signed in", ja: "未ログイン" },
-  { ko: "로그아웃", en: "Sign out", ja: "ログアウト" },
-  { ko: "계정", en: "Account", ja: "アカウント" },
-  { ko: "닉네임", en: "Nickname", ja: "ニックネーム" },
-  { ko: "닉네임 변경", en: "Change nickname", ja: "ニックネーム変更" },
-  { ko: "닉네임 저장", en: "Save nickname", ja: "ニックネームを保存" },
-  { ko: "설정", en: "Settings", ja: "設定" },
-  { ko: "설정 열기", en: "Open settings", ja: "設定を開く" },
-  { ko: "설정 닫기", en: "Close settings", ja: "設定を閉じる" },
-  { ko: "언어", en: "Language", ja: "言語" },
-  { ko: "한국어", en: "Korean", ja: "韓国語" },
-  { ko: "앱 전체를 한국어로 표시", en: "Show the entire app in Korean", ja: "アプリ全体を韓国語で表示" },
-  { ko: "Show the entire app in English", en: "Show the entire app in English", ja: "アプリ全体を英語で表示" },
-  { ko: "アプリ全体を日本語で表示", en: "Show the entire app in Japanese", ja: "アプリ全体を日本語で表示" },
-  { ko: "진동 속도", en: "Vibration speed", ja: "振動速度" },
-  { ko: "빠르게", en: "Faster", ja: "速く" },
-  { ko: "느리게", en: "Slower", ja: "遅く" },
-  { ko: "보통", en: "Normal", ja: "普通" },
-  { ko: "모스부호 소리", en: "Morse code sound", ja: "モールス信号の音" },
-  { ko: "끄면 진동은 유지되고 삐 소리만 나지 않습니다.", en: "Turn this off to keep vibration without beep sounds.", ja: "オフにすると振動はそのままで、ビープ音だけ鳴りません。" },
-  { ko: "모스부호 소리를 켰습니다.", en: "Morse sound is on.", ja: "モールス音をオンにしました。" },
-  { ko: "모스부호 소리를 껐습니다.", en: "Morse sound is off.", ja: "モールス音をオフにしました。" },
-  { ko: "대화 모스 입력 확정", en: "Chat Morse confirmation", ja: "チャットのモールス入力確定" },
-  { ko: "자동", en: "Auto", ja: "自動" },
-  { ko: "수동", en: "Manual", ja: "手動" },
-  { ko: "쉬는 시간으로 글자·띄어쓰기 확정", en: "Confirm letters and spaces after a pause", ja: "休止時間で文字とスペースを確定" },
-  { ko: "상하좌우 스와이프로 직접 입력", en: "Enter manually with four-way swipes", ja: "上下左右スワイプで直接入力" },
-  { ko: "좌우 방향 반전", en: "Reverse left and right", ja: "左右方向を反転" },
-  { ko: "오른쪽: 글자 확정 · 왼쪽: 띄어쓰기 · 위: 대문자 · 아래: 엔터", en: "Right: confirm letter · Left: add space · Up: uppercase · Down: enter", ja: "右: 文字確定 · 左: スペース · 上: 大文字 · 下: 改行" },
-  { ko: "왼쪽: 글자 확정 · 오른쪽: 띄어쓰기 · 위: 대문자 · 아래: 엔터", en: "Left: confirm letter · Right: add space · Up: uppercase · Down: enter", ja: "左: 文字確定 · 右: スペース · 上: 大文字 · 下: 改行" },
-  { ko: "대화", en: "Conversations", ja: "会話" },
-  { ko: "훈련장", en: "Training", ja: "トレーニング" },
-  { ko: "우주", en: "Space", ja: "宇宙" },
-  { ko: "랜덤 시그널", en: "Random Signal", ja: "ランダムシグナル" },
-  { ko: "프로필", en: "Profile", ja: "プロフィール" },
-  { ko: "데일리 그룹챗", en: "Daily Group Chat", ja: "デイリーグループチャット" },
-  { ko: "게임", en: "Games", ja: "ゲーム" },
-  { ko: "비밀일기", en: "Secret Diary", ja: "秘密日記" },
-  { ko: "상점", en: "Shop", ja: "ショップ" },
-  { ko: "친구", en: "Friends", ja: "友だち" },
-  { ko: "받은 요청", en: "Received requests", ja: "受信リクエスト" },
-  { ko: "보낸 요청", en: "Sent requests", ja: "送信リクエスト" },
-  { ko: "친구 추가", en: "Add friend", ja: "友だち追加" },
-  { ko: "그룹챗 만들기", en: "Create group chat", ja: "グループチャット作成" },
-  { ko: "그룹챗", en: "Group Chat", ja: "グループチャット" },
-  { ko: "친구를 눌러 모스 메시지를 보내보세요.", en: "Tap a friend to send a Morse message.", ja: "友だちをタップしてモールスメッセージを送ってみましょう。" },
-  { ko: "로그인되었습니다.", en: "Signed in.", ja: "ログインしました。" },
-  { ko: "계정이 생성되었습니다.", en: "Account created.", ja: "アカウントを作成しました。" },
-  { ko: "아이디와 비밀번호를 입력하세요.", en: "Enter your ID and password.", ja: "IDとパスワードを入力してください。" },
-  { ko: "아이디를 확인한 뒤 회원가입하세요.", en: "Check your ID, then sign up.", ja: "IDを確認してから登録してください。" },
-  { ko: "아이디를 확인할 수 없습니다.", en: "Could not check this ID.", ja: "このIDを確認できませんでした。" },
-  { ko: "사용 가능한 아이디입니다.", en: "This ID is available.", ja: "このIDは使用できます。" },
-  { ko: "이미 사용 중인 아이디입니다.", en: "This ID is already taken.", ja: "このIDはすでに使用されています。" },
-  { ko: "비밀번호는 6자 이상이어야 합니다.", en: "Password must be at least 6 chars.", ja: "パスワードは6文字以上必要です。" },
-  { ko: "비밀번호가 일치하지 않습니다.", en: "Passwords do not match.", ja: "パスワードが一致しません。" },
-  { ko: "닉네임은 2자 이상 입력하세요.", en: "Nickname must be at least 2 chars.", ja: "ニックネームは2文字以上入力してください。" },
-  { ko: "서버 연결에 실패했습니다.", en: "Failed to connect to the server.", ja: "サーバー接続に失敗しました。" },
-  { ko: "시그널이 연결되었습니다.", en: "Signal connected.", ja: "シグナルに接続しました。" },
-  { ko: "랜덤 시그널 연결", en: "Random Signal connected", ja: "ランダムシグナル接続" },
-  { ko: "새로운 시그널과 연결되었습니다.", en: "A new signal has connected.", ja: "新しいシグナルに接続しました。" },
-  { ko: "새 친구 요청이 왔습니다.", en: "New friend request.", ja: "新しい友だちリクエストが届きました。" },
-  { ko: "친구 요청을 보냈습니다.", en: "Friend request sent.", ja: "友だちリクエストを送信しました。" },
-  { ko: "없는 닉네임입니다.", en: "Nickname not found.", ja: "ニックネームが見つかりません。" },
-  { ko: "메시지를 삭제했습니다.", en: "Message deleted.", ja: "メッセージを削除しました。" },
-  { ko: "알림", en: "Notifications", ja: "通知" },
-  { ko: "알림을 켰습니다.", en: "Notifications enabled.", ja: "通知をオンにしました。" },
-  { ko: "브라우저 설정에서 알림을 허용해 주세요.", en: "Please allow notifications in your browser settings.", ja: "ブラウザ設定で通知を許可してください。" },
-  { ko: "새 메시지", en: "New message", ja: "新しいメッセージ" },
-  { ko: "Morse Only", en: "Morse Only", ja: "Morse Only" },
-  { ko: "ASCII Art", en: "ASCII Art", ja: "ASCII Art" },
-  { ko: "랜덤 시그널 꾸미기", en: "Random Signal Style", ja: "ランダムシグナル装飾" },
-  { ko: "대화창 테마", en: "Chat Theme", ja: "チャットテーマ" },
-  { ko: "모스부호 소리", en: "Morse Sound", ja: "モールス音" },
-  { ko: "프로필 꾸미기", en: "Profile Style", ja: "プロフィール装飾" },
-  { ko: "랜덤 뽑기", en: "Random draw", ja: "ランダム抽選" },
-  { ko: "장착", en: "Equip", ja: "装着" },
-  { ko: "장착 해제", en: "Unequip", ja: "解除" },
-  { ko: "아이템을 장착했습니다.", en: "Item equipped.", ja: "アイテムを装着しました。" },
-  { ko: "아이템 장착을 해제했습니다.", en: "Item unequipped.", ja: "アイテムを解除しました。" }
-];
+const I18N_PAIRS = [];
+
+const I18N_TRIPLES = [];
+
 const KO_TO_EN = [...I18N_PAIRS].sort((a, b) => b[0].length - a[0].length);
 const EN_TO_KO = I18N_PAIRS
   .filter(([, en]) => en.length >= 3)
@@ -942,6 +566,50 @@ function mainText(key) {
   return (MAIN_TEXT[state.language] || MAIN_TEXT.en)[key] || MAIN_TEXT.en[key] || key;
 }
 
+const SAFE_MAIN_TEXT = {
+  ko: {
+    settings: "\uC124\uC815", conversations: "\uB300\uD654", training: "\uD6C8\uB828\uC7A5", space: "\uC6B0\uC8FC", randomSignal: "\uB79C\uB364 \uC2DC\uADF8\uB110",
+    profile: "\uD504\uB85C\uD544", dailyGroup: "\uB370\uC77C\uB9AC \uADF8\uB8F9\uCC57", games: "\uAC8C\uC784", secretDiary: "\uBE44\uBC00\uC77C\uAE30", shop: "\uC0C1\uC810"
+  },
+  en: {
+    settings: "Settings", conversations: "Conversations", training: "Training", space: "Space", randomSignal: "Random Signal",
+    profile: "Profile", dailyGroup: "Daily Group Chat", games: "Games", secretDiary: "Secret Diary", shop: "Shop"
+  },
+  ja: {
+    settings: "\u8A2D\u5B9A", conversations: "\u4F1A\u8A71", training: "\u30C8\u30EC\u30FC\u30CB\u30F3\u30B0", space: "\u5B87\u5B99", randomSignal: "\u30E9\u30F3\u30C0\u30E0\u4FE1\u53F7",
+    profile: "\u30D7\u30ED\u30D5\u30A3\u30FC\u30EB", dailyGroup: "\u30C7\u30A4\u30EA\u30FC\u30B0\u30EB\u30FC\u30D7\u30C1\u30E3\u30C3\u30C8", games: "\u30B2\u30FC\u30E0", secretDiary: "\u79D8\u5BC6\u65E5\u8A18", shop: "\u30B7\u30E7\u30C3\u30D7"
+  }
+};
+
+function safeMainText(key) {
+  return (SAFE_MAIN_TEXT[state.language] || SAFE_MAIN_TEXT.en)[key] || SAFE_MAIN_TEXT.en[key] || key;
+}
+
+function rebuildWorldTabs() {
+  const rows = [
+    [document.querySelector(".primary-world-tabs"), ["friends", "hall", "space", "randomSignal", "profile"]],
+    [document.querySelector(".secondary-world-tabs"), ["dailyGroup", "games", "secretDiary", "shop"]]
+  ];
+  const labels = { friends: "conversations", hall: "training", space: "space", randomSignal: "randomSignal", profile: "profile", dailyGroup: "dailyGroup", games: "games", secretDiary: "secretDiary", shop: "shop" };
+  rows.forEach(([row, worlds]) => {
+    if (!row) return;
+    row.replaceChildren(...worlds.map(world => {
+      const button = document.createElement("button");
+      button.className = "world-tab" + (state.world === world ? " active" : "");
+      button.type = "button";
+      button.dataset.world = world;
+      button.textContent = safeMainText(labels[world]);
+      return button;
+    }));
+  });
+  const settingsButton = $("#openSettings");
+  if (settingsButton) {
+    settingsButton.textContent = "...";
+    settingsButton.setAttribute("aria-label", safeMainText("settings"));
+  }
+  document.querySelector(".world-tabs")?.setAttribute("aria-label", safeMainText("settings"));
+}
+
 function keyerModeHint() {
   return state.chatKeyerMode === "auto"
     ? mainText("autoKeyer")
@@ -949,15 +617,16 @@ function keyerModeHint() {
 }
 
 function localizeMainUI() {
-  document.querySelector("[data-world='friends']") && (document.querySelector("[data-world='friends']").textContent = mainText("conversations"));
-  document.querySelector("[data-world='hall']") && (document.querySelector("[data-world='hall']").textContent = mainText("training"));
-  document.querySelector("[data-world='space']") && (document.querySelector("[data-world='space']").textContent = mainText("space"));
-  document.querySelector("[data-world='randomSignal']") && (document.querySelector("[data-world='randomSignal']").textContent = mainText("randomSignal"));
-  document.querySelector("[data-world='profile']") && (document.querySelector("[data-world='profile']").textContent = mainText("profile"));
-  document.querySelector("[data-world='dailyGroup']") && (document.querySelector("[data-world='dailyGroup']").textContent = mainText("dailyGroup"));
-  document.querySelector("[data-world='games']") && (document.querySelector("[data-world='games']").textContent = mainText("games"));
-  document.querySelector("[data-world='secretDiary']") && (document.querySelector("[data-world='secretDiary']").textContent = mainText("secretDiary"));
-  document.querySelector("[data-world='shop']") && (document.querySelector("[data-world='shop']").textContent = mainText("shop"));
+  rebuildWorldTabs();
+    document.querySelector("[data-world='friends']") && (document.querySelector("[data-world='friends']").textContent = safeMainText("conversations"));
+  document.querySelector("[data-world='hall']") && (document.querySelector("[data-world='hall']").textContent = safeMainText("training"));
+  document.querySelector("[data-world='space']") && (document.querySelector("[data-world='space']").textContent = safeMainText("space"));
+  document.querySelector("[data-world='randomSignal']") && (document.querySelector("[data-world='randomSignal']").textContent = safeMainText("randomSignal"));
+  document.querySelector("[data-world='profile']") && (document.querySelector("[data-world='profile']").textContent = safeMainText("profile"));
+  document.querySelector("[data-world='dailyGroup']") && (document.querySelector("[data-world='dailyGroup']").textContent = safeMainText("dailyGroup"));
+  document.querySelector("[data-world='games']") && (document.querySelector("[data-world='games']").textContent = safeMainText("games"));
+  document.querySelector("[data-world='secretDiary']") && (document.querySelector("[data-world='secretDiary']").textContent = safeMainText("secretDiary"));
+  document.querySelector("[data-world='shop']") && (document.querySelector("[data-world='shop']").textContent = safeMainText("shop"));
 
   setElementText(".speed-card .label", mainText("speed"));
   $("#speed")?.setAttribute("aria-label", mainText("speed"));
@@ -1721,6 +1390,7 @@ const state = {
   asciiEraseCanvas: null,
   asciiDrawing: false,
   asciiLastPoint: null,
+  asciiEditorBound: false,
   profileDraftAscii: null,
   profileCache: {},
   viewingProfileSignalId: "",
@@ -1888,16 +1558,18 @@ function connectServer() {
   stream.addEventListener("group-message", event => {
     const message = JSON.parse(event.data);
     const group = state.groups.find(item => item.id === message.groupId);
-    if (state.activeGroup?.id === message.groupId && !state.groupMessages.some(item => item.id === message.id)) {
+    const dailyMessage = isDailyGroupMessage(message);
+    if (!dailyMessage && state.activeGroup?.id === message.groupId && !state.groupMessages.some(item => item.id === message.id)) {
       state.groupMessages.push(message);
       renderGroupMessages();
     }
-    if (state.dailyGroup?.id === message.groupId && !state.dailyGroupMessages.some(item => item.id === message.id)) {
+    if (dailyMessage && state.dailyGroup?.id === message.groupId && !state.dailyGroupMessages.some(item => item.id === message.id)) {
       state.dailyGroupMessages.push(message);
       renderDailyGroup();
     }
     if (!message.mine && message.from !== state.userId) {
-      if (state.dailyGroup?.id === message.groupId) {
+      if (dailyMessage) {
+        if (message.groupId) delete state.unreadGroups[message.groupId];
         if (state.world !== "dailyGroup") state.unreadDaily += 1;
       } else if (state.activeGroup?.id !== message.groupId) {
         state.unreadGroups[message.groupId] = Number(state.unreadGroups[message.groupId] || 0) + 1;
@@ -1906,9 +1578,7 @@ function connectServer() {
       }
       saveUnread();
       showNativeNotification(
-        state.dailyGroup?.id === message.groupId
-          ? (state.language === "en" ? "Daily Group Chat" : "데일리 그룹챗")
-          : (group?.name || (state.language === "en" ? "Group Chat" : "그룹챗")),
+        dailyMessage ? mainText("dailyGroup") : (group?.name || mainText("groups")),
         message.hidden ? "Morse Only" : (message.type === "ascii" ? "ASCII Art" : String(message.text || "").slice(0, 100))
       );
     }
@@ -2966,6 +2636,25 @@ function unreadBubble(count) {
   return count ? `<span class="unread-badge">${unreadLabel(count)}</span>` : "";
 }
 
+function readyToReceiveText() {
+  return uiText("신호 받을 준비 완료", "Ready to receive a signal", "信号を受け取る準備完了");
+}
+
+function dailyTomorrowText() {
+  return uiText("내일", "tomorrow", "明日");
+}
+
+function dailyMemberUnit() {
+  return uiText("명", "people", "人");
+}
+
+function isDailyGroupMessage(message) {
+  return message?.groupType === "daily"
+    || message?.daily === true
+    || state.dailyGroup?.id === message?.groupId
+    || /^ANON-\d+$/i.test(String(message?.from || ""));
+}
+
 function saveUnread() {
   localStorage.setItem("morse-unread-direct", JSON.stringify(state.unreadDirect));
   localStorage.setItem("morse-unread-groups", JSON.stringify(state.unreadGroups));
@@ -2997,7 +2686,7 @@ function renderFriends() {
         <button type="button" class="friend-conversation-button" data-open-friend-id="${escapeHtml(friend)}">
         <div class="friend-info">
           <strong data-no-i18n>${escapeHtml(state.profileCache[friend]?.nickname || friend)}</strong>
-          <small>${state.chats[friend]?.length ? chatPreview(state.chats[friend][state.chats[friend].length - 1]) : "신호 받을 준비 완료"}</small>
+          <small>${state.chats[friend]?.length ? chatPreview(state.chats[friend][state.chats[friend].length - 1]) : readyToReceiveText()}</small>
         </div>
         </button>
         ${unreadBubble(Number(state.unreadDirect[friend] || 0))}
@@ -3113,7 +2802,7 @@ function renderDailyGroup() {
   if (!state.dailyGroup) return;
   renderDailyGroupToggle();
   $("#dailyGroupForm").hidden = false;
-  $("#dailyGroupStatus").textContent = `${state.dailyGroup.members.length}/10명 · ${state.account?.dailyGroupEnabled === false ? "내일 OFF" : "내일 ON"}`;
+  $("#dailyGroupStatus").textContent = `${state.dailyGroup.members.length}/10${dailyMemberUnit()} · ${dailyTomorrowText()} ${state.account?.dailyGroupEnabled === false ? "OFF" : "ON"}`;
   renderGroupMessageList($("#dailyGroupMessages"), state.dailyGroupMessages, state.dailyGroup);
   renderGroupComposer(true);
 }
@@ -5887,6 +5576,53 @@ $("#chatPhotoInput").addEventListener("change", event => {
   state.asciiTarget = "friend";
   prepareAsciiPhoto(file);
 });
+function ensureAsciiEditor() {
+  if ($("#asciiEditorCanvas")) return;
+  const previewText = $("#asciiPreviewText");
+  if (!previewText) return;
+  previewText.insertAdjacentHTML("beforebegin", `<div class="ascii-editor">
+    <canvas id="asciiEditorCanvas"></canvas>
+    <div class="ascii-editor-tools">
+      <button id="asciiAutoEnhance" type="button">Auto</button>
+      <button id="asciiKeepBrush" class="active" type="button">Keep</button>
+      <button id="asciiEraseBrush" type="button">Erase</button>
+      <button id="asciiClearBrush" type="button">Clear marks</button>
+    </div>
+    <small>Draw over the object to keep it. Draw erase marks to turn that area into blank space.</small>
+  </div>`);
+  bindAsciiEditorEvents();
+}
+
+function bindAsciiEditorEvents() {
+  if (state.asciiEditorBound) return;
+  const canvas = $("#asciiEditorCanvas");
+  if (!canvas) return;
+  state.asciiEditorBound = true;
+  $("#asciiAutoEnhance")?.addEventListener("click", () => {
+    state.asciiAutoEnhance = !state.asciiAutoEnhance;
+    $("#asciiAutoEnhance")?.classList.toggle("active", state.asciiAutoEnhance);
+    updateAsciiDraft();
+  });
+  $("#asciiKeepBrush")?.addEventListener("click", () => setAsciiBrushMode("keep"));
+  $("#asciiEraseBrush")?.addEventListener("click", () => setAsciiBrushMode("erase"));
+  $("#asciiClearBrush")?.addEventListener("click", () => {
+    if (!state.asciiKeepCanvas || !state.asciiEraseCanvas) return;
+    state.asciiKeepCanvas.getContext("2d").clearRect(0, 0, state.asciiKeepCanvas.width, state.asciiKeepCanvas.height);
+    state.asciiEraseCanvas.getContext("2d").clearRect(0, 0, state.asciiEraseCanvas.width, state.asciiEraseCanvas.height);
+    redrawAsciiEditor();
+    updateAsciiDraft();
+  });
+  canvas.addEventListener("pointerdown", event => {
+    state.asciiDrawing = true;
+    state.asciiLastPoint = null;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    drawAsciiBrush(event);
+  });
+  canvas.addEventListener("pointermove", drawAsciiBrush);
+  canvas.addEventListener("pointerup", finishAsciiBrush);
+  canvas.addEventListener("pointercancel", finishAsciiBrush);
+}
+
 function asciiEditorContext(canvas) {
   const context = canvas.getContext("2d", { willReadFrequently: true });
   context.lineCap = "round";
@@ -5896,6 +5632,8 @@ function asciiEditorContext(canvas) {
 }
 
 function renderAsciiEditor(image) {
+  ensureAsciiEditor();
+  bindAsciiEditorEvents();
   const canvas = $("#asciiEditorCanvas");
   if (!canvas) return;
   const maxWidth = Math.min(460, window.innerWidth - 72);
@@ -5990,6 +5728,8 @@ function finishAsciiBrush() {
 }
 
 function prepareAsciiPhoto(file) {
+  ensureAsciiEditor();
+  bindAsciiEditorEvents();
   if (!file.type.startsWith("image/")) {
     showToast("사진 파일만 선택할 수 있습니다.");
     return;
@@ -6017,29 +5757,7 @@ $("#cancelAscii").addEventListener("click", () => {
   state.asciiEraseCanvas = null;
   $("#asciiPreview").hidden = true;
 });
-$("#asciiAutoEnhance").addEventListener("click", () => {
-  state.asciiAutoEnhance = !state.asciiAutoEnhance;
-  $("#asciiAutoEnhance").classList.toggle("active", state.asciiAutoEnhance);
-  updateAsciiDraft();
-});
-$("#asciiKeepBrush").addEventListener("click", () => setAsciiBrushMode("keep"));
-$("#asciiEraseBrush").addEventListener("click", () => setAsciiBrushMode("erase"));
-$("#asciiClearBrush").addEventListener("click", () => {
-  if (!state.asciiKeepCanvas || !state.asciiEraseCanvas) return;
-  state.asciiKeepCanvas.getContext("2d").clearRect(0, 0, state.asciiKeepCanvas.width, state.asciiKeepCanvas.height);
-  state.asciiEraseCanvas.getContext("2d").clearRect(0, 0, state.asciiEraseCanvas.width, state.asciiEraseCanvas.height);
-  redrawAsciiEditor();
-  updateAsciiDraft();
-});
-$("#asciiEditorCanvas").addEventListener("pointerdown", event => {
-  state.asciiDrawing = true;
-  state.asciiLastPoint = null;
-  event.currentTarget.setPointerCapture?.(event.pointerId);
-  drawAsciiBrush(event);
-});
-$("#asciiEditorCanvas").addEventListener("pointermove", drawAsciiBrush);
-$("#asciiEditorCanvas").addEventListener("pointerup", finishAsciiBrush);
-$("#asciiEditorCanvas").addEventListener("pointercancel", finishAsciiBrush);
+bindAsciiEditorEvents();
 $("#sendAscii").addEventListener("click", () => {
   if (!state.asciiDraft) return;
   if (state.asciiTarget === "friend" && state.activeFriend) {
@@ -7055,7 +6773,11 @@ $("#groupThemeChoices").addEventListener("click", event => {
     loadGroups();
   }).catch(error => showApiFailure(error));
 });
-document.querySelectorAll(".world-tab").forEach(button => button.addEventListener("click", () => switchWorld(button.dataset.world)));
+document.querySelector(".world-tabs")?.addEventListener("click", event => {
+  const button = event.target.closest(".world-tab[data-world]");
+  if (!button) return;
+  switchWorld(button.dataset.world);
+});
 
 document.querySelectorAll(".quiz-mode").forEach(button => button.addEventListener("click", () => {
   if (state.examActive) {
