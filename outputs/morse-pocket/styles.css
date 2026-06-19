@@ -435,9 +435,11 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 .ascii-preview-card > div:first-child strong { display: block; font-size: 20px; }
 .ascii-editor { display: grid; gap: 8px; margin: 12px 0; }
 .ascii-editor canvas { display: block; width: 100%; min-height: 220px; max-height: 52vh; touch-action: none; border: 2px solid var(--ink); border-radius: 14px; background: white; object-fit: contain; }
-.ascii-editor-tools { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.ascii-editor-tools { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 .ascii-editor-tools button { padding: 10px 5px; border: 1px solid var(--ink); border-radius: 10px; background: white; font-size: 9px; font-weight: 850; }
 .ascii-editor-tools button.active { color: white; background: var(--ink); }
+.ascii-brush-size { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; color: var(--muted); font-size: 9px; font-weight: 850; }
+.ascii-brush-size input { width: 100%; }
 .ascii-editor small { color: var(--muted); font-size: 8px; line-height: 1.45; }
 .ascii-preview-card pre { margin: 14px 0; padding: 10px; overflow: auto; border-radius: 12px; color: white; background: var(--ink); font: 4px/4.4px "Courier New", monospace; letter-spacing: 0; white-space: pre; }
 .ascii-preview-actions { display: grid; grid-template-columns: 1fr 1.5fr; gap: 8px; }

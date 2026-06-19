@@ -90,7 +90,7 @@
       <section id="chatRoom" class="chat-room" hidden>
         <header class="chat-header">
           <button id="closeChat" type="button" aria-label="Back to conversations">X</button>
-          <button id="openChatProfile" class="chat-profile-avatar" type="button" aria-label="移쒓뎄 ?꾨줈??蹂닿린"><span id="chatAvatar" class="friend-avatar"></span></button>
+          <button id="openChatProfile" class="chat-profile-avatar" type="button" aria-label="Close"><span id="chatAvatar" class="friend-avatar"></span></button>
           <button id="openChatProfileInfo" class="chat-profile-info" type="button">
             <strong id="chatFriendName"></strong>
             <small>留먰뭾?좎쓣 ?꾨Ⅴ硫?紐⑥뒪 吏꾨룞 ?ъ깮</small>
@@ -135,7 +135,7 @@
       <section id="groupRoom" class="chat-room group-room" hidden>
         <header class="chat-header">
           <button id="closeGroupChat" type="button" aria-label="Back to groups">X</button>
-          <button id="openGroupManageAvatar" class="chat-profile-avatar group-chat-avatar" type="button" aria-label="洹몃９梨??뺣낫 蹂닿린"><span id="groupRoomAvatar" class="friend-avatar">#</span></button>
+          <button id="openGroupManageAvatar" class="chat-profile-avatar group-chat-avatar" type="button" aria-label="Close"><span id="groupRoomAvatar" class="friend-avatar">#</span></button>
           <button id="openGroupManage" class="chat-profile-info" type="button">
             <strong id="groupRoomName"></strong>
             <small id="groupRoomMembers"></small>
@@ -170,11 +170,11 @@
         </div>
         <span class="pulse" aria-hidden="true"></span>
       </div>
-      <input id="speed" type="range" min="60" max="300" step="10" value="120" aria-label="吏꾨룞 ?띾룄">
+      <input id="speed" type="range" min="60" max="300" step="10" value="120" aria-label="Close">
       <div class="range-labels"><span>鍮좊Ⅴ寃</span><span>?먮━寃</span></div>
     </section>
 
-    <nav class="tabs" aria-label="?붾㈃ ?좏깮">
+    <nav class="tabs" aria-label="Close">
       <button class="tab active" data-view="library">??</button>
       <button class="tab" data-view="training">?덈젴</button>
       <button class="tab" data-view="quiz">?댁쫰</button>
@@ -210,7 +210,7 @@
         <p class="label">?ъ깮 諛⑹떇</p>
         <div class="segmented">
           <button class="mode-button active" data-mode="auto">?먮룞</button>
-          <button class="mode-button" data-mode="tap">?</button>
+          <button class="mode-button" data-mode="tap">X</button>
           <button class="mode-button" data-mode="loop">臾댄븳 諛섎났</button>
         </div>
       </div>
@@ -532,7 +532,7 @@
         <header class="diary-header"><div><p class="eyebrow">SECRET DIARY</p><h2>鍮꾨??쇨린</h2></div><button id="lockDiary" type="button">?좉렇湲</button></header>
         <button id="openDiaryList" class="diary-list-open" type="button">?쇨린 紐⑸줉</button>
         <section class="diary-calendar-card">
-          <div class="diary-calendar-nav"><button id="diaryPrevMonth" type="button">?</button><strong id="diaryCalendarTitle"></strong><button id="diaryNextMonth" type="button">?</button></div>
+          <div class="diary-calendar-nav"><button id="diaryPrevMonth" type="button">X</button><strong id="diaryCalendarTitle"></strong><button id="diaryNextMonth" type="button">X</button></div>
           <div class="diary-weekdays"><span>?</span><span>?</span><span>?</span><span>?</span><span>紐</span><span>湲</span><span>?</span></div>
           <div id="diaryYearPicker" class="diary-year-picker" hidden></div>
           <div id="diaryCalendar" class="diary-calendar"></div>
@@ -582,7 +582,7 @@
 
   <div id="diaryListPanel" class="profile-overlay" hidden>
     <section class="request-panel-card">
-      <button id="closeDiaryList" class="profile-close" type="button">횞</button>
+      <button id="closeDiaryList" class="profile-close" type="button">X</button>
       <p class="eyebrow">SECRET DIARY</p><h2>?쇨린 紐⑸줉</h2>
       <div id="diaryAllEntries" class="diary-all-entries"></div>
     </section>
@@ -590,7 +590,7 @@
 
   <div id="shopPreviewPanel" class="profile-overlay" hidden>
     <section class="request-panel-card shop-preview-card">
-      <button id="closeShopPreview" class="profile-close" type="button">횞</button>
+      <button id="closeShopPreview" class="profile-close" type="button">X</button>
       <p class="eyebrow">DRAW COLLECTION</p><h2 id="shopPreviewTitle"></h2>
       <p id="shopPreviewDescription" class="profile-description"></p>
       <div id="shopPreviewItems" class="shop-preview-items"></div>
@@ -599,7 +599,7 @@
 
   <div id="friendProfilePanel" class="profile-overlay" hidden>
     <section class="profile-card friend-profile-card">
-      <button id="closeFriendProfile" class="profile-close" type="button" aria-label="?꾨줈???リ린">횞</button>
+      <button id="closeFriendProfile" class="profile-close" type="button" aria-label="Close">X</button>
       <p class="eyebrow">morsiq profile</p>
       <div id="friendProfileVisual" class="profile-visual"></div>
       <strong id="friendProfileNickname" class="profile-nickname"></strong>
@@ -613,7 +613,7 @@
 
   <div id="gameRankingPanel" class="profile-overlay" hidden>
     <section class="request-panel-card ranking-panel-card">
-      <button id="closeGameRanking" class="profile-close" type="button">횞</button>
+      <button id="closeGameRanking" class="profile-close" type="button">X</button>
       <p class="eyebrow">MORSE SPEED RACE</p><h2>?꾩껜 ??궧 TOP 100</h2>
       <p id="fullRankingMine" class="profile-description"></p>
       <div id="gameRankingFull" class="ranking-list full-ranking-list"></div>
@@ -622,7 +622,7 @@
 
   <div id="friendRequestPanel" class="profile-overlay" hidden>
     <section class="request-panel-card">
-      <button id="closeFriendRequests" class="profile-close" type="button" aria-label="移쒓뎄 ?붿껌 ?リ린">횞</button>
+      <button id="closeFriendRequests" class="profile-close" type="button" aria-label="Close">X</button>
       <p class="eyebrow">morsiq</p>
       <h2 id="friendRequestPanelTitle">諛쏆? ?붿껌</h2>
       <div id="friendRequests" class="friend-requests"></div>
@@ -632,7 +632,7 @@
 
   <div id="createGroupPanel" class="profile-overlay" hidden>
     <section class="request-panel-card">
-      <button id="closeCreateGroup" class="profile-close" type="button">횞</button>
+      <button id="closeCreateGroup" class="profile-close" type="button">X</button>
       <p class="eyebrow">NEW GROUP CHAT</p>
       <h2>洹몃９梨?留뚮뱾湲</h2>
       <form id="createGroupForm" class="group-create-form">
@@ -645,7 +645,7 @@
 
   <div id="addFriendPanel" class="profile-overlay" hidden>
     <section class="request-panel-card">
-      <button id="closeAddFriend" class="profile-close" type="button">횞</button>
+      <button id="closeAddFriend" class="profile-close" type="button">X</button>
       <p class="eyebrow">morsiq</p>
       <h2>移쒓뎄 異붽?</h2>
       <form id="friendForm" class="group-create-form">
@@ -685,20 +685,26 @@
     <section class="ascii-preview-card">
       <div>
         <p class="label">ASCII ART PREVIEW</p>
-        <strong>?ъ쭊 蹂??寃곌낵</strong>
-      </div>      <div class="ascii-editor">
+        <strong id="asciiPreviewTitle">ASCII photo preview</strong>
+      </div>
+      <div class="ascii-editor">
         <canvas id="asciiEditorCanvas"></canvas>
         <div class="ascii-editor-tools">
           <button id="asciiAutoEnhance" type="button">Auto</button>
           <button id="asciiKeepBrush" class="active" type="button">Keep</button>
           <button id="asciiEraseBrush" type="button">Erase</button>
+          <button id="asciiBrushEraser" type="button">Undo marks</button>
           <button id="asciiClearBrush" type="button">Clear marks</button>
         </div>
+        <label class="ascii-brush-size">
+          <span>Brush size</span>
+          <input id="asciiBrushSize" type="range" min="8" max="80" value="32">
+        </label>
         <small>Draw over the object to keep it. Draw erase marks to turn that area into blank space.</small>
       </div>
       <pre id="asciiPreviewText"></pre>
       <div class="ascii-preview-actions">
-        <button id="cancelAscii" class="light-button" type="button">痍⑥냼</button>
+        <button id="cancelAscii" class="light-button" type="button">Cancel</button>
         <button id="sendAscii" class="primary-button" type="button">Send</button>
       </div>
     </section>
@@ -711,7 +717,7 @@
           <p class="eyebrow">morsiq</p>
           <h2>?ㅼ젙</h2>
         </div>
-        <button id="closeSettings" type="button" aria-label="?ㅼ젙 ?リ린">횞</button>
+        <button id="closeSettings" type="button" aria-label="Close settings">X</button>
       </header>
       <div class="settings-section account-settings">
         <p class="label">怨꾩젙</p>
@@ -747,7 +753,7 @@
           <p class="label">吏꾨룞 ?띾룄</p>
           <strong id="settingsSpeedLabel">蹂댄넻 쨌 120ms</strong>
         </div>
-        <input id="settingsSpeed" type="range" min="60" max="300" step="10" value="120" aria-label="?ㅼ젙 吏꾨룞 ?띾룄">
+        <input id="settingsSpeed" type="range" min="60" max="300" step="10" value="120" aria-label="Close">
         <div class="range-labels"><span>鍮좊Ⅴ寃</span><span>?먮━寃</span></div>
       </div>
       <label class="settings-switch">
@@ -818,7 +824,7 @@
   </div>
 
   <div id="secretComm" class="secret-comm" hidden>
-    <button id="secretCommSurface" class="secret-comm-surface" type="button" aria-label="?꾨Ⅴ???숈븞 ?곷??먭쾶 吏꾨룞 ?꾨떖"></button>
+    <button id="secretCommSurface" class="secret-comm-surface" type="button" aria-label="Close"></button>
     <button id="exitSecretComm" class="secret-comm-exit" type="button" aria-label="Exit secret communication">X</button>
   </div>
 
@@ -827,4 +833,3 @@
   <script src="app.js"></script>
 </body>
 </html>
-

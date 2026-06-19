@@ -1374,6 +1374,7 @@ const state = {
   asciiEraseCanvas: null,
   asciiDrawing: false,
   asciiLastPoint: null,
+  asciiBrushSize: Number(localStorage.getItem("morse-ascii-brush-size") || 32),
   asciiEditorBound: false,
   profileDraftAscii: null,
   profileCache: {},
@@ -2680,18 +2681,17 @@ function renderFriends() {
 
 function renderGroups() {
   const sortedGroups = [...state.groups].sort((a, b) => Number(b.lastMessageAt || 0) - Number(a.lastMessageAt || 0));
+  const memberText = count => uiText(count + "\uBA85 \uCC38\uC5EC \uC911", count + " members", count + "\u4EBA\u53C2\u52A0\u4E2D");
   $("#groupList").innerHTML = sortedGroups.length
-    ? sortedGroups.map(group => `
-      <button type="button" class="friend-card" data-open-group="${escapeHtml(group.id)}">
-        ${group.profileAscii ? `<span class="friend-avatar"><span class="ascii-avatar" data-no-i18n>${escapeHtml(group.profileAscii)}</span></span>` : `<span class="friend-avatar">#</span>`}
-        <span class="friend-info">
-          <strong data-no-i18n>${escapeHtml(group.name)}</strong>
-          <small>${group.members.length}명 참여 중</small>
-        </span>
-        ${unreadBubble(Number(state.unreadGroups[group.id] || 0))}
-      </button>
-    `).join("")
-    : '<article class="record-item"><strong>아직 그룹챗이 없습니다.</strong><span>그룹챗 만들기로 친구들과 시작하세요.</span></article>';
+    ? sortedGroups.map(group => {
+      const avatar = group.profileAscii ? "<span class=\"friend-avatar\"><span class=\"ascii-avatar\" data-no-i18n>" + escapeHtml(group.profileAscii) + "</span></span>" : "<span class=\"friend-avatar\">#</span>";
+      return "<button type=\"button\" class=\"friend-card\" data-open-group=\"" + escapeHtml(group.id) + "\">"
+        + avatar
+        + "<span class=\"friend-info\"><strong data-no-i18n>" + escapeHtml(group.name) + "</strong><small>" + memberText(group.members.length) + "</small></span>"
+        + unreadBubble(Number(state.unreadGroups[group.id] || 0))
+        + "</button>";
+    }).join("")
+    : "<article class=\"record-item\"><strong>" + uiText("\uC544\uC9C1 \uADF8\uB8F9\uCC57\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.", "No group chats yet.", "\u30B0\u30EB\u30FC\u30D7\u30C1\u30E3\u30C3\u30C8\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002") + "</strong><span>" + uiText("\uADF8\uB8F9\uCC57 \uB9CC\uB4E4\uAE30\uB85C \uCE5C\uAD6C\uB4E4\uACFC \uC2DC\uC791\uD558\uC138\uC694.", "Create a group chat to start with friends.", "\u30B0\u30EB\u30FC\u30D7\u30C1\u30E3\u30C3\u30C8\u3092\u4F5C\u3063\u3066\u53CB\u9054\u3068\u59CB\u3081\u307E\u3057\u3087\u3046\u3002") + "</span></article>";
 }
 
 function loadGroups() {
@@ -2713,13 +2713,9 @@ function renderGroupMessageList(target, messages, group) {
     const hidden = Boolean(message.hidden);
     const ascii = message.type === "ascii";
     const exhausted = hiddenSignalExhausted(message);
-    return `<div class="chat-message-row${mine ? " mine" : ""}">
-      <div class="chat-bubble${hidden ? " hidden-signal" : ""}${exhausted ? " exhausted" : ""}${ascii ? " ascii-message" : ""}" data-group-message="${index}">
-        <button type="button" class="group-author-button" data-group-profile="${escapeHtml(message.from)}" data-daily-author="${group?.type === "daily" ? "true" : "false"}">${escapeHtml(groupMemberName(group, message.from, message.fromNickname))}</button>
-        ${hidden ? "" : ascii ? `<pre data-no-i18n>${escapeHtml(message.text)}</pre>` : `<span data-no-i18n>${escapeHtml(message.text)}</span>`}
-      </div>
-    </div>`;
-  }).join("") : '<p class="chat-empty">아직 메시지가 없습니다.</p>';
+    const body = hidden ? "" : ascii ? "<pre data-no-i18n>" + escapeHtml(message.text) + "</pre>" : "<span data-no-i18n>" + escapeHtml(message.text) + "</span>";
+    return "<div class=\"chat-message-row" + (mine ? " mine" : "") + "\"><div class=\"chat-bubble" + (hidden ? " hidden-signal" : "") + (exhausted ? " exhausted" : "") + (ascii ? " ascii-message" : "") + "\" data-group-message=\"" + index + "\"><button type=\"button\" class=\"group-author-button\" data-group-profile=\"" + escapeHtml(message.from) + "\" data-daily-author=\"" + (group?.type === "daily" ? "true" : "false") + "\">" + escapeHtml(groupMemberName(group, message.from, message.fromNickname)) + "</button>" + body + "</div></div>";
+  }).join("") : "<p class=\"chat-empty\">" + uiText("\uC544\uC9C1 \uBA54\uC2DC\uC9C0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.", "No messages yet.", "\u30E1\u30C3\u30BB\u30FC\u30B8\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002") + "</p>";
   target.scrollTop = target.scrollHeight;
 }
 
@@ -4448,16 +4444,16 @@ function setupKeyer(target, selector) {
     if (Math.abs(deltaX) >= 45 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
       if (target === "quiz") {
         if (deltaX < 0) gradeQuiz(REVERSE_MORSE[state.quizSignal] || "");
-        else {
-          state.quizSignal = "";
-          renderQuiz();
-        }
-      } else if (deltaX < 0) {
-        commitWriterLetter();
+        else { state.quizSignal = ""; renderQuiz(); }
       } else {
-        commitWriterLetter();
-        if (state.writerMode === "sentence" && state.writerText && !state.writerText.endsWith(" ")) state.writerText += " ";
-        renderWriter();
+        const right = deltaX > 0;
+        const confirmsLetter = state.reverseChatSwipe ? right : !right;
+        if (confirmsLetter) commitWriterLetter();
+        else {
+          commitWriterLetter();
+          if (state.writerMode === "sentence" && state.writerText && !state.writerText.endsWith(" ")) state.writerText += " ";
+          renderWriter();
+        }
       }
       return;
     }
@@ -4648,16 +4644,12 @@ function renderQuizRecords() {
 
 function renderWriter() {
   const single = state.writerMode === "single";
-  $("#writerText").textContent = state.writerText || (single ? "글자를 입력하세요" : "문장을 입력하세요");
-  $("#writerCurrent").textContent = state.writerSignal
-    ? `현재 글자: ${prettyMorse(state.writerSignal)}`
-    : "현재 글자: 비어 있음";
-  $("#writerMorse").textContent = state.writerText
-    ? prettyMorse(textToMorse(state.writerText))
-    : "· 점과 − 선을 눌러 시작하세요";
+  $("#writerText").textContent = state.writerText || (single ? uiText("\uAE00\uC790\uB97C \uC785\uB825\uD558\uC138\uC694", "Enter one letter", "1\u6587\u5B57\u5165\u529B") : uiText("\uBB38\uC7A5\uC744 \uC785\uB825\uD558\uC138\uC694", "Enter a sentence", "\u6587\u7AE0\u3092\u5165\u529B"));
+  $("#writerCurrent").textContent = state.writerSignal ? uiText("\uD604\uC7AC \uAE00\uC790: " + prettyMorse(state.writerSignal), "Current letter: " + prettyMorse(state.writerSignal), "\u73FE\u5728\u306E\u6587\u5B57: " + prettyMorse(state.writerSignal)) : mainText("currentEmpty");
+  $("#writerMorse").textContent = state.writerText ? prettyMorse(textToMorse(state.writerText)) : uiText("\uC810\uACFC \uC120\uC744 \uB20C\uB7EC \uC2DC\uC791\uD558\uC138\uC694", "Press dots and dashes to start", "\u70B9\u3068\u7DDA\u3067\u59CB\u3081\u307E\u3057\u3087\u3046");
   $("#writerKeyerHint").textContent = state.writerKeyerMode === "auto"
-    ? "3단위 휴식: 글자 확정 · 7단위 휴식: 띄어쓰기"
-    : "왼쪽 스와이프: 글자 확정 · 오른쪽: 띄어쓰기";
+    ? uiText("3\uB2E8\uC704 \uD734\uC2DD: \uAE00\uC790 \uD655\uC815 ? 7\uB2E8\uC704 \uD734\uC2DD: \uB744\uC5B4\uC4F0\uAE30", "3-unit pause: confirm ? 7-unit pause: space", "3\u5358\u4F4D\u505C\u6B62: \u78BA\u5B9A ? 7\u5358\u4F4D\u505C\u6B62: \u30B9\u30DA\u30FC\u30B9")
+    : (state.reverseChatSwipe ? uiText("\uC624\uB978\uCABD: \uAE00\uC790 \uD655\uC815 ? \uC67C\uCABD: \uB744\uC5B4\uC4F0\uAE30 ? \uC704: \uB300\uBB38\uC790", "Right: confirm ? Left: space ? Up: uppercase", "\u53F3: \u78BA\u5B9A ? \u5DE6: \u30B9\u30DA\u30FC\u30B9 ? \u4E0A: \u5927\u6587\u5B57") : uiText("\uC67C\uCABD: \uAE00\uC790 \uD655\uC815 ? \uC624\uB978\uCABD: \uB744\uC5B4\uC4F0\uAE30 ? \uC704: \uB300\uBB38\uC790", "Left: confirm ? Right: space ? Up: uppercase", "\u5DE6: \u78BA\u5B9A ? \u53F3: \u30B9\u30DA\u30FC\u30B9 ? \u4E0A: \u5927\u6587\u5B57"));
   $("#playWriterText").hidden = single;
 }
 
@@ -5048,6 +5040,7 @@ $("#groupMessages").addEventListener("click", event => {
   const bubble = event.target.closest("[data-group-message]");
   if (bubble && !profile) {
     const message = state.groupMessages[Number(bubble.dataset.groupMessage)];
+    if (message?.type === "ascii") return;
     if (message?.hidden) {
       if (hiddenSignalExhausted(message)) return showToast("이 진동 전용 메시지는 재생 횟수를 모두 사용했습니다.");
       message.views = Number(message.views || 0) + 1;
@@ -5074,6 +5067,7 @@ $("#dailyGroupMessages").addEventListener("click", event => {
   const bubble = event.target.closest("[data-group-message]");
   if (bubble) {
     const message = state.dailyGroupMessages[Number(bubble.dataset.groupMessage)];
+    if (message?.type === "ascii") return;
     if (message?.hidden) {
       if (hiddenSignalExhausted(message)) return showToast("이 진동 전용 메시지는 재생 횟수를 모두 사용했습니다.");
       message.views = Number(message.views || 0) + 1;
@@ -5462,7 +5456,7 @@ $("#chatMessages").addEventListener("click", event => {
   const bubble = event.target.closest("[data-chat-message]");
   if (!bubble || !state.activeFriend) return;
   const message = state.chats[state.activeFriend][Number(bubble.dataset.chatMessage)];
-  if (typeof message === "object" && message.type === "system") return;
+  if (typeof message === "object" && (message.type === "system" || message.type === "ascii")) return;
   const hidden = typeof message === "object" && message.hidden;
   if (hidden) {
     if (hiddenSignalExhausted(message)) {
@@ -5570,8 +5564,10 @@ function ensureAsciiEditor() {
       <button id="asciiAutoEnhance" type="button">Auto</button>
       <button id="asciiKeepBrush" class="active" type="button">Keep</button>
       <button id="asciiEraseBrush" type="button">Erase</button>
+      <button id="asciiBrushEraser" type="button">Undo marks</button>
       <button id="asciiClearBrush" type="button">Clear marks</button>
     </div>
+    <label class="ascii-brush-size"><span>Brush size</span><input id="asciiBrushSize" type="range" min="8" max="80" value="${state.asciiBrushSize || 32}"></label>
     <small>Draw over the object to keep it. Draw erase marks to turn that area into blank space.</small>
   </div>`);
   bindAsciiEditorEvents();
@@ -5589,6 +5585,11 @@ function bindAsciiEditorEvents() {
   });
   $("#asciiKeepBrush")?.addEventListener("click", () => setAsciiBrushMode("keep"));
   $("#asciiEraseBrush")?.addEventListener("click", () => setAsciiBrushMode("erase"));
+  $("#asciiBrushEraser")?.addEventListener("click", () => setAsciiBrushMode("clear"));
+  $("#asciiBrushSize")?.addEventListener("input", event => {
+    state.asciiBrushSize = Number(event.target.value);
+    localStorage.setItem("morse-ascii-brush-size", String(state.asciiBrushSize));
+  });
   $("#asciiClearBrush")?.addEventListener("click", () => {
     if (!state.asciiKeepCanvas || !state.asciiEraseCanvas) return;
     state.asciiKeepCanvas.getContext("2d").clearRect(0, 0, state.asciiKeepCanvas.width, state.asciiKeepCanvas.height);
@@ -5611,7 +5612,7 @@ function asciiEditorContext(canvas) {
   const context = canvas.getContext("2d", { willReadFrequently: true });
   context.lineCap = "round";
   context.lineJoin = "round";
-  context.lineWidth = Math.max(18, Math.round(Math.min(canvas.width, canvas.height) * .08));
+  context.lineWidth = Number(state.asciiBrushSize || 32);
   return context;
 }
 
@@ -5620,6 +5621,7 @@ function renderAsciiEditor(image) {
   bindAsciiEditorEvents();
   const canvas = $("#asciiEditorCanvas");
   if (!canvas) return;
+  if ($("#asciiBrushSize")) $("#asciiBrushSize").value = String(state.asciiBrushSize || 32);
   const maxWidth = Math.min(460, window.innerWidth - 72);
   const aspect = image.height / image.width;
   canvas.width = Math.round(maxWidth);
@@ -5684,6 +5686,7 @@ function setAsciiBrushMode(mode) {
   state.asciiBrushMode = mode;
   $("#asciiKeepBrush")?.classList.toggle("active", mode === "keep");
   $("#asciiEraseBrush")?.classList.toggle("active", mode === "erase");
+  $("#asciiBrushEraser")?.classList.toggle("active", mode === "clear");
 }
 
 function drawAsciiBrush(event) {
@@ -5692,14 +5695,20 @@ function drawAsciiBrush(event) {
   const rect = canvas.getBoundingClientRect();
   const x = (event.clientX - rect.left) * (canvas.width / rect.width);
   const y = (event.clientY - rect.top) * (canvas.height / rect.height);
-  const mask = state.asciiBrushMode === "erase" ? state.asciiEraseCanvas : state.asciiKeepCanvas;
-  const context = asciiEditorContext(mask);
-  context.strokeStyle = "#000";
   if (!state.asciiLastPoint) state.asciiLastPoint = { x, y };
-  context.beginPath();
-  context.moveTo(state.asciiLastPoint.x, state.asciiLastPoint.y);
-  context.lineTo(x, y);
-  context.stroke();
+  const masks = state.asciiBrushMode === "clear"
+    ? [state.asciiKeepCanvas, state.asciiEraseCanvas]
+    : [state.asciiBrushMode === "erase" ? state.asciiEraseCanvas : state.asciiKeepCanvas];
+  masks.forEach(mask => {
+    const context = asciiEditorContext(mask);
+    if (state.asciiBrushMode === "clear") context.globalCompositeOperation = "destination-out";
+    context.strokeStyle = "#000";
+    context.beginPath();
+    context.moveTo(state.asciiLastPoint.x, state.asciiLastPoint.y);
+    context.lineTo(x, y);
+    context.stroke();
+    context.globalCompositeOperation = "source-over";
+  });
   state.asciiLastPoint = { x, y };
   redrawAsciiEditor();
 }
@@ -5726,6 +5735,9 @@ function prepareAsciiPhoto(file) {
     setAsciiBrushMode("keep");
     URL.revokeObjectURL(objectUrl);
     $("#asciiPreview").hidden = false;
+    setElementText("#asciiPreviewTitle", uiText("ASCII 사진 미리보기", "ASCII photo preview", "ASCII写真プレビュー"));
+    setElementText("#cancelAscii", uiText("취소", "Cancel", "キャンセル"));
+    setElementText("#sendAscii", uiText("보내기", "Send", "送信"));
     renderAsciiEditor(image);
   };
   image.onerror = () => {
@@ -6322,6 +6334,7 @@ $("#randomChatMessages").addEventListener("click", event => {
   if (!bubble) return;
   const message = state.randomMessages[Number(bubble.dataset.randomMessage)];
   if (!message) return;
+  if (message.type === "ascii") return;
   if (message.hidden) {
     if (hiddenSignalExhausted(message)) {
       showToast("이 숨김 신호는 재생 횟수를 모두 사용했습니다.");
