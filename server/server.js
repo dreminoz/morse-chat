@@ -966,7 +966,9 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && url.pathname === "/api/operator/inbox") {
     if (!isOperatorAccount(account)) return json(res, 403, { error: "operator-only" });
     const messages = await store.directInbox(account.signalId);
-    const senders = [...new Set(messages.map(item => item.from).filter(Boolean))];
+    // The operator list is intentionally populated only after another user
+    // sends a message to the operator. Existing outgoing replies never add a contact.
+    const senders = [...new Set(messages.map(item => item.from).filter(signalId => signalId && signalId !== account.signalId))];
     const profiles = await Promise.all(senders.map(async signalId => {
       const profile = await store.findAccountBySignalId(signalId);
       return publicAccount(profile || { signalId, nickname: signalId });

@@ -2167,6 +2167,7 @@ function vibrationPattern(text) {
 function playMorseAudio(pattern, soundId) {
   if (!state.morseSoundEnabled) return;
   if (soundId === "sound_off" || !window.AudioContext && !window.webkitAudioContext) return;
+  stopMorseAudio();
   soundId ||= "sound_basic";
   const AudioEngine = window.AudioContext || window.webkitAudioContext;
   const context = playMorseAudio.context ||= new AudioEngine();
@@ -2188,11 +2189,26 @@ function playMorseAudio(pattern, soundId) {
       gain.gain.setValueAtTime(soundId === "sound_click" ? .08 : .16, Math.max(start + .006, end - .012));
       gain.gain.linearRampToValueAtTime(.001, end);
       oscillator.connect(gain).connect(context.destination);
+      const audioNode = { oscillator, gain };
+      state.morseAudioNodes ||= [];
+      state.morseAudioNodes.push(audioNode);
+      oscillator.addEventListener("ended", () => {
+        state.morseAudioNodes = (state.morseAudioNodes || []).filter(node => node !== audioNode);
+        try { oscillator.disconnect(); gain.disconnect(); } catch {}
+      }, { once: true });
       oscillator.start(start);
       oscillator.stop(end);
     }
     elapsed += duration;
   });
+}
+
+function stopMorseAudio() {
+  (state.morseAudioNodes || []).forEach(({ oscillator, gain }) => {
+    try { oscillator.stop(); } catch {}
+    try { oscillator.disconnect(); gain.disconnect(); } catch {}
+  });
+  state.morseAudioNodes = [];
 }
 
 function vibrateDevice(pattern) {
@@ -2235,6 +2251,7 @@ function playMorse(text, onComplete, playerLabel = text, soundId = "") {
 
 function stopMorse(stopTraining = true) {
   cancelVibration();
+  stopMorseAudio();
   clearTimeout(state.playTimer);
   state.playTimer = null;
   $("#player").hidden = true;
@@ -3582,8 +3599,13 @@ function sendChatMessage(message, hidden = false) {
 
 function imageToAscii(image, options = {}) {
   const aspect = image.height / image.width;
-  const width = aspect > 1.15 ? 76 : aspect < .72 ? 98 : 88;
-  const height = Math.min(320, Math.max(28, Math.round(aspect * width * 0.95)));
+  // Terminal characters are taller than they are wide. Use a shorter grid for
+  // profile photos so the generated art remains centered inside the circle.
+  const profileOutput = options.profile === true;
+  const width = profileOutput ? 88 : (aspect > 1.15 ? 76 : aspect < .72 ? 98 : 88);
+  const height = profileOutput
+    ? Math.round(width * .6)
+    : Math.min(320, Math.max(28, Math.round(aspect * width * 0.95)));
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -5988,7 +6010,8 @@ function updateAsciiDraft() {
   state.asciiDraft = imageToAscii(asciiWorkingCanvas(), {
     autoEnhance: state.asciiAutoEnhance,
     keepCanvas: state.asciiKeepCanvas,
-    eraseCanvas: state.asciiEraseCanvas
+    eraseCanvas: state.asciiEraseCanvas,
+    profile: isProfileAsciiTarget()
   });
   $("#asciiPreviewText").textContent = state.asciiDraft;
 }
@@ -6106,6 +6129,16 @@ $("#sendAscii").addEventListener("click", () => {
     state.profileDraftAscii = state.asciiDraft;
     renderMyProfile();
     $("#myProfileDescription").value = description;
+    // A confirmed profile image is saved immediately, so a later account
+    // refresh cannot replace it with the previously saved image.
+    api("/api/profile/me", {
+      method: "PATCH",
+      body: JSON.stringify({ description, profileAscii: state.profileDraftAscii })
+    }).then(({ account }) => {
+      applyAccountUpdate(account);
+      renderMyProfile();
+      $("#myProfileDescription").value = description;
+    }).catch(error => showApiFailure(error, uiText("프로필 사진을 저장하지 못했습니다.", "Couldn't save the profile photo.", "プロフィール写真を保存できませんでした。")));
   } else if (state.asciiTarget === "group-profile" && state.activeGroup) {
     api("/api/groups/profile", {
       method: "PATCH",
@@ -7210,8 +7243,11 @@ function clampReferenceDockPosition() {
   const pos = state.referenceDockPosition || { left: 18, top: 140, width: 320, height: 360 };
   pos.width = Math.min(Math.max(Number(pos.width) || 320, 220), Math.max(240, innerWidth - 20));
   pos.height = Math.min(Math.max(Number(pos.height) || 360, 220), Math.max(240, innerHeight - 20));
-  pos.left = Math.min(Math.max(Number(pos.left) || 12, 8), Math.max(8, innerWidth - pos.width - 8));
-  pos.top = Math.min(Math.max(Number(pos.top) || 120, 8), Math.max(8, innerHeight - pos.height - 8));
+  const minimized = Boolean(state.referenceDockMinimized);
+  const floatingWidth = minimized ? 58 : pos.width;
+  const floatingHeight = minimized ? 44 : pos.height;
+  pos.left = Math.min(Math.max(Number(pos.left) || 12, 8), Math.max(8, innerWidth - floatingWidth - 8));
+  pos.top = Math.min(Math.max(Number(pos.top) || 120, 8), Math.max(8, innerHeight - floatingHeight - 8));
   state.referenceDockPosition = pos;
   return pos;
 }
