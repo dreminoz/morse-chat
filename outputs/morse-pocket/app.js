@@ -1585,7 +1585,7 @@ function connectServer() {
       state.dailyGroupMessages.push(message);
       renderDailyGroup();
     }
-    if (!message.mine && message.from !== state.userId) {
+    if (!isOwnServerMessage(message)) {
       if (dailyMessage) {
         if (message.groupId) delete state.unreadGroups[message.groupId];
         if (state.world !== "dailyGroup") state.unreadDaily += 1;
@@ -2067,19 +2067,20 @@ function receiveDirectMessage(item, silent = false) {
     state.receivedDirectIds.add(item.id);
     localStorage.setItem("morse-received-direct-ids", JSON.stringify([...state.receivedDirectIds].slice(-1000)));
   }
-  const friend = item.from;
+  const own = item.from === state.userId;
+  const friend = own ? item.to : item.from;
   if (item.fromNickname) state.profileCache[item.from] = { ...(state.profileCache[item.from] || {}), signalId: item.from, nickname: item.fromNickname };
   if (item.toNickname) state.profileCache[item.to] = { ...(state.profileCache[item.to] || {}), signalId: item.to, nickname: item.toNickname };
   state.chats[friend] ||= [];
-  state.chats[friend].push(taggedChatMessage(item.message, false, item.createdAt));
-  if (!silent && state.activeFriend !== friend) {
+  state.chats[friend].push(taggedChatMessage(item.message, own, item.createdAt));
+  if (!silent && !own && state.activeFriend !== friend) {
     state.unreadDirect[friend] = Number(state.unreadDirect[friend] || 0) + 1;
     saveUnread();
   }
   saveChats();
   renderFriends();
   if (state.activeFriend === friend) renderChat();
-  if (!silent) {
+  if (!silent && !own) {
     vibrateDevice([state.unit, state.unit, state.unit]);
     const message = item.message || {};
     showNativeNotification(
@@ -2096,6 +2097,10 @@ function showNativeNotification(title, body) {
       translateString(String(body || ""), state.language)
     );
   } catch {}
+}
+
+function isOwnServerMessage(message) {
+  return Boolean(message?.mine || message?.from === state.userId || message?.sender === state.userId || message?.userId === state.userId);
 }
 
 function syncDirectInbox() {
@@ -2191,7 +2196,9 @@ function playMorse(text, onComplete, playerLabel = text, soundId = "") {
   else if (state.vibrationEnabled && navigator.vibrate) navigator.vibrate(pattern);
   else if (!state.vibrationEnabled) {}
   else showToast("이 기기에서는 진동 재생을 지원하지 않습니다.");
-  $("#playerText").textContent = playerLabel;
+  $("#playerStatus").textContent = uiText("\uC7AC\uC0DD \uC911", "Playing", "\u518D\u751F\u4E2D");
+  $("#stopPlayer").textContent = uiText("\uC815\uC9C0", "Stop", "\u505C\u6B62");
+  $("#playerText").textContent = String(playerLabel || text || "MORSE");
   $("#player").hidden = false;
   $("#playerPulse").classList.add("active");
   state.playTimer = setTimeout(() => {
@@ -2689,7 +2696,13 @@ function saveUnread() {
 
 function updateWorldUnreadBadges() {
   const direct = Object.values(state.unreadDirect).reduce((sum, value) => sum + Number(value || 0), 0);
-  const groups = Object.values(state.unreadGroups).reduce((sum, value) => sum + Number(value || 0), 0);
+  const dailyGroupIds = new Set([
+    state.dailyGroup?.id,
+    ...state.groups.filter(group => group.type === "daily").map(group => group.id)
+  ].filter(Boolean));
+  const groups = Object.entries(state.unreadGroups)
+    .filter(([groupId]) => !dailyGroupIds.has(groupId))
+    .reduce((sum, [, value]) => sum + Number(value || 0), 0);
   const values = { friends: direct + groups, randomSignal: state.unreadRandom, dailyGroup: state.unreadDaily };
   Object.entries(values).forEach(([world, count]) => {
     const tab = document.querySelector(`.world-tab[data-world="${world}"]`);
@@ -3075,10 +3088,16 @@ function renderMyProfile() {
   applyProfileCosmetics($("#myProfileVisual"), profile);
   $("#myProfileNickname").textContent = state.account.nickname;
   $("#myProfileSignalId").textContent = state.account.signalId;
-  $("#myProfileBadges").innerHTML = [
-    `<span>${state.language === "en" ? `${state.account.loginStreak || 0} day streak` : `${state.account.loginStreak || 0}일 연속 출석`}</span>`,
-    ...(state.account.badges || []).map(badge => `<span>${badge === "shop_master" ? (state.language === "en" ? "Shop Master" : "상점 컬렉터") : escapeHtml(badge)}</span>`)
-  ].join("");
+  const badgeLabel = badge => badge === "shop_master"
+    ? uiText("\uC0C1\uC810 \uCEEC\uB809\uD130", "Shop Master", "\u30B7\u30E7\u30C3\u30D7\u30DE\u30B9\u30BF\u30FC")
+    : escapeHtml(badge);
+  const badges = [
+    `<button type="button" data-toggle-profile-badges>${uiText(`${state.account.loginStreak || 0}\uC77C \uC5F0\uC18D \uCD9C\uC11D`, `${state.account.loginStreak || 0} day streak`, `${state.account.loginStreak || 0}\u65E5\u9023\u7D9A`)}</button>`,
+    ...(state.account.badges || []).map(badge => `<button type="button" data-toggle-profile-badges>${badgeLabel(badge)}</button>`)
+  ];
+  $("#myProfileBadges").innerHTML = state.showProfileBadges
+    ? badges.join("")
+    : `<button type="button" data-toggle-profile-badges>${uiText("\uBC43\uC9C0 \uC228\uAE40", "Badges hidden", "\u30D0\u30C3\u30B8\u975E\u8868\u793A")}</button>`;
   $("#myProfileDescription").value = state.account.description || "";
   $("#removeProfilePhoto").disabled = !profile.profileAscii;
 }
@@ -4893,6 +4912,9 @@ $("#friendForm").addEventListener("submit", async event => {
 });
 $("#openAddFriend").addEventListener("click", () => {
   $("#friendInput").value = "";
+  setElementText("#addFriendPanel h2", mainText("addFriend"));
+  setElementPlaceholder("#friendInput", uiText("\uCE5C\uAD6C \uB2C9\uB124\uC784", "Friend nickname", "\u53CB\u9054\u306E\u30CB\u30C3\u30AF\u30CD\u30FC\u30E0"));
+  setElementText("#friendForm button", uiText("\uCE5C\uAD6C \uC694\uCCAD \uBCF4\uB0B4\uAE30", "Send friend request", "\u53CB\u9054\u7533\u8ACB\u3092\u9001\u4FE1"));
   $("#addFriendPanel").hidden = false;
   $("#friendInput").focus();
 });
@@ -4936,6 +4958,9 @@ $("#groupList").addEventListener("click", event => {
 });
 $("#openCreateGroup").addEventListener("click", () => {
   $("#groupNameInput").value = "";
+  setElementText("#createGroupPanel h2", mainText("createGroup"));
+  setElementPlaceholder("#groupNameInput", uiText("\uADF8\uB8F9 \uC774\uB984", "Group name", "\u30B0\u30EB\u30FC\u30D7\u540D"));
+  setElementText("#createGroupForm button[type='submit']", uiText("\uC120\uD0DD\uD55C \uCE5C\uAD6C\uC640 \uB9CC\uB4E4\uAE30", "Create with selected friends", "\u9078\u3093\u3060\u53CB\u9054\u3068\u4F5C\u6210"));
   renderGroupFriendChoices($("#groupFriendChoices"));
   $("#createGroupPanel").hidden = false;
 });
@@ -5835,6 +5860,11 @@ $("#sendAscii").addEventListener("click", () => {
       if (error.status === 409) showToast(state.language === "en" ? "You reached today's 30 signal limit." : "오늘의 시그널 발신 30회를 모두 사용했습니다.");
       else showApiFailure(error);
     });
+  } else if (state.asciiTarget === "profile") {
+    const description = $("#myProfileDescription").value;
+    state.profileDraftAscii = state.asciiDraft;
+    renderMyProfile();
+    $("#myProfileDescription").value = description;
   } else if (state.asciiTarget === "group-profile" && state.activeGroup) {
     api("/api/groups/profile", {
       method: "PATCH",
@@ -5925,21 +5955,15 @@ $("#profilePhotoInput").addEventListener("change", event => {
   const file = event.target.files?.[0];
   event.target.value = "";
   if (!file) return;
-  if (!file.type.startsWith("image/")) return showToast("사진 파일만 선택할 수 있습니다.");
-  const image = new Image();
-  const objectUrl = URL.createObjectURL(file);
-  image.onload = () => {
-    const description = $("#myProfileDescription").value;
-    state.profileDraftAscii = imageToAscii(image);
-    URL.revokeObjectURL(objectUrl);
-    renderMyProfile();
-    $("#myProfileDescription").value = description;
-  };
-  image.onerror = () => {
-    URL.revokeObjectURL(objectUrl);
-    showToast("사진을 읽을 수 없습니다.");
-  };
-  image.src = objectUrl;
+  if (!file.type.startsWith("image/")) return showToast(uiText("\uC0AC\uC9C4 \uD30C\uC77C\uB9CC \uC120\uD0DD\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.", "Choose an image file only.", "\u753B\u50CF\u30D5\u30A1\u30A4\u30EB\u3060\u3051\u9078\u3079\u307E\u3059\u3002"));
+  state.asciiTarget = "profile";
+  prepareAsciiPhoto(file);
+});
+$("#myProfileBadges").addEventListener("click", event => {
+  if (!event.target.closest("[data-toggle-profile-badges]")) return;
+  state.showProfileBadges = !state.showProfileBadges;
+  localStorage.setItem("morsiq-show-profile-badges", state.showProfileBadges ? "true" : "false");
+  renderMyProfile();
 });
 $("#removeProfilePhoto").addEventListener("click", () => {
   const description = $("#myProfileDescription").value;
