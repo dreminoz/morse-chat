@@ -682,7 +682,7 @@ function localizeMainUI() {
   document.querySelectorAll(".keyer-mode-button[data-keyer-mode='manual']").forEach(element => { element.textContent = mainText("manual"); });
   setElementText("#quizKeyerHint", state.quizKeyerMode === "auto"
     ? uiText("쉬면 자동으로 정답을 확인합니다", "Pause to check the answer automatically", "休止すると自動で答えを確認します")
-    : uiText("왼쪽 스와이프: 정답 확인 · 오른쪽: 지우기", "Swipe left: submit · Right: clear", "左スワイプ: 確認 · 右: クリア"));
+    : uiText("오른쪽 스와이프: 정답 확인 · 왼쪽: 지우기", "Swipe right: submit · Left: clear", "右スワイプ: 確認 · 左: クリア"));
   setElementText(".quiz-swipe-hint", uiText("카드 탭: 정답 보기 · 좌우 스와이프: 문제 이동", "Tap card: show answer · Swipe: move question", "カードタップ: 答え表示 · スワイプ: 問題移動"));
   setElementText("[data-writer-mode='single']", uiText("한 글자 확인", "Single letter", "1文字確認"));
   setElementText("[data-writer-mode='sentence']", uiText("문장 입력", "Sentence input", "文入力"));
@@ -1521,6 +1521,18 @@ const state = {
   backExitArmed: false,
   backExitTimer: null
 };
+
+if (!state.authToken || !state.account) {
+  state.unreadDirect = {};
+  state.unreadGroups = {};
+  state.unreadRandom = 0;
+  state.unreadDaily = 0;
+  localStorage.removeItem("morse-unread-direct");
+  localStorage.removeItem("morse-unread-groups");
+  localStorage.removeItem("morse-unread-random");
+  localStorage.removeItem("morse-unread-daily");
+}
+
 if (state.account?.signalId) state.userId = state.account.signalId;
 localStorage.setItem("morse-user-id", state.userId);
 
@@ -2749,6 +2761,14 @@ function isDailyGroupMessage(message) {
 }
 
 function saveUnread() {
+  if (!state.account) {
+    localStorage.removeItem("morse-unread-direct");
+    localStorage.removeItem("morse-unread-groups");
+    localStorage.removeItem("morse-unread-random");
+    localStorage.removeItem("morse-unread-daily");
+    updateWorldUnreadBadges();
+    return;
+  }
   Object.keys(state.unreadDirect).forEach(key => {
     if (!Number(state.unreadDirect[key] || 0)) delete state.unreadDirect[key];
   });
@@ -4327,6 +4347,16 @@ function switchWorld(world) {
     world = "hall";
   }
   state.world = world;
+  if (world === "friends") {
+    state.unreadDirect = {};
+    const dailyGroupIds = new Set([
+      state.dailyGroup?.id,
+      ...state.groups.filter(group => group.type === "daily").map(group => group.id)
+    ].filter(Boolean));
+    Object.keys(state.unreadGroups).forEach(groupId => {
+      if (!dailyGroupIds.has(groupId)) delete state.unreadGroups[groupId];
+    });
+  }
   if (world === "randomSignal") state.unreadRandom = 0;
   if (world === "dailyGroup") {
     state.unreadDaily = 0;
