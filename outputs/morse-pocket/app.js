@@ -1404,6 +1404,7 @@ const state = {
   asciiImage: null,
   asciiBrushMode: "keep",
   asciiAutoEnhance: false,
+  asciiTone: 0,
   asciiKeepCanvas: null,
   asciiEraseCanvas: null,
   asciiDrawing: false,
@@ -1514,9 +1515,11 @@ const state = {
   chatMessageHoldY: 0,
   referenceDockMinimized: localStorage.getItem("morse-reference-dock-minimized") === "true",
   referenceDockPosition: JSON.parse(localStorage.getItem("morse-reference-dock-position") || "{\"left\":18,\"top\":140,\"width\":320,\"height\":360}"),
+  referenceDockMiniPosition: JSON.parse(localStorage.getItem("morse-reference-dock-mini-position") || "{\"left\":18,\"top\":140}"),
   referenceDockDragging: false,
   referenceDockResizing: false,
   referenceDockDragStart: null,
+  referenceDockDragMoved: false,
   operatorProfiles: [],
   backExitArmed: false,
   backExitTimer: null
@@ -3624,7 +3627,8 @@ function imageToAscii(image, options = {}) {
     const r = pixels[offset], g = pixels[offset + 1], b = pixels[offset + 2];
     const max = Math.max(r, g, b), min = Math.min(r, g, b);
     const brightness = r * .299 + g * .587 + b * .114;
-    brightnessValues.push(options.autoEnhance ? Math.max(0, brightness - 65) : brightness);
+    const toneShift = Number(options.tone || 0) * 26;
+    brightnessValues.push(Math.max(0, Math.min(255, (options.autoEnhance ? brightness - 65 : brightness) - toneShift)));
     saturationValues.push((max - min) / 255);
   }
   const sorted = [...brightnessValues].sort((a, b) => a - b);
@@ -5828,10 +5832,12 @@ function ensureAsciiEditor() {
       <button id="asciiEraseBrush" type="button">Erase</button>
       <button id="asciiBrushEraser" type="button">Undo marks</button>
       <button id="asciiMoveImage" type="button">Move</button>
+      <button id="asciiLighten" type="button">Light</button>
+      <button id="asciiDarken" type="button">Dark</button>
       <button id="asciiClearBrush" type="button">Clear marks</button>
     </div>
     <label class="ascii-brush-size"><span>Brush size</span><input id="asciiBrushSize" type="range" min="8" max="80" value="${state.asciiBrushSize || 32}"></label>
-    <small>Draw over the object to keep it. Draw erase marks to turn that area into blank space.</small>
+    <small id="asciiToneHint">Tone: normal. Draw over the object to keep it. Draw erase marks to turn that area into blank space.</small>
   </div>`);
   bindAsciiEditorEvents();
 }
@@ -5853,6 +5859,8 @@ function bindAsciiEditorEvents() {
   $("#asciiEraseBrush")?.addEventListener("click", () => setAsciiBrushMode("erase"));
   $("#asciiBrushEraser")?.addEventListener("click", () => setAsciiBrushMode("clear"));
   $("#asciiMoveImage")?.addEventListener("click", () => setAsciiBrushMode("pan"));
+  $("#asciiLighten")?.addEventListener("click", () => adjustAsciiTone(-1));
+  $("#asciiDarken")?.addEventListener("click", () => adjustAsciiTone(1));
   $("#asciiBrushSize")?.addEventListener("input", event => {
     state.asciiBrushSize = Number(event.target.value);
     localStorage.setItem("morse-ascii-brush-size", String(state.asciiBrushSize));
@@ -5880,6 +5888,7 @@ function bindAsciiEditorEvents() {
       const start = state.asciiPanStart;
       state.asciiImageOffsetX = start.offsetX + event.clientX - start.x;
       state.asciiImageOffsetY = start.offsetY + event.clientY - start.y;
+      clampAsciiImageOffset();
       redrawAsciiEditor();
       updateAsciiDraft();
       return;
@@ -5917,6 +5926,7 @@ function renderAsciiEditor(image) {
     mask.height = canvas.height;
   });
   redrawAsciiEditor();
+  renderAsciiToneHint();
   updateAsciiDraft();
 }
 
@@ -5931,12 +5941,25 @@ function asciiImageDrawRect(canvas) {
   const scale = Math.max(canvas.width / image.width, canvas.height / image.height);
   const width = image.width * scale;
   const height = image.height * scale;
+  const maxOffsetX = Math.max(0, (width - canvas.width) / 2);
+  const maxOffsetY = Math.max(0, (height - canvas.height) / 2);
   return {
-    x: (canvas.width - width) / 2 + state.asciiImageOffsetX,
-    y: (canvas.height - height) / 2 + state.asciiImageOffsetY,
+    x: (canvas.width - width) / 2 + Math.max(-maxOffsetX, Math.min(maxOffsetX, state.asciiImageOffsetX)),
+    y: (canvas.height - height) / 2 + Math.max(-maxOffsetY, Math.min(maxOffsetY, state.asciiImageOffsetY)),
     width,
     height
   };
+}
+
+function clampAsciiImageOffset() {
+  const canvas = $("#asciiEditorCanvas");
+  const image = state.asciiImage;
+  if (!canvas || !image || !isProfileAsciiTarget()) return;
+  const scale = Math.max(canvas.width / image.width, canvas.height / image.height);
+  const maxOffsetX = Math.max(0, (image.width * scale - canvas.width) / 2);
+  const maxOffsetY = Math.max(0, (image.height * scale - canvas.height) / 2);
+  state.asciiImageOffsetX = Math.max(-maxOffsetX, Math.min(maxOffsetX, state.asciiImageOffsetX));
+  state.asciiImageOffsetY = Math.max(-maxOffsetY, Math.min(maxOffsetY, state.asciiImageOffsetY));
 }
 
 function asciiWorkingCanvas() {
@@ -5967,7 +5990,14 @@ function redrawAsciiEditor() {
   context.fillStyle = "#fff";
   context.fillRect(0, 0, canvas.width, canvas.height);
   const rect = asciiImageDrawRect(canvas);
+  if (isProfileAsciiTarget()) {
+    context.save();
+    context.beginPath();
+    context.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2 - 3, 0, Math.PI * 2);
+    context.clip();
+  }
   context.drawImage(state.asciiImage, rect.x, rect.y, rect.width, rect.height);
+  if (isProfileAsciiTarget()) context.restore();
   if (isProfileAsciiTarget()) {
     context.save();
     context.strokeStyle = "rgba(0,0,0,.85)";
@@ -6011,9 +6041,28 @@ function updateAsciiDraft() {
     autoEnhance: state.asciiAutoEnhance,
     keepCanvas: state.asciiKeepCanvas,
     eraseCanvas: state.asciiEraseCanvas,
-    profile: isProfileAsciiTarget()
+    profile: isProfileAsciiTarget(),
+    tone: state.asciiTone
   });
   $("#asciiPreviewText").textContent = state.asciiDraft;
+}
+
+function adjustAsciiTone(direction) {
+  state.asciiTone = Math.max(-3, Math.min(3, Number(state.asciiTone || 0) + direction));
+  renderAsciiToneHint();
+  updateAsciiDraft();
+}
+
+function renderAsciiToneHint() {
+  const hint = $("#asciiToneHint");
+  if (!hint) return;
+  const tone = Number(state.asciiTone || 0);
+  const label = tone < 0
+    ? uiText("연하게", "Light", "淡く")
+    : tone > 0 ? uiText("진하게", "Dark", "濃く") : uiText("보통", "Normal", "標準");
+  hint.textContent = uiText(`명암: ${label}.`, `Tone: ${label}.`, `明るさ: ${label}。`) + " " + uiText("객체를 칠하면 남기고, 지우개 영역은 빈칸으로 만듭니다.", "Draw over the object to keep it. Erase marks become blank space.", "残す部分を塗り、消した部分は空白になります。");
+  $("#asciiLighten")?.classList.toggle("active", tone < 0);
+  $("#asciiDarken")?.classList.toggle("active", tone > 0);
 }
 
 function setAsciiBrushMode(mode) {
@@ -7243,23 +7292,30 @@ function clampReferenceDockPosition() {
   const pos = state.referenceDockPosition || { left: 18, top: 140, width: 320, height: 360 };
   pos.width = Math.min(Math.max(Number(pos.width) || 320, 220), Math.max(240, innerWidth - 20));
   pos.height = Math.min(Math.max(Number(pos.height) || 360, 220), Math.max(240, innerHeight - 20));
-  const minimized = Boolean(state.referenceDockMinimized);
-  const floatingWidth = minimized ? 58 : pos.width;
-  const floatingHeight = minimized ? 44 : pos.height;
-  pos.left = Math.min(Math.max(Number(pos.left) || 12, 8), Math.max(8, innerWidth - floatingWidth - 8));
-  pos.top = Math.min(Math.max(Number(pos.top) || 120, 8), Math.max(8, innerHeight - floatingHeight - 8));
+  pos.left = Math.min(Math.max(Number(pos.left) || 12, 8), Math.max(8, innerWidth - pos.width - 8));
+  pos.top = Math.min(Math.max(Number(pos.top) || 120, 8), Math.max(8, innerHeight - pos.height - 8));
   state.referenceDockPosition = pos;
+  return pos;
+}
+
+function clampReferenceDockMiniPosition() {
+  const pos = state.referenceDockMiniPosition || { left: 18, top: 140 };
+  pos.left = Math.min(Math.max(Number(pos.left) || 8, 8), Math.max(8, innerWidth - 66));
+  pos.top = Math.min(Math.max(Number(pos.top) || 8, 8), Math.max(8, innerHeight - 52));
+  state.referenceDockMiniPosition = pos;
   return pos;
 }
 
 function saveReferenceDockPosition() {
   localStorage.setItem("morse-reference-dock-position", JSON.stringify(state.referenceDockPosition));
+  localStorage.setItem("morse-reference-dock-mini-position", JSON.stringify(state.referenceDockMiniPosition));
 }
 
 function applyReferenceDockPosition() {
   const dock = $("#referenceDock");
   const mini = $("#referenceDockMini");
   const pos = clampReferenceDockPosition();
+  const miniPos = clampReferenceDockMiniPosition();
   if (dock) {
     dock.style.left = pos.left + "px";
     dock.style.top = pos.top + "px";
@@ -7267,12 +7323,17 @@ function applyReferenceDockPosition() {
     dock.style.height = pos.height + "px";
   }
   if (mini) {
-    mini.style.left = pos.left + "px";
-    mini.style.top = pos.top + "px";
+    mini.style.left = miniPos.left + "px";
+    mini.style.top = miniPos.top + "px";
   }
 }
 
 function setReferenceDockMinimized(minimized) {
+  if (minimized && !state.referenceDockMinimized) {
+    const hideButton = $("#hideReferenceDock");
+    const rect = hideButton?.getBoundingClientRect();
+    if (rect) state.referenceDockMiniPosition = { left: rect.left, top: rect.top };
+  }
   state.referenceDockMinimized = minimized;
   localStorage.setItem("morse-reference-dock-minimized", String(minimized));
   const dock = $("#referenceDock");
@@ -7300,14 +7361,22 @@ function setupReferenceDockFloating() {
   const header = dock.querySelector(".section-heading");
   const startDrag = (event, targetMini = false) => {
     if (event.target.closest("button") && !targetMini) return;
-    const pos = clampReferenceDockPosition();
+    const pos = targetMini ? clampReferenceDockMiniPosition() : clampReferenceDockPosition();
     state.referenceDockDragging = true;
-    state.referenceDockDragStart = { x: event.clientX, y: event.clientY, left: pos.left, top: pos.top };
+    state.referenceDockDragMoved = false;
+    state.referenceDockDragStart = { x: event.clientX, y: event.clientY, left: pos.left, top: pos.top, mini: targetMini };
     (targetMini ? mini : header)?.setPointerCapture?.(event.pointerId);
   };
   header?.addEventListener("pointerdown", event => startDrag(event, false));
   mini.addEventListener("pointerdown", event => startDrag(event, true));
-  mini.addEventListener("click", () => setReferenceDockMinimized(false));
+  mini.addEventListener("click", event => {
+    if (state.referenceDockDragMoved) {
+      event.preventDefault();
+      state.referenceDockDragMoved = false;
+      return;
+    }
+    setReferenceDockMinimized(false);
+  });
   resizeHandle.addEventListener("pointerdown", event => {
     event.preventDefault();
     const pos = clampReferenceDockPosition();
@@ -7325,8 +7394,10 @@ function setupReferenceDockFloating() {
     }
     if (!state.referenceDockDragging || !state.referenceDockDragStart) return;
     const start = state.referenceDockDragStart;
-    state.referenceDockPosition.left = start.left + event.clientX - start.x;
-    state.referenceDockPosition.top = start.top + event.clientY - start.y;
+    if (Math.abs(event.clientX - start.x) > 4 || Math.abs(event.clientY - start.y) > 4) state.referenceDockDragMoved = true;
+    const target = start.mini ? state.referenceDockMiniPosition : state.referenceDockPosition;
+    target.left = start.left + event.clientX - start.x;
+    target.top = start.top + event.clientY - start.y;
     applyReferenceDockPosition();
   });
   document.addEventListener("pointerup", () => {
@@ -7338,11 +7409,14 @@ function setupReferenceDockFloating() {
     }
     if (!state.referenceDockDragging) return;
     state.referenceDockDragging = false;
-    const rect = dock.getBoundingClientRect();
-    state.referenceDockPosition.width = rect.width || state.referenceDockPosition.width;
-    state.referenceDockPosition.height = rect.height || state.referenceDockPosition.height;
+    if (!state.referenceDockDragStart?.mini) {
+      const rect = dock.getBoundingClientRect();
+      state.referenceDockPosition.width = rect.width || state.referenceDockPosition.width;
+      state.referenceDockPosition.height = rect.height || state.referenceDockPosition.height;
+    }
     applyReferenceDockPosition();
     saveReferenceDockPosition();
+    state.referenceDockDragStart = null;
   });
   dock.addEventListener("mouseup", () => {
     const rect = dock.getBoundingClientRect();
