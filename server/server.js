@@ -12,6 +12,7 @@ const GOOGLE_PLAY_PACKAGE_NAME = process.env.GOOGLE_PLAY_PACKAGE_NAME || "com.mo
 const GOOGLE_PLAY_SERVICE_ACCOUNT_JSON = process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON || "";
 const OPERATOR_EMAIL = "toywogh@gmail.com";
 const OPERATOR_NICKNAME = "dreminoz";
+const OPERATOR_DISPLAY_NICKNAME = "admin";
 const SHOP_DRAW_COST = 50;
 const SHOP_COIN_PRODUCT = "coins_100";
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "";
@@ -206,8 +207,9 @@ async function sessionAccount(req, url) {
 }
 
 function publicAccount(account) {
+  const isOperator = isOperatorAccount(account);
   return {
-    nickname: account.nickname,
+    nickname: isOperator ? OPERATOR_DISPLAY_NICKNAME : account.nickname,
     signalId: account.signalId,
     description: account.description || "",
     profileAscii: account.profileAscii || "",
@@ -217,7 +219,7 @@ function publicAccount(account) {
     badges: account.badges || [],
     specials: account.specials || [],
     dailyGroupEnabled: account.dailyGroupEnabled !== false,
-    isOperator: isOperatorAccount(account)
+    isOperator
   };
 }
 

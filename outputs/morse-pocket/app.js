@@ -2852,7 +2852,7 @@ function renderFriends() {
       + "<article class=\"friend-card\" data-friend-id=\"" + escapeHtml(operator) + "\">"
       + "<button type=\"button\" class=\"friend-profile-button\" data-profile-friend=\"" + escapeHtml(operator) + "\">" + profileAvatarHtml(profile, operator) + "</button>"
       + "<button type=\"button\" class=\"friend-conversation-button\" data-open-friend-id=\"" + escapeHtml(operator) + "\"><div class=\"friend-info\">"
-      + "<strong data-no-i18n>" + escapeHtml(profile?.nickname || "dreminoz") + "</strong>"
+      + "<strong data-no-i18n>" + escapeHtml(profile?.nickname || "admin") + "</strong>"
       + "<small>" + (last ? chatPreview(last) : operatorHelpText()) + "</small>"
       + "</div></button>" + unreadBubble(Number(state.unreadDirect[operator] || 0)) + "</article>";
   }
