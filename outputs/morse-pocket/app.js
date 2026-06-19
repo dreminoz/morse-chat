@@ -1404,9 +1404,10 @@ const state = {
   asciiImage: null,
   asciiBrushMode: "keep",
   asciiAutoEnhance: false,
-  asciiTone: 0,
   asciiKeepCanvas: null,
   asciiEraseCanvas: null,
+  asciiLightCanvas: null,
+  asciiDarkCanvas: null,
   asciiDrawing: false,
   asciiLastPoint: null,
   asciiBrushSize: Number(localStorage.getItem("morse-ascii-brush-size") || 32),
@@ -3274,10 +3275,12 @@ async function openFriendProfile(signalId) {
     $("#friendProfileNickname").textContent = profile.nickname;
     $("#friendProfileSignalId").textContent = profile.signalId;
     $("#friendProfileBadges").innerHTML = [
-      `<span>${state.language === "en" ? `${profile.loginStreak || 0} day streak` : `${profile.loginStreak || 0}일 연속 출석`}</span>`,
-      ...(profile.badges || []).map(badge => `<span>${badge === "shop_master" ? (state.language === "en" ? "Shop Master" : "상점 컬렉터") : escapeHtml(badge)}</span>`)
+      `<span>${uiText(`${profile.loginStreak || 0}일 연속 출석`, `${profile.loginStreak || 0} day streak`, `${profile.loginStreak || 0}日連続`)}</span>`,
+      ...(profile.badges || []).map(badge => `<span>${badge === "shop_master" ? uiText("상점 컬렉터", "Shop Master", "ショップマスター") : escapeHtml(badge)}</span>`)
     ].join("");
-    $("#friendProfileDescription").textContent = profile.description || "아직 자기소개가 없습니다.";
+    $("#friendProfileDescription").textContent = profile.description || uiText("아직 자기소개가 없습니다.", "No bio yet.", "自己紹介はまだありません。");
+    setElementText("#chatFromProfile", uiText("대화하기", "Chat", "チャット"));
+    setElementText("#removeFriend", uiText("친구 끊기", "Remove friend", "友達を削除"));
     $("#chatFromProfile").hidden = !state.friends.includes(signalId);
     $("#removeFriend").hidden = !state.friends.includes(signalId);
     $("#friendProfilePanel").hidden = false;
@@ -3621,14 +3624,17 @@ function imageToAscii(image, options = {}) {
   const pixels = context.getImageData(0, 0, width, height).data;
   const keepMask = sampleAsciiMask(options.keepCanvas, width, height);
   const eraseMask = sampleAsciiMask(options.eraseCanvas, width, height);
+  const lightMask = sampleAsciiMask(options.lightCanvas, width, height);
+  const darkMask = sampleAsciiMask(options.darkCanvas, width, height);
   const brightnessValues = [];
   const saturationValues = [];
   for (let offset = 0; offset < pixels.length; offset += 4) {
     const r = pixels[offset], g = pixels[offset + 1], b = pixels[offset + 2];
     const max = Math.max(r, g, b), min = Math.min(r, g, b);
     const brightness = r * .299 + g * .587 + b * .114;
-    const toneShift = Number(options.tone || 0) * 26;
-    brightnessValues.push(Math.max(0, Math.min(255, (options.autoEnhance ? brightness - 65 : brightness) - toneShift)));
+    const index = offset / 4;
+    const toneShift = lightMask[index] ? 54 : darkMask[index] ? -54 : 0;
+    brightnessValues.push(Math.max(0, Math.min(255, (options.autoEnhance ? brightness - 65 : brightness) + toneShift)));
     saturationValues.push((max - min) / 255);
   }
   const sorted = [...brightnessValues].sort((a, b) => a - b);
@@ -5828,12 +5834,12 @@ function ensureAsciiEditor() {
     <canvas id="asciiEditorCanvas"></canvas>
     <div class="ascii-editor-tools">
       <button id="asciiAutoEnhance" type="button">Auto</button>
+      <button id="asciiMoveImage" type="button">Move</button>
       <button id="asciiKeepBrush" class="active" type="button">Keep</button>
       <button id="asciiEraseBrush" type="button">Erase</button>
-      <button id="asciiBrushEraser" type="button">Undo marks</button>
-      <button id="asciiMoveImage" type="button">Move</button>
       <button id="asciiLighten" type="button">Light</button>
       <button id="asciiDarken" type="button">Dark</button>
+      <button id="asciiBrushEraser" type="button">Undo marks</button>
       <button id="asciiClearBrush" type="button">Clear marks</button>
     </div>
     <label class="ascii-brush-size"><span>Brush size</span><input id="asciiBrushSize" type="range" min="8" max="80" value="${state.asciiBrushSize || 32}"></label>
@@ -5859,8 +5865,8 @@ function bindAsciiEditorEvents() {
   $("#asciiEraseBrush")?.addEventListener("click", () => setAsciiBrushMode("erase"));
   $("#asciiBrushEraser")?.addEventListener("click", () => setAsciiBrushMode("clear"));
   $("#asciiMoveImage")?.addEventListener("click", () => setAsciiBrushMode("pan"));
-  $("#asciiLighten")?.addEventListener("click", () => adjustAsciiTone(-1));
-  $("#asciiDarken")?.addEventListener("click", () => adjustAsciiTone(1));
+  $("#asciiLighten")?.addEventListener("click", () => setAsciiBrushMode("light"));
+  $("#asciiDarken")?.addEventListener("click", () => setAsciiBrushMode("dark"));
   $("#asciiBrushSize")?.addEventListener("input", event => {
     state.asciiBrushSize = Number(event.target.value);
     localStorage.setItem("morse-ascii-brush-size", String(state.asciiBrushSize));
@@ -5869,6 +5875,8 @@ function bindAsciiEditorEvents() {
     if (!state.asciiKeepCanvas || !state.asciiEraseCanvas) return;
     state.asciiKeepCanvas.getContext("2d").clearRect(0, 0, state.asciiKeepCanvas.width, state.asciiKeepCanvas.height);
     state.asciiEraseCanvas.getContext("2d").clearRect(0, 0, state.asciiEraseCanvas.width, state.asciiEraseCanvas.height);
+    state.asciiLightCanvas?.getContext("2d").clearRect(0, 0, state.asciiLightCanvas.width, state.asciiLightCanvas.height);
+    state.asciiDarkCanvas?.getContext("2d").clearRect(0, 0, state.asciiDarkCanvas.width, state.asciiDarkCanvas.height);
     redrawAsciiEditor();
     updateAsciiDraft();
   });
@@ -5921,7 +5929,9 @@ function renderAsciiEditor(image) {
   state.asciiImageOffsetY = 0;
   state.asciiKeepCanvas = document.createElement("canvas");
   state.asciiEraseCanvas = document.createElement("canvas");
-  [state.asciiKeepCanvas, state.asciiEraseCanvas].forEach(mask => {
+  state.asciiLightCanvas = document.createElement("canvas");
+  state.asciiDarkCanvas = document.createElement("canvas");
+  [state.asciiKeepCanvas, state.asciiEraseCanvas, state.asciiLightCanvas, state.asciiDarkCanvas].forEach(mask => {
     mask.width = canvas.width;
     mask.height = canvas.height;
   });
@@ -6021,6 +6031,18 @@ function redrawAsciiEditor() {
     context.drawImage(tintMask(state.asciiEraseCanvas, "#ff3b30"), 0, 0);
     context.restore();
   }
+  if (state.asciiLightCanvas) {
+    context.save();
+    context.globalAlpha = .35;
+    context.drawImage(tintMask(state.asciiLightCanvas, "#ffd60a"), 0, 0);
+    context.restore();
+  }
+  if (state.asciiDarkCanvas) {
+    context.save();
+    context.globalAlpha = .35;
+    context.drawImage(tintMask(state.asciiDarkCanvas, "#6f42c1"), 0, 0);
+    context.restore();
+  }
 }
 
 function tintMask(maskCanvas, color) {
@@ -6041,28 +6063,17 @@ function updateAsciiDraft() {
     autoEnhance: state.asciiAutoEnhance,
     keepCanvas: state.asciiKeepCanvas,
     eraseCanvas: state.asciiEraseCanvas,
-    profile: isProfileAsciiTarget(),
-    tone: state.asciiTone
+    lightCanvas: state.asciiLightCanvas,
+    darkCanvas: state.asciiDarkCanvas,
+    profile: isProfileAsciiTarget()
   });
   $("#asciiPreviewText").textContent = state.asciiDraft;
-}
-
-function adjustAsciiTone(direction) {
-  state.asciiTone = Math.max(-3, Math.min(3, Number(state.asciiTone || 0) + direction));
-  renderAsciiToneHint();
-  updateAsciiDraft();
 }
 
 function renderAsciiToneHint() {
   const hint = $("#asciiToneHint");
   if (!hint) return;
-  const tone = Number(state.asciiTone || 0);
-  const label = tone < 0
-    ? uiText("연하게", "Light", "淡く")
-    : tone > 0 ? uiText("진하게", "Dark", "濃く") : uiText("보통", "Normal", "標準");
-  hint.textContent = uiText(`명암: ${label}.`, `Tone: ${label}.`, `明るさ: ${label}。`) + " " + uiText("객체를 칠하면 남기고, 지우개 영역은 빈칸으로 만듭니다.", "Draw over the object to keep it. Erase marks become blank space.", "残す部分を塗り、消した部分は空白になります。");
-  $("#asciiLighten")?.classList.toggle("active", tone < 0);
-  $("#asciiDarken")?.classList.toggle("active", tone > 0);
+  hint.textContent = uiText("밝게/진하게는 원하는 부분에 브러시로 칠하세요.", "Use Light or Dark as a brush on the parts you want to adjust.", "明るく/濃くしたい部分をブラシで塗ってください。");
 }
 
 function setAsciiBrushMode(mode) {
@@ -6071,6 +6082,8 @@ function setAsciiBrushMode(mode) {
   $("#asciiEraseBrush")?.classList.toggle("active", mode === "erase");
   $("#asciiBrushEraser")?.classList.toggle("active", mode === "clear");
   $("#asciiMoveImage")?.classList.toggle("active", mode === "pan");
+  $("#asciiLighten")?.classList.toggle("active", mode === "light");
+  $("#asciiDarken")?.classList.toggle("active", mode === "dark");
 }
 
 function drawAsciiBrush(event) {
@@ -6081,8 +6094,11 @@ function drawAsciiBrush(event) {
   const y = (event.clientY - rect.top) * (canvas.height / rect.height);
   if (!state.asciiLastPoint) state.asciiLastPoint = { x, y };
   const masks = state.asciiBrushMode === "clear"
-    ? [state.asciiKeepCanvas, state.asciiEraseCanvas]
-    : [state.asciiBrushMode === "erase" ? state.asciiEraseCanvas : state.asciiKeepCanvas];
+    ? [state.asciiKeepCanvas, state.asciiEraseCanvas, state.asciiLightCanvas, state.asciiDarkCanvas]
+    : [state.asciiBrushMode === "erase" ? state.asciiEraseCanvas
+      : state.asciiBrushMode === "light" ? state.asciiLightCanvas
+      : state.asciiBrushMode === "dark" ? state.asciiDarkCanvas
+      : state.asciiKeepCanvas];
   masks.forEach(mask => {
     const context = asciiEditorContext(mask);
     if (state.asciiBrushMode === "clear") context.globalCompositeOperation = "destination-out";
@@ -6141,6 +6157,8 @@ $("#cancelAscii").addEventListener("click", () => {
   state.asciiImage = null;
   state.asciiKeepCanvas = null;
   state.asciiEraseCanvas = null;
+  state.asciiLightCanvas = null;
+  state.asciiDarkCanvas = null;
   $("#asciiPreview").hidden = true;
 });
 bindAsciiEditorEvents();
