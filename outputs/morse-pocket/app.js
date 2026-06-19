@@ -1322,6 +1322,7 @@ const state = {
   unreadGroups: JSON.parse(localStorage.getItem("morse-unread-groups") || "{}"),
   unreadRandom: Number(localStorage.getItem("morse-unread-random")) || 0,
   unreadDaily: Number(localStorage.getItem("morse-unread-daily")) || 0,
+  showProfileBadges: localStorage.getItem("morsiq-show-profile-badges") !== "false",
   groups: [],
   activeGroup: null,
   groupMessages: [],
@@ -2654,15 +2655,15 @@ function unreadBubble(count) {
 }
 
 function readyToReceiveText() {
-  return uiText("신호 받을 준비 완료", "Ready to receive a signal", "信号を受け取る準備完了");
+  return uiText("\uC2E0\uD638 \uBC1B\uC744 \uC900\uBE44 \uC644\uB8CC", "Ready to receive a signal", "\u4FE1\u53F7\u5F85\u3061");
 }
 
 function dailyTomorrowText() {
-  return uiText("내일", "tomorrow", "明日");
+  return uiText("\uB0B4\uC77C", "tomorrow", "\u660E\u65E5");
 }
 
 function dailyMemberUnit() {
-  return uiText("명", "people", "人");
+  return uiText("\uBA85", "people", "\u4EBA");
 }
 
 function isDailyGroupMessage(message) {
@@ -2673,6 +2674,12 @@ function isDailyGroupMessage(message) {
 }
 
 function saveUnread() {
+  Object.keys(state.unreadDirect).forEach(key => {
+    if (!Number(state.unreadDirect[key] || 0)) delete state.unreadDirect[key];
+  });
+  Object.keys(state.unreadGroups).forEach(key => {
+    if (!Number(state.unreadGroups[key] || 0)) delete state.unreadGroups[key];
+  });
   localStorage.setItem("morse-unread-direct", JSON.stringify(state.unreadDirect));
   localStorage.setItem("morse-unread-groups", JSON.stringify(state.unreadGroups));
   localStorage.setItem("morse-unread-random", state.unreadRandom);
@@ -2686,31 +2693,34 @@ function updateWorldUnreadBadges() {
   const values = { friends: direct + groups, randomSignal: state.unreadRandom, dailyGroup: state.unreadDaily };
   Object.entries(values).forEach(([world, count]) => {
     const tab = document.querySelector(`.world-tab[data-world="${world}"]`);
-    if (tab) tab.dataset.unread = unreadLabel(count);
+    if (!tab) return;
+    if (count) tab.dataset.unread = unreadLabel(count);
+    else tab.removeAttribute("data-unread");
   });
 }
 
 function renderFriends() {
+  const noFriendsHtml = "<article class=\"record-item\"><strong>" + uiText("\uC544\uC9C1 \uCE5C\uAD6C\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.", "No friends yet.", "\u53CB\u9054\u306F\u307E\u3060\u3044\u307E\u305B\u3093\u3002") + "</strong><span>" + uiText("\uC774\uB984\uC744 \uC785\uB825\uD574 \uCE5C\uAD6C\uB97C \uCD94\uAC00\uD558\uC138\uC694.", "Enter a name to add a friend.", "\u540D\u524D\u3067\u53CB\u9054\u3092\u8FFD\u52A0\u3057\u307E\u3057\u3087\u3046\u3002") + "</span></article>";
   const sortedFriends = [...state.friends].sort((a, b) =>
     Number(state.chats[b]?.at(-1)?.createdAt || 0) - Number(state.chats[a]?.at(-1)?.createdAt || 0)
   );
   $("#friendList").innerHTML = sortedFriends.length
-    ? sortedFriends.map(friend => `
-      <article class="friend-card" data-friend-id="${escapeHtml(friend)}">
-        <button type="button" class="friend-profile-button" data-profile-friend="${escapeHtml(friend)}" aria-label="친구 프로필 보기">
-          ${profileAvatarHtml(state.profileCache[friend], friend)}
-        </button>
-        <button type="button" class="friend-conversation-button" data-open-friend-id="${escapeHtml(friend)}">
-        <div class="friend-info">
-          <strong data-no-i18n>${escapeHtml(state.profileCache[friend]?.nickname || friend)}</strong>
-          <small>${state.chats[friend]?.length ? chatPreview(state.chats[friend][state.chats[friend].length - 1]) : readyToReceiveText()}</small>
-        </div>
-        </button>
-        ${unreadBubble(Number(state.unreadDirect[friend] || 0))}
-      </article>`).join("")
-    : '<article class="record-item"><strong>아직 친구가 없습니다.</strong><span>이름을 입력해 친구를 추가하세요.</span></article>';
+    ? sortedFriends.map(friend => {
+      const last = state.chats[friend]?.at(-1);
+      const label = uiText("\uCE5C\uAD6C \uD504\uB85C\uD544 \uBCF4\uAE30", "View friend profile", "\u53CB\u9054\u306E\u30D7\u30ED\u30D5\u30A3\u30FC\u30EB\u3092\u8868\u793A");
+      return "<article class=\"friend-card\" data-friend-id=\"" + escapeHtml(friend) + "\">"
+        + "<button type=\"button\" class=\"friend-profile-button\" data-profile-friend=\"" + escapeHtml(friend) + "\" aria-label=\"" + label + "\">"
+        + profileAvatarHtml(state.profileCache[friend], friend)
+        + "</button>"
+        + "<button type=\"button\" class=\"friend-conversation-button\" data-open-friend-id=\"" + escapeHtml(friend) + "\"><div class=\"friend-info\">"
+        + "<strong data-no-i18n>" + escapeHtml(state.profileCache[friend]?.nickname || friend) + "</strong>"
+        + "<small>" + (last ? chatPreview(last) : readyToReceiveText()) + "</small>"
+        + "</div></button>"
+        + unreadBubble(Number(state.unreadDirect[friend] || 0))
+        + "</article>";
+    }).join("")
+    : noFriendsHtml;
 }
-
 function renderGroups() {
   const sortedGroups = [...state.groups].sort((a, b) => Number(b.lastMessageAt || 0) - Number(a.lastMessageAt || 0));
   const memberText = count => uiText(count + "\uBA85 \uCC38\uC5EC \uC911", count + " members", count + "\u4EBA\u53C2\u52A0\u4E2D");
@@ -2775,7 +2785,7 @@ function openGroupChat(groupId) {
   const group = state.groups.find(item => item.id === groupId);
   if (!group) return;
   state.activeGroup = group;
-  state.unreadGroups[groupId] = 0;
+  delete state.unreadGroups[groupId];
   saveUnread();
   state.groupMessages = [];
   document.body.classList.add("chat-open");
@@ -3111,9 +3121,9 @@ function chatMessageText(message) {
 }
 
 function chatPreview(message) {
-  if (typeof message === "object" && message.type === "ascii") return "ASCII 아트 사진";
+  if (typeof message === "object" && message.type === "ascii") return uiText("ASCII \uC544\uD2B8 \uC0AC\uC9C4", "ASCII art photo", "ASCII\u5199\u771F");
   return typeof message === "object" && message.hidden
-    ? "숨김 모스 신호"
+    ? uiText("\uC228\uAE40 \uBAA8\uC2A4 \uC2E0\uD638", "Morse Only", "\u632F\u52D5\u306E\u307F")
     : escapeHtml(chatMessageText(message));
 }
 
@@ -3517,7 +3527,7 @@ function deleteChatInputCharacter() {
 
 function openChat(friend) {
   state.activeFriend = friend;
-  state.unreadDirect[friend] = 0;
+  delete state.unreadDirect[friend];
   saveUnread();
   document.body.classList.add("chat-open");
   $("#hiddenViewPicker").hidden = true;
@@ -4180,7 +4190,10 @@ function switchWorld(world) {
   }
   state.world = world;
   if (world === "randomSignal") state.unreadRandom = 0;
-  if (world === "dailyGroup") state.unreadDaily = 0;
+  if (world === "dailyGroup") {
+    state.unreadDaily = 0;
+    if (state.dailyGroup?.id) delete state.unreadGroups[state.dailyGroup.id];
+  }
   saveUnread();
   localStorage.setItem("morse-world", world);
   $("#friendsWorld").hidden = world !== "friends";
