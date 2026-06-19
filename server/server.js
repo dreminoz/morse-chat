@@ -237,32 +237,35 @@ function emit(userId, type, payload = {}) {
 function notificationText(kind, language, data = {}) {
   const hidden = Boolean(data.hidden);
   const preview = hidden ? "Morse Only" : String(data.preview || "").trim().slice(0, 90);
-  const messages = {
-    direct: {
-      title: `New message from ${data.sender || "a friend"}`,
-      body: preview || "A new message arrived."
+  const lang = ["ko", "en", "ja"].includes(language) ? language : "en";
+  const sender = data.sender || (lang === "ko" ? "\uCE5C\uAD6C" : lang === "ja" ? "\u53CB\u9054" : "a friend");
+  const messagesByLanguage = {
+    en: {
+      direct: { title: `New message from ${sender}`, body: preview || "A new message arrived." },
+      "random-connected": { title: "Random Signal connected", body: "A new signal has connected." },
+      random: { title: "Random Signal", body: preview || "A new message arrived." },
+      daily: { title: "Daily Group Chat", body: "A new anonymous message arrived." },
+      group: { title: `Group Chat - ${data.groupName || "morsiq"}`, body: preview || "A new group message arrived." },
+      space: { title: "Space Signal received", body: "A new Space Signal arrived." }
     },
-    "random-connected": {
-      title: "Random Signal connected",
-      body: "A new signal has connected."
+    ko: {
+      direct: { title: `${sender}\uC758 \uC0C8 \uBA54\uC2DC\uC9C0`, body: preview || "\uC0C8 \uBA54\uC2DC\uC9C0\uAC00 \uB3C4\uCC29\uD588\uC2B5\uB2C8\uB2E4." },
+      "random-connected": { title: "\uB79C\uB364 \uC2DC\uADF8\uB110 \uC5F0\uACB0", body: "\uC0C8\uB85C\uC6B4 \uC2DC\uADF8\uB110\uACFC \uC5F0\uACB0\uB418\uC5C8\uC2B5\uB2C8\uB2E4." },
+      random: { title: "\uB79C\uB364 \uC2DC\uADF8\uB110", body: preview || "\uC0C8 \uBA54\uC2DC\uC9C0\uAC00 \uB3C4\uCC29\uD588\uC2B5\uB2C8\uB2E4." },
+      daily: { title: "\uB370\uC77C\uB9AC \uADF8\uB8F9\uCC57", body: "\uC0C8 \uC775\uBA85 \uBA54\uC2DC\uC9C0\uAC00 \uB3C4\uCC29\uD588\uC2B5\uB2C8\uB2E4." },
+      group: { title: `\uADF8\uB8F9\uCC57 - ${data.groupName || "morsiq"}`, body: preview || "\uC0C8 \uADF8\uB8F9 \uBA54\uC2DC\uC9C0\uAC00 \uB3C4\uCC29\uD588\uC2B5\uB2C8\uB2E4." },
+      space: { title: "\uC6B0\uC8FC \uC2DC\uADF8\uB110 \uC218\uC2E0", body: "\uC0C8 \uC6B0\uC8FC \uC2DC\uADF8\uB110\uC774 \uB3C4\uCC29\uD588\uC2B5\uB2C8\uB2E4." }
     },
-    random: {
-      title: "Random Signal",
-      body: preview || "A new message arrived."
-    },
-    daily: {
-      title: "Daily Group Chat",
-      body: "A new anonymous message arrived."
-    },
-    group: {
-      title: `Group Chat - ${data.groupName || "morsiq"}`,
-      body: preview || "A new group message arrived."
-    },
-    space: {
-      title: "Space Signal received",
-      body: "A new Space Signal arrived."
+    ja: {
+      direct: { title: `${sender}\u304B\u3089\u65B0\u7740\u30E1\u30C3\u30BB\u30FC\u30B8`, body: preview || "\u65B0\u3057\u3044\u30E1\u30C3\u30BB\u30FC\u30B8\u3067\u3059\u3002" },
+      "random-connected": { title: "\u30E9\u30F3\u30C0\u30E0\u4FE1\u53F7\u63A5\u7D9A", body: "\u65B0\u3057\u3044\u4FE1\u53F7\u3068\u3064\u306A\u304C\u308A\u307E\u3057\u305F\u3002" },
+      random: { title: "\u30E9\u30F3\u30C0\u30E0\u4FE1\u53F7", body: preview || "\u65B0\u3057\u3044\u30E1\u30C3\u30BB\u30FC\u30B8\u3067\u3059\u3002" },
+      daily: { title: "\u30C7\u30A4\u30EA\u30FC\u30B0\u30EB\u30FC\u30D7", body: "\u65B0\u3057\u3044\u533F\u540D\u30E1\u30C3\u30BB\u30FC\u30B8\u3067\u3059\u3002" },
+      group: { title: `\u30B0\u30EB\u30FC\u30D7 - ${data.groupName || "morsiq"}`, body: preview || "\u65B0\u3057\u3044\u30B0\u30EB\u30FC\u30D7\u30E1\u30C3\u30BB\u30FC\u30B8\u3067\u3059\u3002" },
+      space: { title: "\u5B87\u5B99\u4FE1\u53F7\u3092\u53D7\u4FE1", body: "\u65B0\u3057\u3044\u5B87\u5B99\u4FE1\u53F7\u3067\u3059\u3002" }
     }
   };
+  const messages = messagesByLanguage[lang];
   return messages[kind] || { title: "morsiq", body: preview };
 }
 async function pushToUser(signalId, kind, data = {}) {
@@ -506,13 +509,13 @@ const server = http.createServer(async (req, res) => {
       ...(account.pushSubscriptions || []).filter(item => item.endpoint !== subscription.endpoint),
       subscription
     ].slice(-5);
-    account.notificationLanguage = language === "en" ? "en" : "ko";
+    account.notificationLanguage = ["ko", "en", "ja"].includes(language) ? language : "en";
     await store.updateAccount(account);
     return json(res, 200, { ok: true });
   }
   if (req.method === "POST" && url.pathname === "/api/push/language") {
     const { language } = await readBody(req);
-    account.notificationLanguage = language === "en" ? "en" : "ko";
+    account.notificationLanguage = ["ko", "en", "ja"].includes(language) ? language : "en";
     await store.updateAccount(account);
     return json(res, 200, { ok: true });
   }

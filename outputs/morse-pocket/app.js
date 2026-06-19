@@ -752,6 +752,9 @@ function localizeMainUI() {
   if (!state.diaryUnlocked) setElementText("#unlockDiary", mainText("openDiary"));
   setElementText("#lockDiary", mainText("lock"));
   setElementText("#openDiaryList", mainText("diaryList"));
+  setElementText("#toggleReferenceDock", mainText("reference"));
+  setElementText("#referenceDockTitle", mainText("reference"));
+  setElementText("#hideReferenceDock", uiText("\uC228\uAE30\uAE30", "Hide", "\u9589\u3058\u308B"));
   setElementText("#diaryListPanel h2", mainText("diaryList"));
   setElementText("#secretDiaryWorld .diary-header h2", mainText("secretDiary"));
   setElementText("#diaryEntriesSection .section-heading strong", mainText("selectedDiary"));
@@ -1605,7 +1608,7 @@ function connectServer() {
     const request = JSON.parse(event.data);
     if (!state.friendRequests.some(item => item.id === request.id)) state.friendRequests.unshift(request);
     renderFriendRequests();
-    showToast(state.language === "en" ? "New friend request." : "새 친구 요청이 왔습니다.");
+    showToast(uiText("\uC0C8 \uCE5C\uAD6C \uC694\uCCAD\uC774 \uB3C4\uCC29\uD588\uC2B5\uB2C8\uB2E4.", "New friend request.", "\u65B0\u3057\u3044\u53CB\u9054\u7533\u8ACB\u3067\u3059\u3002"));
   });
   stream.addEventListener("friend-response", event => {
     const request = JSON.parse(event.data);
@@ -1615,15 +1618,15 @@ function connectServer() {
       loadFriendProfiles();
     }
     showToast(request.status === "accepted"
-      ? (state.language === "en" ? "Friend request accepted." : "친구 요청이 수락되었습니다.")
-      : (state.language === "en" ? "Friend request rejected." : "친구 요청이 거절되었습니다."));
+      ? uiText("\uCE5C\uAD6C \uC694\uCCAD\uC774 \uC218\uB77D\uB418\uC5C8\uC2B5\uB2C8\uB2E4.", "Friend request accepted.", "\u53CB\u9054\u7533\u8ACB\u304C\u627F\u8A8D\u3055\u308C\u307E\u3057\u305F\u3002")
+      : uiText("\uCE5C\uAD6C \uC694\uCCAD\uC774 \uAC70\uC808\uB418\uC5C8\uC2B5\uB2C8\uB2E4.", "Friend request rejected.", "\u53CB\u9054\u7533\u8ACB\u304C\u62D2\u5426\u3055\u308C\u307E\u3057\u305F\u3002"));
     loadFriends();
     loadFriendRequests();
   });
   stream.addEventListener("friend-removed", event => {
     const { friend } = JSON.parse(event.data);
     removeLocalFriend(friend);
-    showToast(state.language === "en" ? "A friend removed you." : "친구 관계가 해제되었습니다.");
+    showToast(uiText("\uCE5C\uAD6C \uAD00\uACC4\uAC00 \uD574\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.", "A friend removed you.", "\u53CB\u9054\u304B\u3089\u524A\u9664\u3055\u308C\u307E\u3057\u305F\u3002"));
   });
   stream.addEventListener("secret-signal", event => {
     const signal = JSON.parse(event.data);
@@ -1632,7 +1635,7 @@ function connectServer() {
       state.pendingSecretPartner = signal.from;
       state.pendingSecretSessionId = signal.sessionId;
       if (state.activeFriend === signal.from) renderChat();
-      showToast(state.language === "en" ? "Secret Communication invitation received." : "시크릿 대화 초대가 도착했습니다.");
+      showToast(uiText("\uC2DC\uD06C\uB9BF \uB300\uD654 \uCD08\uB300\uAC00 \uB3C4\uCC29\uD588\uC2B5\uB2C8\uB2E4.", "Secret Communication invitation received.", "\u79D8\u5BC6\u901A\u4FE1\u306E\u62DB\u5F85\u3067\u3059\u3002"));
       return;
     }
     if (!state.secretActive || signal.from !== state.secretPartner) return;
@@ -1646,7 +1649,7 @@ function connectServer() {
   });
   stream.addEventListener("random-connected", event => {
     markRandomConnected(JSON.parse(event.data).partner);
-    showToast("시그널이 연결되었습니다.");
+    showToast(uiText("\uC2DC\uADF8\uB110\uC774 \uC5F0\uACB0\uB418\uC5C8\uC2B5\uB2C8\uB2E4.", "Signal connected.", "\u4FE1\u53F7\u3068\u63A5\u7D9A\u3057\u307E\u3057\u305F\u3002"));
   });
   stream.addEventListener("random-message", event => {
     state.randomMessages.push({ mine: false, ...JSON.parse(event.data).message });
@@ -1662,7 +1665,7 @@ function connectServer() {
   });
   stream.addEventListener("random-last", event => {
     const message = JSON.parse(event.data).message;
-    showToast(`라스트 시그널: ${message.text || message}`);
+    showToast(`${uiText("\uB77C\uC2A4\uD2B8 \uC2DC\uADF8\uB110", "Last Signal", "\u6700\u5F8C\u306E\u4FE1\u53F7")}: ${message.text || message}`);
     if (message.text && vibrationPattern(message.text).length) playMorse(message.text, null, message.text, message.senderSound || "");
   });
 }
@@ -2079,7 +2082,7 @@ function receiveDirectMessage(item, silent = false) {
     vibrateDevice([state.unit, state.unit, state.unit]);
     const message = item.message || {};
     showNativeNotification(
-      state.language === "en" ? `New message from ${item.fromNickname || "a friend"}` : `${item.fromNickname || "친구"}의 새 메시지`,
+      uiText(`${item.fromNickname || "\uCE5C\uAD6C"}\uC758 \uC0C8 \uBA54\uC2DC\uC9C0`, `New message from ${item.fromNickname || "a friend"}`, `${item.fromNickname || "\u53CB\u9054"}\u304B\u3089\u65B0\u7740\u30E1\u30C3\u30BB\u30FC\u30B8`),
       message.hidden ? "Morse Only" : (message.type === "ascii" ? "ASCII Art" : String(message.text || message).slice(0, 100))
     );
   }
@@ -2259,7 +2262,6 @@ function renderRandomSignal() {
         <button type="button" class="random-chat-bubble${hidden ? " hidden-signal" : ""}${exhausted ? " exhausted" : ""}${ascii ? " ascii-message" : ""}" data-random-message="${index}">
           ${hidden ? "" : ascii ? `<pre data-no-i18n>${escapeHtml(message.text)}</pre>` : `<span data-no-i18n>${escapeHtml(message.text)}</span>`}
           ${messageTimeHtml(message.createdAt)}
-          ${messageTimeHtml(message.createdAt)}
         </button>
       </div>
     `}).join("")
@@ -2376,11 +2378,11 @@ function markRandomConnected(partner = "RANDOM SIGNAL") {
       saveUnread();
     }
     showNativeNotification(
-      state.language === "en" ? "Random Signal connected" : "랜덤 시그널 연결",
-      state.language === "en" ? "A new signal has connected." : "새로운 시그널과 연결되었습니다."
+      uiText("\uB79C\uB364 \uC2DC\uADF8\uB110 \uC5F0\uACB0", "Random Signal connected", "\u30E9\u30F3\u30C0\u30E0\u4FE1\u53F7\u63A5\u7D9A"),
+      uiText("\uC0C8\uB85C\uC6B4 \uC2DC\uADF8\uB110\uACFC \uC5F0\uACB0\uB418\uC5C8\uC2B5\uB2C8\uB2E4.", "A new signal has connected.", "\u65B0\u3057\u3044\u4FE1\u53F7\u3068\u3064\u306A\u304C\u308A\u307E\u3057\u305F\u3002")
     );
   }
-  showToast(state.language === "en" ? "Signal connected." : "시그널이 연결되었습니다.");
+  showToast(uiText("\uC2DC\uADF8\uB110\uC774 \uC5F0\uACB0\uB418\uC5C8\uC2B5\uB2C8\uB2E4.", "Signal connected.", "\u4FE1\u53F7\u3068\u63A5\u7D9A\u3057\u307E\u3057\u305F\u3002"));
 }
 
 function pollRandomStatus() {
@@ -2832,7 +2834,7 @@ function loadDailyGroup() {
       state.dailyGroupMessages = [];
       renderDailyGroupToggle();
       $("#dailyGroupStatus").textContent = state.language === "en" ? "Daily Group Chat is OFF." : "데일리 그룹챗 참여가 꺼져 있습니다.";
-      $("#dailyGroupMessages").innerHTML = `<p class="chat-empty">${state.language === "en" ? "Turn it ON to join at midnight." : "ON으로 바꾸면 00시 이후 설정값에 따라 참여합니다."}</p>`;
+      $("#dailyGroupMessages").innerHTML = `<p class="chat-empty">${uiText("ON\uC73C\uB85C \uBC14\uAFB8\uBA74 00\uC2DC \uC774\uD6C4 \uC124\uC815\uAC12\uC5D0 \uB530\uB77C \uCC38\uC5EC\uD569\uB2C8\uB2E4.", "Turn it ON to join at midnight.", "ON\u306B\u3059\u308B\u306800\u6642\u4EE5\u964D\u306B\u53C2\u52A0\u3057\u307E\u3059\u3002")}</p>`;
       $("#dailyGroupForm").hidden = true;
       return;
     }
@@ -2840,7 +2842,7 @@ function loadDailyGroup() {
       state.dailyGroup = null;
       state.dailyGroupMessages = [];
       $("#dailyGroupStatus").textContent = state.language === "en" ? "You left today's group chat." : "오늘의 데일리 그룹챗에서 나갔습니다.";
-      $("#dailyGroupMessages").innerHTML = `<p class="chat-empty">${state.language === "en" ? "You can join a new Daily Group Chat tomorrow." : "내일 새로운 데일리 그룹챗에 참여할 수 있습니다."}</p>`;
+      $("#dailyGroupMessages").innerHTML = `<p class="chat-empty">${uiText("\uB0B4\uC77C \uC0C8\uB85C\uC6B4 \uB370\uC77C\uB9AC \uADF8\uB8F9\uCC57\uC5D0 \uCC38\uC5EC\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.", "You can join a new Daily Group Chat tomorrow.", "\u660E\u65E5\u306E\u30C7\u30A4\u30EA\u30FC\u30B0\u30EB\u30FC\u30D7\u306B\u53C2\u52A0\u3067\u304D\u307E\u3059\u3002")}</p>`;
       $("#dailyGroupForm").hidden = true;
       return;
     }
@@ -3155,6 +3157,7 @@ function renderChat() {
         <button type="button" class="chat-bubble${hidden ? " hidden-signal" : ""}${exhausted ? " exhausted" : ""}${ascii ? " ascii-message" : ""}${system ? " system-message" : ""}" data-chat-message="${index}">
           ${hidden ? "" : (ascii ? `<pre data-no-i18n>${escapeHtml(text)}</pre>` : `<span data-no-i18n>${escapeHtml(text)}</span>`)}
           ${hidden || ascii || system ? "" : `<small>${textToMorse(text).replaceAll(".", "·").replaceAll("-", "—")}</small>`}
+          ${messageTimeHtml(message.createdAt)}
         </button>
       </div>`;
     }).join("")
@@ -3587,11 +3590,9 @@ async function openSecretDiary() {
     state.diaryHasServerPassword = false;
   }
   $("#diaryPasswordConfirm").hidden = state.diaryHasServerPassword;
-  $("#diaryLockTitle").textContent = state.diaryHasServerPassword ? "비밀번호 입력" : "비밀번호 설정";
-  $("#diaryLockHint").textContent = state.diaryHasServerPassword
-    ? "비밀일기를 열려면 비밀번호를 입력하세요."
-    : "처음 사용할 비밀번호를 설정하세요. 잊으면 일기를 열 수 없습니다.";
-  $("#unlockDiary").textContent = state.diaryHasServerPassword ? "비밀일기 열기" : "비밀번호 설정";
+  $("#diaryLockTitle").textContent = state.diaryHasServerPassword ? extraText("diaryEnterPassword") : extraText("diarySetPassword");
+  $("#diaryLockHint").textContent = state.diaryHasServerPassword ? extraText("diaryEnterHint") : extraText("diarySetHint");
+  $("#unlockDiary").textContent = state.diaryHasServerPassword ? mainText("openDiary") : extraText("diarySetPassword");
   localizeMainUI();
 }
 
@@ -3609,16 +3610,15 @@ function lockSecretDiary() {
 
 function renderDiaryLegacy() {
   $("#diaryText").value = state.diaryText;
-  $("#diarySignal").textContent = state.diarySignal ? `현재 글자: ${prettyMorse(state.diarySignal)}` : "현재 글자: 비어 있음";
+  $("#diarySignal").textContent = state.diarySignal ? diaryText("current", prettyMorse(state.diarySignal)) : diaryText("empty");
   $("#diaryEntries").innerHTML = state.diaryEntries.length
     ? state.diaryEntries.map((entry, index) => entry.vibrationOnly
-      ? `<button type="button" class="diary-note vibration-only" data-diary-play="${index}"><time>${new Date(entry.createdAt).toLocaleString()}</time><strong>진동 전용 일기</strong><small>탭해서 모스 진동으로 듣기 · 무제한</small></button>`
-      : `<article class="diary-note"><time>${new Date(entry.createdAt).toLocaleString()}</time><p data-no-i18n>${escapeHtml(entry.text)}</p><button type="button" data-delete-diary="${index}" aria-label="일기 삭제">×</button></article>`
+      ? `<button type="button" class="diary-note vibration-only" data-diary-play="${index}"><time>${diaryTimeSummary(entry)}</time><strong>${diaryText("hiddenDraft")}</strong><small>${diaryText("playHidden")}</small></button>`
+      : `<article class="diary-note"><time>${diaryTimeSummary(entry)}</time><p data-no-i18n>${escapeHtml(entry.text)}</p><button type="button" data-delete-diary="${index}" aria-label="Delete diary">?</button></article>`
     ).join("")
-    : '<p class="chat-empty">아직 작성한 일기가 없습니다.</p>';
+    : `<p class="chat-empty">${diaryText("listEmpty")}</p>`;
   $("#diaryEntries").scrollTop = $("#diaryEntries").scrollHeight;
 }
-
 function diaryEntriesForDate(date = state.diarySelectedDate) {
   return state.diaryEntries.filter(entry => (entry.date || new Date(entry.createdAt).toLocaleDateString("en-CA")) === date);
 }
@@ -3640,7 +3640,8 @@ function diaryText(key, ...args) {
       removePiece: "\uC0AD\uC81C",
       saveFail: "\uC11C\uBC84\uC5D0 \uC77C\uAE30\uB97C \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.",
       wrongPassword: "\uBE44\uBC00\uBC88\uD638\uAC00 \uB9DE\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
-      shortPassword: "\uBE44\uBC00\uBC88\uD638\uB97C 4\uC790 \uC774\uC0C1 \uC785\uB825\uD558\uC138\uC694."
+      shortPassword: "\uBE44\uBC00\uBC88\uD638\uB97C 4\uC790 \uC774\uC0C1 \uC785\uB825\uD558\uC138\uC694.",
+      mismatchPassword: "\uBE44\uBC00\uBC88\uD638 \uD655\uC778\uC774 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
     },
     en: {
       current: value => `Current letter: ${value}`,
@@ -3657,7 +3658,8 @@ function diaryText(key, ...args) {
       removePiece: "Remove",
       saveFail: "Could not save the diary on the server.",
       wrongPassword: "The password is incorrect.",
-      shortPassword: "Enter at least 4 characters."
+      shortPassword: "Enter at least 4 characters.",
+      mismatchPassword: "The password confirmation does not match."
     },
     ja: {
       current: value => `\u73FE\u5728\u306E\u6587\u5B57: ${value}`,
@@ -3674,7 +3676,8 @@ function diaryText(key, ...args) {
       removePiece: "\u524A\u9664",
       saveFail: "\u65E5\u8A18\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3002",
       wrongPassword: "\u30D1\u30B9\u30EF\u30FC\u30C9\u304C\u9055\u3044\u307E\u3059\u3002",
-      shortPassword: "4\u6587\u5B57\u4EE5\u4E0A\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\u3002"
+      shortPassword: "4\u6587\u5B57\u4EE5\u4E0A\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      mismatchPassword: "\u78BA\u8A8D\u7528\u30D1\u30B9\u30EF\u30FC\u30C9\u304C\u9055\u3044\u307E\u3059\u3002"
     }
   }[state.language] || {};
   const value = table[key];
@@ -5124,7 +5127,7 @@ $("#leaveDailyGroup").addEventListener("click", () => {
     state.dailyGroupMessages = [];
     $("#dailyGroupStatus").textContent = state.language === "en" ? "You left today's group chat." : "오늘의 데일리 그룹챗에서 나갔습니다.";
     $("#dailyGroupForm").hidden = true;
-    $("#dailyGroupMessages").innerHTML = '<p class="chat-empty">오늘의 그룹챗에서 나갔습니다.</p>';
+    $("#dailyGroupMessages").innerHTML = `<p class="chat-empty">${uiText("\uC624\uB298\uC758 \uADF8\uB8F9\uCC57\uC5D0\uC11C \uB098\uAC14\uC2B5\uB2C8\uB2E4.", "You left today's group.", "\u4ECA\u65E5\u306E\u30B0\u30EB\u30FC\u30D7\u3092\u9000\u51FA\u3057\u307E\u3057\u305F\u3002")}</p>`;
   }).catch(error => showApiFailure(error, "그룹챗에서 나가지 못했습니다."));
 });
 bindGroupKeyer("#groupMessageKeyer", false);
@@ -5174,11 +5177,11 @@ $("#dailyGroupPhotoInput").addEventListener("change", event => {
 });
 $("#unlockDiary").addEventListener("click", async () => {
   const password = $("#diaryPassword").value;
-  if (password.length < 4) return showToast("비밀번호를 4자 이상 입력하세요.");
+  if (password.length < 4) return showToast(diaryText("shortPassword"));
   const legacyHash = await diaryPasswordHash(password);
   try {
     if (!state.diaryHasServerPassword) {
-      if (password !== $("#diaryPasswordConfirm").value) return showToast(extraText("mismatchPassword"));
+      if (password !== $("#diaryPasswordConfirm").value) return showToast(diaryText("mismatchPassword"));
       await api("/api/diary/setup", { method: "POST", body: JSON.stringify({ password, passwordHash: legacyHash }) });
       state.diaryHasServerPassword = true;
     }
@@ -5197,8 +5200,8 @@ $("#unlockDiary").addEventListener("click", async () => {
       localStorage.removeItem("morse-secret-diary-password");
     }
   } catch (error) {
-    if (error.status === 403) return showToast("비밀번호가 맞지 않습니다.");
-    return showApiFailure(error, "비밀일기를 열지 못했습니다.");
+    if (error.status === 403) return showToast(diaryText("wrongPassword"));
+    return showApiFailure(error, diaryText("saveFail"));
   }
   state.diaryUnlocked = true;
   $("#diaryLock").hidden = true;
@@ -6556,7 +6559,7 @@ $("#receiveSpaceSignal").addEventListener("click", () => {
     state.spaceReceivedText = signal.text;
     state.spaceReceivedMorse = signal.type === "ascii" ? "" : signal.text;
     $("#spaceReceivedSignal").hidden = false;
-    $("#spaceSignalDate").textContent = new Date(signal.createdAt).toLocaleString();
+    $("#spaceSignalDate").textContent = formatLocalDateTime(signal.createdAt);
     $("#spaceReceiveStatus").textContent = "우주 시그널을 수신했습니다.";
     if (signal.type === "ascii") {
       clearSpaceDecode();
@@ -6924,12 +6927,33 @@ renderQuizRecords();
 renderWriter();
 renderSettings();
 renderGame();
-$("#morseReference").innerHTML = REFERENCE_ITEMS.map(letter => `
-  <button type="button" data-reference-letter="${letter}"><strong>${letter}</strong><span>${prettyMorse(textToMorse(letter))}</span></button>
-`).join("");
-$("#morseReference").addEventListener("click", event => {
-  const button = event.target.closest("[data-reference-letter]");
-  if (button) playMorse(button.dataset.referenceLetter);
+
+function renderMorseReferenceList(target) {
+  if (!target) return;
+  target.innerHTML = REFERENCE_ITEMS.map(letter => `
+    <button type="button" data-reference-letter="${letter}"><strong>${letter}</strong><span>${prettyMorse(textToMorse(letter))}</span></button>
+  `).join("");
+}
+
+function renderMorseReferences() {
+  renderMorseReferenceList($("#morseReference"));
+  renderMorseReferenceList($("#morseReferenceDock"));
+}
+
+renderMorseReferences();
+["#morseReference", "#morseReferenceDock"].forEach(selector => {
+  const target = $(selector);
+  if (!target) return;
+  target.addEventListener("click", event => {
+    const button = event.target.closest("[data-reference-letter]");
+    if (button) playMorse(button.dataset.referenceLetter);
+  });
+});
+$("#toggleReferenceDock")?.addEventListener("click", () => {
+  $("#referenceDock").hidden = false;
+});
+$("#hideReferenceDock")?.addEventListener("click", () => {
+  $("#referenceDock").hidden = true;
 });
 document.querySelectorAll(".writer-mode-button").forEach(button =>
   button.classList.toggle("active", button.dataset.writerMode === state.writerMode)
