@@ -754,8 +754,8 @@ function localizeMainUI() {
   setElementText("#openDiaryList", mainText("diaryList"));
   setElementText("#toggleReferenceDock", mainText("reference"));
   setElementText("#referenceDockTitle", mainText("reference"));
-  setElementText("#referenceDockMini", mainText("reference"));
-  setElementText("#hideReferenceDock", uiText("\uC228\uAE30\uAE30", "Hide", "\u9589\u3058\u308B"));
+  setElementText("#referenceDockMini", "List");
+  setElementText("#hideReferenceDock", uiText("\uB2EB\uAE30", "Close", "\u9589\u3058\u308B"));
   setElementText("#diaryListPanel h2", mainText("diaryList"));
   setElementText("#secretDiaryWorld .diary-header h2", mainText("secretDiary"));
   setElementText("#diaryEntriesSection .section-heading strong", mainText("selectedDiary"));
@@ -1409,6 +1409,10 @@ const state = {
   asciiDrawing: false,
   asciiLastPoint: null,
   asciiBrushSize: Number(localStorage.getItem("morse-ascii-brush-size") || 32),
+  asciiImageOffsetX: 0,
+  asciiImageOffsetY: 0,
+  asciiImageDragging: false,
+  asciiPanStart: null,
   asciiEditorBound: false,
   profileDraftAscii: null,
   profileCache: {},
@@ -1765,6 +1769,7 @@ function logoutAccount() {
   state.serverConnected = false;
   localStorage.removeItem("morse-auth-token");
   localStorage.removeItem("morse-account");
+  clearUnreadState();
   switchWorld("hall");
   renderSettings();
 }
@@ -2757,7 +2762,23 @@ function saveUnread() {
   updateWorldUnreadBadges();
 }
 
+function clearUnreadState() {
+  state.unreadDirect = {};
+  state.unreadGroups = {};
+  state.unreadRandom = 0;
+  state.unreadDaily = 0;
+  localStorage.removeItem("morse-unread-direct");
+  localStorage.removeItem("morse-unread-groups");
+  localStorage.removeItem("morse-unread-random");
+  localStorage.removeItem("morse-unread-daily");
+  updateWorldUnreadBadges();
+}
+
 function updateWorldUnreadBadges() {
+  if (!state.account) {
+    document.querySelectorAll(".world-tab[data-unread]").forEach(tab => tab.removeAttribute("data-unread"));
+    return;
+  }
   const direct = Object.values(state.unreadDirect).reduce((sum, value) => sum + Number(value || 0), 0);
   const dailyGroupIds = new Set([
     state.dailyGroup?.id,
@@ -4612,7 +4633,7 @@ function setupKeyer(target, selector) {
     const deltaY = event.clientY - state.keyerStartY;
     if (Math.abs(deltaX) >= 45 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
       if (target === "quiz") {
-        if (deltaX < 0) gradeQuiz(REVERSE_MORSE[state.quizSignal] || "");
+        if (deltaX > 0) gradeQuiz(REVERSE_MORSE[state.quizSignal] || "");
         else { state.quizSignal = ""; renderQuiz(); }
       } else {
         const right = deltaX > 0;
@@ -4704,11 +4725,11 @@ function renderQuiz() {
   $("#quizKicker").textContent = listening ? "LISTEN & GUESS" : "READ & SEND";
   $("#quizPrompt").textContent = listening ? "?" : state.quizAnswer;
   $("#quizInputDisplay").textContent = listening
-    ? "진동을 듣고 알파벳을 입력하세요"
-    : state.quizSignal ? prettyMorse(state.quizSignal) : "점과 선을 입력하세요";
+    ? uiText("\uC9C4\uB3D9\uC744 \uB4E3\uACE0 \uC54C\uD30C\uBCB3\uC744 \uC785\uB825\uD558\uC138\uC694", "Listen to the vibration and enter the letter", "\u632F\u52D5\u3092\u805E\u3044\u3066\u6587\u5B57\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044")
+    : state.quizSignal ? prettyMorse(state.quizSignal) : uiText("\uC810\uACFC \uC120\uC744 \uC785\uB825\uD558\uC138\uC694", "Enter dots and dashes", "\u70B9\u3068\u7DDA\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044");
   $("#quizKeyerHint").textContent = state.quizKeyerMode === "auto"
-    ? "3단위 쉬면 자동으로 정답 확인"
-    : "왼쪽 스와이프: 정답 확인 · 오른쪽: 지우기";
+    ? uiText("3\uB2E8\uC704 \uC26C\uBA74 \uC790\uB3D9\uC73C\uB85C \uC815\uB2F5 \uD655\uC778", "Pause 3 units to check automatically", "3\u5358\u4F4D\u4F11\u3080\u3068\u81EA\u52D5\u3067\u78BA\u8A8D")
+    : uiText("\uC624\uB978\uCABD \uC2A4\uC640\uC774\uD504: \uC815\uB2F5 \uD655\uC778 \u00B7 \uC67C\uCABD: \uC9C0\uC6B0\uAE30", "Swipe right: submit ? Left: clear", "\u53F3\u30B9\u30EF\u30A4\u30D7: \u78BA\u8A8D \u00B7 \u5DE6: \u30AF\u30EA\u30A2");
 }
 
 function gradeQuiz(answer) {
@@ -5754,6 +5775,7 @@ function ensureAsciiEditor() {
       <button id="asciiKeepBrush" class="active" type="button">Keep</button>
       <button id="asciiEraseBrush" type="button">Erase</button>
       <button id="asciiBrushEraser" type="button">Undo marks</button>
+      <button id="asciiMoveImage" type="button">Move</button>
       <button id="asciiClearBrush" type="button">Clear marks</button>
     </div>
     <label class="ascii-brush-size"><span>Brush size</span><input id="asciiBrushSize" type="range" min="8" max="80" value="${state.asciiBrushSize || 32}"></label>
@@ -5766,6 +5788,9 @@ function bindAsciiEditorEvents() {
   if (state.asciiEditorBound) return;
   const canvas = $("#asciiEditorCanvas");
   if (!canvas) return;
+  if (!$("#asciiMoveImage")) {
+    $("#asciiClearBrush")?.insertAdjacentHTML("beforebegin", '<button id="asciiMoveImage" type="button">Move</button>');
+  }
   state.asciiEditorBound = true;
   $("#asciiAutoEnhance")?.addEventListener("click", () => {
     state.asciiAutoEnhance = !state.asciiAutoEnhance;
@@ -5775,6 +5800,7 @@ function bindAsciiEditorEvents() {
   $("#asciiKeepBrush")?.addEventListener("click", () => setAsciiBrushMode("keep"));
   $("#asciiEraseBrush")?.addEventListener("click", () => setAsciiBrushMode("erase"));
   $("#asciiBrushEraser")?.addEventListener("click", () => setAsciiBrushMode("clear"));
+  $("#asciiMoveImage")?.addEventListener("click", () => setAsciiBrushMode("pan"));
   $("#asciiBrushSize")?.addEventListener("input", event => {
     state.asciiBrushSize = Number(event.target.value);
     localStorage.setItem("morse-ascii-brush-size", String(state.asciiBrushSize));
@@ -5787,12 +5813,27 @@ function bindAsciiEditorEvents() {
     updateAsciiDraft();
   });
   canvas.addEventListener("pointerdown", event => {
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    if (state.asciiBrushMode === "pan" && isProfileAsciiTarget()) {
+      state.asciiImageDragging = true;
+      state.asciiPanStart = { x: event.clientX, y: event.clientY, offsetX: state.asciiImageOffsetX, offsetY: state.asciiImageOffsetY };
+      return;
+    }
     state.asciiDrawing = true;
     state.asciiLastPoint = null;
-    event.currentTarget.setPointerCapture?.(event.pointerId);
     drawAsciiBrush(event);
   });
-  canvas.addEventListener("pointermove", drawAsciiBrush);
+  canvas.addEventListener("pointermove", event => {
+    if (state.asciiImageDragging && state.asciiPanStart) {
+      const start = state.asciiPanStart;
+      state.asciiImageOffsetX = start.offsetX + event.clientX - start.x;
+      state.asciiImageOffsetY = start.offsetY + event.clientY - start.y;
+      redrawAsciiEditor();
+      updateAsciiDraft();
+      return;
+    }
+    drawAsciiBrush(event);
+  });
   canvas.addEventListener("pointerup", finishAsciiBrush);
   canvas.addEventListener("pointercancel", finishAsciiBrush);
 }
@@ -5814,7 +5855,9 @@ function renderAsciiEditor(image) {
   const maxWidth = Math.min(460, window.innerWidth - 72);
   const aspect = image.height / image.width;
   canvas.width = Math.round(maxWidth);
-  canvas.height = Math.round(Math.min(520, Math.max(220, maxWidth * aspect)));
+  canvas.height = isProfileAsciiTarget() ? Math.round(maxWidth) : Math.round(Math.min(520, Math.max(220, maxWidth * aspect)));
+  state.asciiImageOffsetX = 0;
+  state.asciiImageOffsetY = 0;
   state.asciiKeepCanvas = document.createElement("canvas");
   state.asciiEraseCanvas = document.createElement("canvas");
   [state.asciiKeepCanvas, state.asciiEraseCanvas].forEach(mask => {
@@ -5825,6 +5868,45 @@ function renderAsciiEditor(image) {
   updateAsciiDraft();
 }
 
+function isProfileAsciiTarget() {
+  return state.asciiTarget === "profile" || state.asciiTarget === "group-profile";
+}
+
+function asciiImageDrawRect(canvas) {
+  const image = state.asciiImage;
+  if (!image) return { x: 0, y: 0, width: canvas.width, height: canvas.height };
+  if (!isProfileAsciiTarget()) return { x: 0, y: 0, width: canvas.width, height: canvas.height };
+  const scale = Math.max(canvas.width / image.width, canvas.height / image.height);
+  const width = image.width * scale;
+  const height = image.height * scale;
+  return {
+    x: (canvas.width - width) / 2 + state.asciiImageOffsetX,
+    y: (canvas.height - height) / 2 + state.asciiImageOffsetY,
+    width,
+    height
+  };
+}
+
+function asciiWorkingCanvas() {
+  const canvas = $("#asciiEditorCanvas");
+  if (!canvas || !state.asciiImage) return state.asciiImage;
+  const output = document.createElement("canvas");
+  output.width = canvas.width;
+  output.height = canvas.height;
+  const context = output.getContext("2d");
+  context.fillStyle = "white";
+  context.fillRect(0, 0, output.width, output.height);
+  const rect = asciiImageDrawRect(output);
+  context.drawImage(state.asciiImage, rect.x, rect.y, rect.width, rect.height);
+  if (isProfileAsciiTarget()) {
+    context.globalCompositeOperation = "destination-in";
+    context.beginPath();
+    context.arc(output.width / 2, output.height / 2, output.width / 2, 0, Math.PI * 2);
+    context.fill();
+  }
+  return output;
+}
+
 function redrawAsciiEditor() {
   const canvas = $("#asciiEditorCanvas");
   if (!canvas || !state.asciiImage) return;
@@ -5832,7 +5914,17 @@ function redrawAsciiEditor() {
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.fillStyle = "#fff";
   context.fillRect(0, 0, canvas.width, canvas.height);
-  context.drawImage(state.asciiImage, 0, 0, canvas.width, canvas.height);
+  const rect = asciiImageDrawRect(canvas);
+  context.drawImage(state.asciiImage, rect.x, rect.y, rect.width, rect.height);
+  if (isProfileAsciiTarget()) {
+    context.save();
+    context.strokeStyle = "rgba(0,0,0,.85)";
+    context.lineWidth = 3;
+    context.beginPath();
+    context.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2 - 3, 0, Math.PI * 2);
+    context.stroke();
+    context.restore();
+  }
   if (state.asciiKeepCanvas) {
     context.save();
     context.globalAlpha = .32;
@@ -5863,7 +5955,7 @@ function tintMask(maskCanvas, color) {
 
 function updateAsciiDraft() {
   if (!state.asciiImage) return;
-  state.asciiDraft = imageToAscii(state.asciiImage, {
+  state.asciiDraft = imageToAscii(asciiWorkingCanvas(), {
     autoEnhance: state.asciiAutoEnhance,
     keepCanvas: state.asciiKeepCanvas,
     eraseCanvas: state.asciiEraseCanvas
@@ -5876,6 +5968,7 @@ function setAsciiBrushMode(mode) {
   $("#asciiKeepBrush")?.classList.toggle("active", mode === "keep");
   $("#asciiEraseBrush")?.classList.toggle("active", mode === "erase");
   $("#asciiBrushEraser")?.classList.toggle("active", mode === "clear");
+  $("#asciiMoveImage")?.classList.toggle("active", mode === "pan");
 }
 
 function drawAsciiBrush(event) {
@@ -5903,6 +5996,12 @@ function drawAsciiBrush(event) {
 }
 
 function finishAsciiBrush() {
+  if (state.asciiImageDragging) {
+    state.asciiImageDragging = false;
+    state.asciiPanStart = null;
+    updateAsciiDraft();
+    return;
+  }
   if (!state.asciiDrawing) return;
   state.asciiDrawing = false;
   state.asciiLastPoint = null;
@@ -5921,7 +6020,7 @@ function prepareAsciiPhoto(file) {
   image.onload = () => {
     state.asciiImage = image;
     state.asciiAutoEnhance = false;
-    setAsciiBrushMode("keep");
+    setAsciiBrushMode(isProfileAsciiTarget() ? "pan" : "keep");
     URL.revokeObjectURL(objectUrl);
     $("#asciiPreview").hidden = false;
     setElementText("#asciiPreviewTitle", uiText("ASCII 사진 미리보기", "ASCII photo preview", "ASCII写真プレビュー"));
@@ -6502,7 +6601,7 @@ $("#cancelRandomSignal").addEventListener("click", () => {
     method: "POST",
     body: JSON.stringify({ userId: state.userId })
   }).catch(() => {});
-  stopRandomSignal("시그널 연결이 취소되었습니다.");
+  stopRandomSignal(uiText("\uC2DC\uADF8\uB110 \uC5F0\uACB0\uC774 \uCDE8\uC18C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.", "Signal connection canceled.", "\u4FE1\u53F7\u63A5\u7D9A\u3092\u30AD\u30E3\u30F3\u30BB\u30EB\u3057\u307E\u3057\u305F\u3002"));
 });
 $("#disconnectRandomSignal").addEventListener("click", beginLastSignal);
 $("#lastSignalForm").addEventListener("submit", event => {
@@ -7126,7 +7225,7 @@ function setupReferenceDockFloating() {
   mini.id = "referenceDockMini";
   mini.type = "button";
   mini.className = "reference-float-button";
-  mini.textContent = mainText("reference");
+  mini.textContent = "List";
   document.body.appendChild(mini);
   const resizeHandle = document.createElement("span");
   resizeHandle.className = "reference-resize-handle";
