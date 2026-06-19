@@ -510,21 +510,21 @@
     </section>
 
     <section id="gamesWorld" class="world-view games-world" hidden>
-      <header class="game-header"><div><p class="eyebrow">MORSE SPEED RACE</p><h2>10?⑥뼱 ?ㅽ뵾?</h2><p>紐⑥뒪遺?몃줈 10媛쒖쓽 ?⑥뼱瑜?媛??鍮좊Ⅴ寃??낅젰?섏꽭??</p></div><button id="openFullRanking" type="button">?꾩껜 ??궧</button></header>
+      <header class="game-header"><div><p class="eyebrow">MORSE SPEED RACE</p><h2>10-word speed</h2><p>Enter 10 words with Morse code as fast as you can.</p></div><button id="openFullRanking" type="button">Full ranking</button></header>
       <section class="game-status-card">
-        <div><small>吏꾪뻾</small><strong id="gameProgress">0 / 10</strong></div>
-        <div><small>?쒓컙</small><strong id="gameTimer">0.00珥</strong></div>
-        <div><small>???쒖쐞</small><strong id="gameMyRank">湲곕줉 ?놁쓬</strong></div>
+        <div><small>Progress</small><strong id="gameProgress">0 / 10</strong></div>
+        <div><small>Time</small><strong id="gameTimer">0.00s</strong></div>
+        <div><small>My rank</small><strong id="gameMyRank">No record</strong></div>
       </section>
       <section class="game-play-card">
-        <small id="gameWordNumber">?쒖옉 以鍮</small>
+        <small id="gameWordNumber">Ready</small>
         <strong id="gameTargetWord">READY</strong>
-        <div class="chat-morse-display"><input id="gameInput" maxlength="30" placeholder="?⑥뼱 ?낅젰" autocomplete="off"><small id="gameSignal">?꾩옱 湲?? 鍮꾩뼱 ?덉쓬</small></div>
+        <div class="chat-morse-display"><input id="gameInput" maxlength="30" placeholder="Word input" autocomplete="off"><small id="gameSignal">Current letter: empty</small></div>
         <button id="gameKeyer" class="morse-keyer" type="button"><strong>PRESS & HOLD</strong><span>Short press: dot / Long press: dash</span><small></small></button>
-        <div class="game-actions"><button id="clearGameInput" class="light-button" type="button">吏?곌린</button><button id="startGame" type="button">寃뚯엫 ?쒖옉</button></div>
+        <div class="game-actions"><button id="clearGameInput" class="light-button" type="button">Clear</button><button id="startGame" type="button">Start game</button></div>
         <p id="gameFeedback" class="game-feedback"></p>
       </section>
-      <section class="ranking-preview"><div class="section-heading"><strong>TOP 10</strong><button id="refreshGameRanking" type="button">?덈줈怨좎묠</button></div><div id="gameRankingPreview" class="ranking-list"></div></section>
+      <section class="ranking-preview"><div class="section-heading"><strong>TOP 10</strong><button id="refreshGameRanking" type="button">Refresh</button></div><div id="gameRankingPreview" class="ranking-list"></div></section>
     </section>
 
     <section id="secretDiaryWorld" class="world-view secret-diary-world" hidden>
@@ -702,13 +702,16 @@
           <button id="asciiKeepBrush" class="active" type="button">Keep</button>
           <button id="asciiEraseBrush" type="button">Erase</button>
           <button id="asciiBrushEraser" type="button">Undo marks</button>
+          <button id="asciiMoveImage" type="button">Move</button>
+          <button id="asciiLighten" type="button">Light</button>
+          <button id="asciiDarken" type="button">Dark</button>
           <button id="asciiClearBrush" type="button">Clear marks</button>
         </div>
         <label class="ascii-brush-size">
           <span>Brush size</span>
           <input id="asciiBrushSize" type="range" min="8" max="80" value="32">
         </label>
-        <small>Draw over the object to keep it. Draw erase marks to turn that area into blank space.</small>
+        <small id="asciiToneHint">Tone: normal. Draw over the object to keep it. Draw erase marks to turn that area into blank space.</small>
       </div>
       <pre id="asciiPreviewText"></pre>
       <div class="ascii-preview-actions">

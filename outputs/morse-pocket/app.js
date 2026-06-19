@@ -6183,7 +6183,14 @@ $("#sendAscii").addEventListener("click", () => {
     api("/api/profile/me", {
       method: "PATCH",
       body: JSON.stringify({ description, profileAscii: state.profileDraftAscii })
-    }).then(({ account }) => {
+    }).then(result => {
+      // Older deployed servers can save the profile but return only { ok: true }.
+      // Keep the local account current in that case instead of showing a false failure.
+      const account = result?.account || {
+        ...state.account,
+        description,
+        profileAscii: state.profileDraftAscii
+      };
       applyAccountUpdate(account);
       renderMyProfile();
       $("#myProfileDescription").value = description;
@@ -6297,13 +6304,18 @@ $("#removeProfilePhoto").addEventListener("click", () => {
 $("#saveMyProfile").addEventListener("click", async () => {
   if (!state.account) return openAuthPanel();
   try {
-    const { account } = await api("/api/profile/me", {
+    const result = await api("/api/profile/me", {
       method: "PATCH",
       body: JSON.stringify({
         description: $("#myProfileDescription").value,
         profileAscii: state.profileDraftAscii
       })
     });
+    const account = result?.account || {
+      ...state.account,
+      description: $("#myProfileDescription").value,
+      profileAscii: state.profileDraftAscii
+    };
     applyAccountUpdate(account);
     showToast("프로필을 저장했습니다.");
   } catch (error) {
