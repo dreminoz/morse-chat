@@ -108,6 +108,35 @@ function uiText(ko, en, ja = en) {
   return ko;
 }
 
+function formatLocalTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+function formatLocalDateTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.toLocaleDateString()} ${formatLocalTime(value)}`;
+}
+
+function messageTimeHtml(value) {
+  const label = formatLocalTime(value);
+  if (!label) return "";
+  return `<time datetime="${new Date(value).toISOString()}">${label}</time>`;
+}
+
+function diaryTimeSummary(entry) {
+  const created = formatLocalDateTime(entry.createdAt);
+  const updated = formatLocalDateTime(entry.updatedAt);
+  const createdLabel = uiText("\uC0DD\uC131", "Created", "\u4F5C\u6210");
+  const updatedLabel = uiText("\uC218\uC815", "Edited", "\u66F4\u65B0");
+  if (updated && updated !== created) return `${createdLabel} ${created} · ${updatedLabel} ${updated}`;
+  return created ? `${createdLabel} ${created}` : "";
+}
+
 const SETTINGS_TEXT = {
   ko: {
     title: "설정",
@@ -2229,7 +2258,8 @@ function renderRandomSignal() {
       <div class="random-chat-row ${message.mine ? "mine" : ""}">
         <button type="button" class="random-chat-bubble${hidden ? " hidden-signal" : ""}${exhausted ? " exhausted" : ""}${ascii ? " ascii-message" : ""}" data-random-message="${index}">
           ${hidden ? "" : ascii ? `<pre data-no-i18n>${escapeHtml(message.text)}</pre>` : `<span data-no-i18n>${escapeHtml(message.text)}</span>`}
-          ${message.createdAt ? `<time>${new Date(message.createdAt).toLocaleString()}</time>` : ""}
+          ${messageTimeHtml(message.createdAt)}
+          ${messageTimeHtml(message.createdAt)}
         </button>
       </div>
     `}).join("")
@@ -2714,7 +2744,7 @@ function renderGroupMessageList(target, messages, group) {
     const ascii = message.type === "ascii";
     const exhausted = hiddenSignalExhausted(message);
     const body = hidden ? "" : ascii ? "<pre data-no-i18n>" + escapeHtml(message.text) + "</pre>" : "<span data-no-i18n>" + escapeHtml(message.text) + "</span>";
-    return "<div class=\"chat-message-row" + (mine ? " mine" : "") + "\"><div class=\"chat-bubble" + (hidden ? " hidden-signal" : "") + (exhausted ? " exhausted" : "") + (ascii ? " ascii-message" : "") + "\" data-group-message=\"" + index + "\"><button type=\"button\" class=\"group-author-button\" data-group-profile=\"" + escapeHtml(message.from) + "\" data-daily-author=\"" + (group?.type === "daily" ? "true" : "false") + "\">" + escapeHtml(groupMemberName(group, message.from, message.fromNickname)) + "</button>" + body + "</div></div>";
+    return "<div class=\"chat-message-row" + (mine ? " mine" : "") + "\"><div class=\"chat-bubble" + (hidden ? " hidden-signal" : "") + (exhausted ? " exhausted" : "") + (ascii ? " ascii-message" : "") + "\" data-group-message=\"" + index + "\"><button type=\"button\" class=\"group-author-button\" data-group-profile=\"" + escapeHtml(message.from) + "\" data-daily-author=\"" + (group?.type === "daily" ? "true" : "false") + "\">" + escapeHtml(groupMemberName(group, message.from, message.fromNickname)) + "</button>" + body + messageTimeHtml(message.createdAt) + "</div></div>";
   }).join("") : "<p class=\"chat-empty\">" + uiText("\uC544\uC9C1 \uBA54\uC2DC\uC9C0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.", "No messages yet.", "\u30E1\u30C3\u30BB\u30FC\u30B8\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002") + "</p>";
   target.scrollTop = target.scrollHeight;
 }
@@ -3596,19 +3626,21 @@ function diaryEntriesForDate(date = state.diarySelectedDate) {
 function diaryText(key, ...args) {
   const table = {
     ko: {
-      current: value => `?? ??: ${value}`,
-      empty: "?? ??: ?? ??",
-      hiddenDraft: "?? ??",
-      textDraft: "??",
-      draftHint: "?? ??? ??, ?? ??/??? ??? ? ?? ??? ????.",
-      selectedEmpty: "??? ??? ??? ??? ????.",
-      listEmpty: "??? ??? ????.",
-      playHidden: "?? ?? ? ??? ??",
-      vibrationOnlyRule: "?? ???? ??? ??? ??? ? ????.",
-      hideCalendar: "?? ???",
-      showCalendar: "?? ???",
-      removePiece: "??",
-      saveFail: "??? ??? ???? ?????."
+      current: value => `\uD604\uC7AC \uAE00\uC790: ${value}`,
+      empty: "\uD604\uC7AC \uAE00\uC790: \uBE44\uC5B4 \uC788\uC74C",
+      hiddenDraft: "\uC9C4\uB3D9 \uC804\uC6A9",
+      textDraft: "\uAE00",
+      draftHint: "\uACC4\uC18D \uC791\uC131\uD558\uC138\uC694. \uB2E8\uC5B4\uB098 \uBB38\uC7A5\uC744 \uC120\uD0DD\uD55C \uB4A4 \uC9C4\uB3D9 \uC804\uC6A9\uC744 \uB204\uB974\uBA74 \uC228\uAE38 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+      selectedEmpty: "\uC120\uD0DD\uD55C \uB0A0\uC9DC\uC5D0 \uC800\uC7A5\uB41C \uC77C\uAE30\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.",
+      listEmpty: "\uC800\uC7A5\uB41C \uC77C\uAE30\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.",
+      playHidden: "\uC9C4\uB3D9 \uC804\uC6A9 \u00B7 \uD0ED\uD558\uBA74 \uC7AC\uC0DD",
+      vibrationOnlyRule: "\uC9C4\uB3D9 \uC804\uC6A9 \uC77C\uAE30 \uBD80\uBD84\uC740 \uC601\uC5B4\uC640 \uC22B\uC790\uB9CC \uC800\uC7A5\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+      hideCalendar: "\uB2EC\uB825 \uC228\uAE30\uAE30",
+      showCalendar: "\uB2EC\uB825 \uBCF4\uAE30",
+      removePiece: "\uC0AD\uC81C",
+      saveFail: "\uC11C\uBC84\uC5D0 \uC77C\uAE30\uB97C \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.",
+      wrongPassword: "\uBE44\uBC00\uBC88\uD638\uAC00 \uB9DE\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
+      shortPassword: "\uBE44\uBC00\uBC88\uD638\uB97C 4\uC790 \uC774\uC0C1 \uC785\uB825\uD558\uC138\uC694."
     },
     en: {
       current: value => `Current letter: ${value}`,
@@ -3623,22 +3655,26 @@ function diaryText(key, ...args) {
       hideCalendar: "Hide calendar",
       showCalendar: "Show calendar",
       removePiece: "Remove",
-      saveFail: "Could not save the diary on the server."
+      saveFail: "Could not save the diary on the server.",
+      wrongPassword: "The password is incorrect.",
+      shortPassword: "Enter at least 4 characters."
     },
     ja: {
-      current: value => `?????: ${value}`,
-      empty: "?????: ?",
-      hiddenDraft: "????",
-      textDraft: "??",
-      draftHint: "???????????????????????????????????",
-      selectedEmpty: "?????????????????????",
-      listEmpty: "??????????????",
-      playHidden: "???? ? ???????",
-      vibrationOnlyRule: "????????????????????",
-      hideCalendar: "???????",
-      showCalendar: "???????",
-      removePiece: "??",
-      saveFail: "???????????????????"
+      current: value => `\u73FE\u5728\u306E\u6587\u5B57: ${value}`,
+      empty: "\u73FE\u5728\u306E\u6587\u5B57: \u7A7A",
+      hiddenDraft: "\u632F\u52D5\u306E\u307F",
+      textDraft: "\u6587\u5B57",
+      draftHint: "\u66F8\u304D\u7D9A\u3051\u3066\u304F\u3060\u3055\u3044\u3002\u9078\u629E\u3057\u3066\u632F\u52D5\u306E\u307F\u3067\u96A0\u305B\u307E\u3059\u3002",
+      selectedEmpty: "\u3053\u306E\u65E5\u306E\u65E5\u8A18\u306F\u3042\u308A\u307E\u305B\u3093\u3002",
+      listEmpty: "\u65E5\u8A18\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002",
+      playHidden: "\u632F\u52D5\u306E\u307F\u30FB\u30BF\u30C3\u30D7\u3067\u518D\u751F",
+      vibrationOnlyRule: "\u632F\u52D5\u306E\u307F\u306F\u82F1\u6570\u5B57\u3060\u3051\u3067\u3059\u3002",
+      hideCalendar: "\u30AB\u30EC\u30F3\u30C0\u30FC\u3092\u96A0\u3059",
+      showCalendar: "\u30AB\u30EC\u30F3\u30C0\u30FC\u3092\u8868\u793A",
+      removePiece: "\u524A\u9664",
+      saveFail: "\u65E5\u8A18\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3002",
+      wrongPassword: "\u30D1\u30B9\u30EF\u30FC\u30C9\u304C\u9055\u3044\u307E\u3059\u3002",
+      shortPassword: "4\u6587\u5B57\u4EE5\u4E0A\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\u3002"
     }
   }[state.language] || {};
   const value = table[key];
@@ -3742,7 +3778,7 @@ function renderDiary() {
 
 function renderDiaryEntryCard(entry, index) {
   const segments = entry.segments?.length ? entry.segments : [{ type: entry.vibrationOnly ? "vibration" : "text", text: entry.text }];
-  return `<article class="diary-note"><time>${entry.date || new Date(entry.createdAt).toLocaleDateString()} ? ${new Date(entry.createdAt).toLocaleTimeString()}</time><div class="diary-segment-list inline">${segments.map(segment => segment.type === "vibration"
+  return `<article class="diary-note"><time>${diaryTimeSummary(entry)}</time><div class="diary-segment-list inline">${segments.map(segment => segment.type === "vibration"
     ? `<button type="button" class="diary-segment-vibration" data-diary-segment-play="${index}" data-segment-text="${escapeHtml(segment.text)}">${diaryText("playHidden")}</button>`
     : `<p data-no-i18n>${escapeHtml(segment.text)}</p>`).join("")}</div><button type="button" data-delete-diary="${index}" aria-label="Delete diary">?</button></article>`;
 }
