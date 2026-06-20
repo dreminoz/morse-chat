@@ -619,6 +619,15 @@
     </section>
   </div>
 
+  <div id="messageActionPanel" class="message-action-overlay" hidden>
+    <section class="message-action-card">
+      <p id="messageActionTitle" class="label">MESSAGE</p>
+      <button id="copyChatMessage" type="button">Copy</button>
+      <button id="deleteChatMessage" class="danger-button" type="button">Delete</button>
+      <button id="cancelChatMessageAction" class="light-button" type="button">Cancel</button>
+    </section>
+  </div>
+
   <div id="gameRankingPanel" class="profile-overlay" hidden>
     <section class="request-panel-card ranking-panel-card">
       <button id="closeGameRanking" class="profile-close" type="button">X</button>
@@ -711,9 +720,13 @@
           <span>Brush size</span>
           <input id="asciiBrushSize" type="range" min="8" max="80" value="32">
         </label>
+        <label class="ascii-brush-size">
+          <span>Zoom</span>
+          <input id="asciiZoom" type="range" min="0.45" max="2" step="0.05" value="1">
+        </label>
         <small id="asciiToneHint">Tone: normal. Draw over the object to keep it. Draw erase marks to turn that area into blank space.</small>
       </div>
-      <pre id="asciiPreviewText"></pre>
+      <div id="asciiPreviewText" class="ascii-preview-art" data-no-i18n></div>
       <div class="ascii-preview-actions">
         <button id="cancelAscii" class="light-button" type="button">Cancel</button>
         <button id="sendAscii" class="primary-button" type="button">Send</button>

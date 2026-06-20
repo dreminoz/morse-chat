@@ -444,7 +444,7 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 .ascii-brush-size { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; color: var(--muted); font-size: 9px; font-weight: 850; }
 .ascii-brush-size input { width: 100%; }
 .ascii-editor small { color: var(--muted); font-size: 8px; line-height: 1.45; }
-.ascii-preview-card pre { margin: 14px 0; padding: 10px; overflow: auto; border-radius: 12px; color: white; background: var(--ink); font: 4px/4.4px "Courier New", monospace; letter-spacing: 0; white-space: pre; }
+.ascii-preview-art { margin: 14px 0; padding: 10px; overflow: auto; border-radius: 12px; color: white; background: var(--ink); font: 4px/4.4px "Courier New", monospace; letter-spacing: 0; white-space: pre; }
 .ascii-preview-actions { display: grid; grid-template-columns: 1fr 1.5fr; gap: 8px; }
 .ascii-preview-actions button { padding: 13px; border: 1px solid var(--ink); border-radius: 13px; font-weight: 850; }
 .settings-overlay { position: fixed; z-index: 45; inset: 0; height: 100dvh; padding: max(20px, env(safe-area-inset-top)) 18px 18px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; background: var(--paper); }
@@ -505,7 +505,14 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 .profile-card .eyebrow { text-align: center; }
 .profile-visual { position: relative; display: grid; place-items: center; width: 180px; height: 180px; margin: 18px auto; overflow: hidden; border-radius: 50%; color: white; background: var(--ink); }
 .profile-visual .profile-fallback { font-size: 64px; font-weight: 900; }
-.profile-visual pre { position: absolute; left: 50%; top: 50%; margin: 0; color: white; font: 3px/3px "Courier New", monospace; letter-spacing: 0; white-space: pre; text-align: left; transform: translate(-50%, -50%) scale(.78); transform-origin: center; }
+.profile-ascii-art { position: absolute; inset: 0; display: block; overflow: hidden; border-radius: 50%; }
+.profile-ascii-art pre { position: absolute; left: 50%; top: 50%; margin: 0; color: white; font: 3px/3px "Courier New", monospace; letter-spacing: 0; white-space: pre; text-align: left; transform: translate(-50%, -50%) scale(.78); transform-origin: center; }
+.ascii-preview-art.profile-ascii-art { position: relative; inset: auto; width: 180px; height: 180px; margin: 14px auto; padding: 0; font: inherit; }
+.ascii-preview-art.profile-ascii-art pre { color: white; }
+.message-action-overlay { position: fixed; z-index: 95; inset: 0; display: grid; place-items: end center; padding: 18px; background: rgba(0,0,0,.42); }
+.message-action-card { display: grid; width: min(100%, 360px); gap: 8px; padding: 16px; border-radius: 18px; background: var(--paper); box-shadow: 0 16px 42px rgba(0,0,0,.25); }
+.message-action-card button { min-height: 48px; border: 1px solid var(--line); border-radius: 12px; color: var(--ink); background: white; font-weight: 850; }
+.message-action-card .danger-button { color: #b3261e; border-color: #b3261e; }
 .profile-visual.cosmetic-border_ring { box-shadow: 0 0 0 6px white, 0 0 0 9px #080808; }
 .profile-visual.cosmetic-border_neon { border: 4px solid #00ffc8; box-shadow: 0 0 22px #00ffc8, inset 0 0 18px rgba(0,255,200,.4); }
 .profile-visual.cosmetic-border_double { border: 5px double white; outline: 3px solid #080808; }

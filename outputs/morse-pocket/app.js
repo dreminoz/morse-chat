@@ -1514,6 +1514,7 @@ const state = {
   chatMessageLongPressed: false,
   chatMessageHoldX: 0,
   chatMessageHoldY: 0,
+  chatMessageActionIndex: -1,
   referenceDockMinimized: localStorage.getItem("morse-reference-dock-minimized") === "true",
   referenceDockPosition: JSON.parse(localStorage.getItem("morse-reference-dock-position") || "{\"left\":18,\"top\":140,\"width\":320,\"height\":360}"),
   referenceDockMiniPosition: JSON.parse(localStorage.getItem("morse-reference-dock-mini-position") || "{\"left\":18,\"top\":140}"),
@@ -3212,7 +3213,7 @@ function removeLocalFriend(friend) {
 
 function profileVisualHtml(profile, fallback = "?") {
   return profile?.profileAscii
-    ? `<pre data-no-i18n>${escapeHtml(profile.profileAscii)}</pre>`
+    ? `<span class="profile-ascii-art"><pre data-no-i18n>${escapeHtml(profile.profileAscii)}</pre></span>`
     : `<span class="profile-fallback">${escapeHtml(profile?.nickname || fallback).charAt(0).toUpperCase()}</span>`;
 }
 
@@ -3281,6 +3282,13 @@ async function openFriendProfile(signalId) {
     $("#friendProfileDescription").textContent = profile.description || uiText("아직 자기소개가 없습니다.", "No bio yet.", "自己紹介はまだありません。");
     setElementText("#chatFromProfile", uiText("대화하기", "Chat", "チャット"));
     setElementText("#removeFriend", uiText("친구 끊기", "Remove friend", "友達を削除"));
+    $("#friendProfileBadges").innerHTML = [
+      `<span>${uiText(`${profile.loginStreak || 0}\uC77C \uC5F0\uC18D \uCD9C\uC11D`, `${profile.loginStreak || 0} day streak`, `${profile.loginStreak || 0}\u65E5\u9023\u7D9A`)}</span>`,
+      ...(profile.badges || []).map(badge => `<span>${badge === "shop_master" ? uiText("\uC0C1\uC810 \uCEEC\uB809\uD130", "Shop Master", "\u30B7\u30E7\u30C3\u30D7\u30DE\u30B9\u30BF\u30FC") : escapeHtml(badge)}</span>`)
+    ].join("");
+    $("#friendProfileDescription").textContent = profile.description || uiText("\uC544\uC9C1 \uC790\uAE30\uC18C\uAC1C\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.", "No bio yet.", "\u81EA\u5DF1\u7D39\u4ECB\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002");
+    setElementText("#chatFromProfile", uiText("\uB300\uD654\uD558\uAE30", "Chat", "\u30C1\u30E3\u30C3\u30C8"));
+    setElementText("#removeFriend", uiText("\uCE5C\uAD6C \uB04A\uAE30", "Remove friend", "\u53CB\u9054\u3092\u524A\u9664"));
     $("#chatFromProfile").hidden = !state.friends.includes(signalId);
     $("#removeFriend").hidden = !state.friends.includes(signalId);
     $("#friendProfilePanel").hidden = false;
@@ -3608,7 +3616,7 @@ function imageToAscii(image, options = {}) {
   // Terminal characters are taller than they are wide. Use a shorter grid for
   // profile photos so the generated art remains centered inside the circle.
   const profileOutput = options.profile === true;
-  const width = profileOutput ? 88 : (aspect > 1.15 ? 76 : aspect < .72 ? 98 : 88);
+  const width = profileOutput ? 72 : (aspect > 1.15 ? 76 : aspect < .72 ? 98 : 88);
   const height = profileOutput
     ? Math.round(width * .6)
     : Math.min(320, Math.max(28, Math.round(aspect * width * 0.95)));
@@ -5667,13 +5675,29 @@ function deleteChatMessage(index) {
   if (!state.activeFriend || index < 0 || index >= (state.chats[state.activeFriend]?.length || 0)) return;
   const message = state.chats[state.activeFriend][index];
   if (!message?.mine) return copyChatMessage(index);
-  const prompt = uiText("\uC0AD\uC81C\uD560\uAE4C\uC694? \uCDE8\uC18C\uD558\uBA74 \uBCF5\uC0AC\uD569\uB2C8\uB2E4.", "Delete this message? Cancel copies it.", "\u524A\u9664\u3057\u307E\u3059\u304B\uFF1F\u30AD\u30E3\u30F3\u30BB\u30EB\u3067\u30B3\u30D4\u30FC\u3057\u307E\u3059\u3002");
-  if (!confirm(prompt)) return copyChatMessage(index);
   state.chats[state.activeFriend].splice(index, 1);
   saveChats();
   renderChat();
   renderFriends();
   showToast(uiText("\uBA54\uC2DC\uC9C0\uB97C \uC0AD\uC81C\uD588\uC2B5\uB2C8\uB2E4.", "Message deleted.", "\u30E1\u30C3\u30BB\u30FC\u30B8\u3092\u524A\u9664\u3057\u307E\u3057\u305F\u3002"));
+}
+
+function openChatMessageActions(index) {
+  if (!state.activeFriend || index < 0) return;
+  const message = state.chats[state.activeFriend]?.[index];
+  if (!message || message.type === "system") return;
+  state.chatMessageActionIndex = index;
+  $("#messageActionTitle").textContent = uiText("\uBA54\uC2DC\uC9C0", "Message", "\u30E1\u30C3\u30BB\u30FC\u30B8");
+  setElementText("#copyChatMessage", uiText("\uBCF5\uC0AC", "Copy", "\u30B3\u30D4\u30FC"));
+  setElementText("#deleteChatMessage", uiText("\uC0AD\uC81C", "Delete", "\u524A\u9664"));
+  setElementText("#cancelChatMessageAction", uiText("\uCDE8\uC18C", "Cancel", "\u30AD\u30E3\u30F3\u30BB\u30EB"));
+  $("#deleteChatMessage").hidden = !message.mine;
+  $("#messageActionPanel").hidden = false;
+}
+
+function closeChatMessageActions() {
+  state.chatMessageActionIndex = -1;
+  $("#messageActionPanel").hidden = true;
 }
 
 async function copyChatMessage(index) {
@@ -5701,7 +5725,7 @@ $("#chatMessages").addEventListener("pointerdown", event => {
     state.chatMessageLongPressed = true;
     cancelChatMessageHold();
     vibrateDevice(35);
-    deleteChatMessage(index);
+    openChatMessageActions(index);
   }, 650);
 });
 
@@ -5719,6 +5743,16 @@ $("#chatMessages").addEventListener("pointermove", event => {
 $("#chatMessages").addEventListener("contextmenu", event => {
   if (event.target.closest("[data-chat-message]")) event.preventDefault();
 });
+
+$("#copyChatMessage").addEventListener("click", () => {
+  copyChatMessage(state.chatMessageActionIndex);
+  closeChatMessageActions();
+});
+$("#deleteChatMessage").addEventListener("click", () => {
+  deleteChatMessage(state.chatMessageActionIndex);
+  closeChatMessageActions();
+});
+$("#cancelChatMessageAction").addEventListener("click", closeChatMessageActions);
 
 $("#chatMessages").addEventListener("click", event => {
   if (state.chatMessageLongPressed) {
@@ -5843,6 +5877,7 @@ function ensureAsciiEditor() {
       <button id="asciiClearBrush" type="button">Clear marks</button>
     </div>
     <label class="ascii-brush-size"><span>Brush size</span><input id="asciiBrushSize" type="range" min="8" max="80" value="${state.asciiBrushSize || 32}"></label>
+    <label class="ascii-brush-size"><span>Zoom</span><input id="asciiZoom" type="range" min="0.45" max="2" step="0.05" value="1"></label>
     <small id="asciiToneHint">Tone: normal. Draw over the object to keep it. Draw erase marks to turn that area into blank space.</small>
   </div>`);
   bindAsciiEditorEvents();
@@ -5871,6 +5906,12 @@ function bindAsciiEditorEvents() {
     state.asciiBrushSize = Number(event.target.value);
     localStorage.setItem("morse-ascii-brush-size", String(state.asciiBrushSize));
   });
+  $("#asciiZoom")?.addEventListener("input", event => {
+    state.asciiImageZoom = Number(event.target.value);
+    clampAsciiImageOffset();
+    redrawAsciiEditor();
+    updateAsciiDraft();
+  });
   $("#asciiClearBrush")?.addEventListener("click", () => {
     if (!state.asciiKeepCanvas || !state.asciiEraseCanvas) return;
     state.asciiKeepCanvas.getContext("2d").clearRect(0, 0, state.asciiKeepCanvas.width, state.asciiKeepCanvas.height);
@@ -5882,7 +5923,7 @@ function bindAsciiEditorEvents() {
   });
   canvas.addEventListener("pointerdown", event => {
     event.currentTarget.setPointerCapture?.(event.pointerId);
-    if (state.asciiBrushMode === "pan" && isProfileAsciiTarget()) {
+    if (state.asciiBrushMode === "pan") {
       state.asciiImageDragging = true;
       state.asciiPanStart = { x: event.clientX, y: event.clientY, offsetX: state.asciiImageOffsetX, offsetY: state.asciiImageOffsetY };
       return;
@@ -5921,6 +5962,7 @@ function renderAsciiEditor(image) {
   const canvas = $("#asciiEditorCanvas");
   if (!canvas) return;
   if ($("#asciiBrushSize")) $("#asciiBrushSize").value = String(state.asciiBrushSize || 32);
+  if ($("#asciiZoom")) $("#asciiZoom").value = String(state.asciiImageZoom || 1);
   const maxWidth = Math.min(460, window.innerWidth - 72);
   const aspect = image.height / image.width;
   canvas.width = Math.round(maxWidth);
@@ -5947,12 +5989,14 @@ function isProfileAsciiTarget() {
 function asciiImageDrawRect(canvas) {
   const image = state.asciiImage;
   if (!image) return { x: 0, y: 0, width: canvas.width, height: canvas.height };
-  if (!isProfileAsciiTarget()) return { x: 0, y: 0, width: canvas.width, height: canvas.height };
-  const scale = Math.max(canvas.width / image.width, canvas.height / image.height);
+  const baseScale = isProfileAsciiTarget()
+    ? Math.max(canvas.width / image.width, canvas.height / image.height)
+    : Math.min(canvas.width / image.width, canvas.height / image.height);
+  const scale = baseScale * Number(state.asciiImageZoom || 1);
   const width = image.width * scale;
   const height = image.height * scale;
-  const maxOffsetX = Math.max(0, (width - canvas.width) / 2);
-  const maxOffsetY = Math.max(0, (height - canvas.height) / 2);
+  const maxOffsetX = Math.max(0, Math.abs(width - canvas.width) / 2);
+  const maxOffsetY = Math.max(0, Math.abs(height - canvas.height) / 2);
   return {
     x: (canvas.width - width) / 2 + Math.max(-maxOffsetX, Math.min(maxOffsetX, state.asciiImageOffsetX)),
     y: (canvas.height - height) / 2 + Math.max(-maxOffsetY, Math.min(maxOffsetY, state.asciiImageOffsetY)),
@@ -5964,10 +6008,13 @@ function asciiImageDrawRect(canvas) {
 function clampAsciiImageOffset() {
   const canvas = $("#asciiEditorCanvas");
   const image = state.asciiImage;
-  if (!canvas || !image || !isProfileAsciiTarget()) return;
-  const scale = Math.max(canvas.width / image.width, canvas.height / image.height);
-  const maxOffsetX = Math.max(0, (image.width * scale - canvas.width) / 2);
-  const maxOffsetY = Math.max(0, (image.height * scale - canvas.height) / 2);
+  if (!canvas || !image) return;
+  const baseScale = isProfileAsciiTarget()
+    ? Math.max(canvas.width / image.width, canvas.height / image.height)
+    : Math.min(canvas.width / image.width, canvas.height / image.height);
+  const scale = baseScale * Number(state.asciiImageZoom || 1);
+  const maxOffsetX = Math.max(0, Math.abs(image.width * scale - canvas.width) / 2);
+  const maxOffsetY = Math.max(0, Math.abs(image.height * scale - canvas.height) / 2);
   state.asciiImageOffsetX = Math.max(-maxOffsetX, Math.min(maxOffsetX, state.asciiImageOffsetX));
   state.asciiImageOffsetY = Math.max(-maxOffsetY, Math.min(maxOffsetY, state.asciiImageOffsetY));
 }
@@ -6067,7 +6114,14 @@ function updateAsciiDraft() {
     darkCanvas: state.asciiDarkCanvas,
     profile: isProfileAsciiTarget()
   });
-  $("#asciiPreviewText").textContent = state.asciiDraft;
+  const preview = $("#asciiPreviewText");
+  if (isProfileAsciiTarget()) {
+    preview.classList.add("profile-ascii-art");
+    preview.innerHTML = `<pre>${escapeHtml(state.asciiDraft)}</pre>`;
+  } else {
+    preview.classList.remove("profile-ascii-art");
+    preview.textContent = state.asciiDraft;
+  }
 }
 
 function renderAsciiToneHint() {
@@ -6136,8 +6190,9 @@ function prepareAsciiPhoto(file) {
   const image = new Image();
   const objectUrl = URL.createObjectURL(file);
   image.onload = () => {
-    state.asciiImage = image;
-    state.asciiAutoEnhance = false;
+  state.asciiImage = image;
+  state.asciiAutoEnhance = false;
+  state.asciiImageZoom = 1;
     setAsciiBrushMode(isProfileAsciiTarget() ? "pan" : "keep");
     URL.revokeObjectURL(objectUrl);
     $("#asciiPreview").hidden = false;
@@ -6209,9 +6264,13 @@ $("#sendAscii").addEventListener("click", () => {
         description,
         profileAscii: state.profileDraftAscii
       };
-      applyAccountUpdate(account);
-      renderMyProfile();
-      $("#myProfileDescription").value = description;
+      try {
+        applyAccountUpdate(account);
+        renderMyProfile();
+        $("#myProfileDescription").value = description;
+      } catch (error) {
+        console.warn("Profile saved but refresh failed", error);
+      }
     }).catch(error => showApiFailure(error, uiText("프로필 사진을 저장하지 못했습니다.", "Couldn't save the profile photo.", "プロフィール写真を保存できませんでした。")));
   } else if (state.asciiTarget === "group-profile" && state.activeGroup) {
     api("/api/groups/profile", {
@@ -6334,7 +6393,11 @@ $("#saveMyProfile").addEventListener("click", async () => {
       description: $("#myProfileDescription").value,
       profileAscii: state.profileDraftAscii
     };
-    applyAccountUpdate(account);
+    try {
+      applyAccountUpdate(account);
+    } catch (renderError) {
+      console.warn("Profile saved but refresh failed", renderError);
+    }
     showToast("프로필을 저장했습니다.");
   } catch (error) {
     showApiFailure(error, "프로필을 저장하지 못했습니다.");
