@@ -1569,7 +1569,10 @@ function serverFailureMessage() {
 
 function showApiFailure(error, fallback = "") {
   if (error?.handled) return;
-  showToast(fallback || serverFailureMessage());
+  const profileImageTooLarge = error?.body?.error === "profile-image-too-large";
+  showToast(profileImageTooLarge
+    ? uiText("프로필 사진 데이터가 너무 큽니다. 다시 편집해 주세요.", "The profile image is too large. Please edit it again.", "プロフィール画像が大きすぎます。編集し直してください。")
+    : (!error?.status ? serverFailureMessage() : (fallback || serverFailureMessage())));
 }
 
 function connectServer() {
@@ -3619,7 +3622,9 @@ function imageToAscii(image, options = {}) {
   // Terminal characters are taller than they are wide. Use a shorter grid for
   // profile photos so the generated art remains centered inside the circle.
   const profileOutput = options.profile === true;
-  const width = profileOutput ? 72 : (aspect > 1.15 ? 76 : aspect < .72 ? 98 : 88);
+  // A compact profile image stays well below the server's profile data limit,
+  // including tall photos that previously produced unusually long ASCII output.
+  const width = profileOutput ? 48 : (aspect > 1.15 ? 76 : aspect < .72 ? 98 : 88);
   const height = profileOutput
     ? Math.round(width * .6)
     : Math.min(320, Math.max(28, Math.round(aspect * width * 0.95)));

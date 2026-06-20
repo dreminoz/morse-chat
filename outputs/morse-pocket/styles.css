@@ -60,6 +60,9 @@ h1 span { color: var(--ink); -webkit-text-stroke: 0; -webkit-text-fill-color: va
 .primary-world-tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .secondary-world-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .world-tab { position: relative; min-width: 0; padding: 11px 3px; border: 0; border-radius: 10px; color: var(--muted); background: transparent; font-size: 10px; font-weight: 850; white-space: nowrap; }
+/* English "Random Signal" is longer than the other primary tabs. Keep it inside
+   its own grid cell so it can never cover the Profile tab. */
+html[lang="en"] .primary-world-tabs .world-tab[data-world="randomSignal"] { padding-inline: 0; font-size: clamp(7px, 1.9vw, 9px); letter-spacing: -.055em; }
 .world-tab[data-unread]:not([data-unread=""])::after { content: attr(data-unread); position: absolute; top: -4px; right: -3px; display: grid; place-items: center; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px; color: white; background: #d71920; font-size: 8px; font-weight: 900; }
 .world-tab.active { color: white; background: var(--ink); }
 .world-view[hidden] { display: none; }
