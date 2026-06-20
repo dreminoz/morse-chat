@@ -6255,13 +6255,14 @@ $("#sendAscii").addEventListener("click", () => {
     // refresh cannot replace it with the previously saved image.
     api("/api/profile/me", {
       method: "PATCH",
-      body: JSON.stringify({ description, profileAscii: state.profileDraftAscii })
+      // Keep photo saving independent from the optional bio field.
+      body: JSON.stringify({ profileAscii: state.profileDraftAscii })
     }).then(result => {
       // Older deployed servers can save the profile but return only { ok: true }.
       // Keep the local account current in that case instead of showing a false failure.
       const account = result?.account || {
         ...state.account,
-        description,
+        description: state.account?.description || "",
         profileAscii: state.profileDraftAscii
       };
       try {
@@ -6384,7 +6385,7 @@ $("#saveMyProfile").addEventListener("click", async () => {
     const result = await api("/api/profile/me", {
       method: "PATCH",
       body: JSON.stringify({
-        description: $("#myProfileDescription").value,
+        description: $("#myProfileDescription").value.slice(0, 240),
         profileAscii: state.profileDraftAscii
       })
     });

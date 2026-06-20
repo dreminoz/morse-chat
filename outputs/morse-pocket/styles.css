@@ -389,13 +389,14 @@ body.chat-open .chat-room { height: 100%; min-height: 0; }
 .space-received button { width: 100%; color: #04132f; background: #dcecff; }
 .random-signal-world { color: var(--ink); background: var(--paper); }
 .random-signal-world > .random-signal-shell { display: grid; grid-template-rows: auto minmax(0, 1fr); place-items: stretch; height: calc(100dvh - max(250px, env(safe-area-inset-top))); min-height: 560px; text-align: left; }
-.random-signal-header { align-items: center; margin: 0; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
-.random-signal-header h2 { margin: 0; font-size: 34px; letter-spacing: -.05em; }
-.random-signal-status { padding: 8px 10px; border-radius: 999px; color: white; background: var(--ink); font-size: 9px; font-weight: 850; }
+.random-signal-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; margin: 0; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.random-signal-header > div { min-width: 0; }
+.random-signal-header h2 { margin: 0; overflow-wrap: anywhere; font-size: clamp(27px, 8vw, 34px); letter-spacing: -.05em; }
+.random-signal-status { max-width: 112px; padding: 8px 10px; overflow-wrap: anywhere; border-radius: 999px; color: white; background: var(--ink); text-align: center; font-size: 9px; font-weight: 850; }
 .random-signal-state { display: grid; align-content: center; justify-items: center; min-height: 0; padding: 28px 0; text-align: center; }
-.random-signal-state strong { margin-top: 24px; font-size: 24px; }
+.random-signal-state strong { max-width: 100%; margin-top: 24px; overflow-wrap: anywhere; font-size: clamp(20px, 6.5vw, 24px); }
 .random-signal-state p { max-width: 310px; margin: 8px 0 25px; color: var(--muted); font-size: 12px; line-height: 1.6; }
-.random-signal-primary, .random-signal-secondary { width: min(100%, 330px); padding: 15px; border: 1px solid var(--ink); border-radius: 15px; font-weight: 850; }
+.random-signal-primary, .random-signal-secondary { width: min(100%, 330px); padding: 15px; overflow-wrap: anywhere; border: 1px solid var(--ink); border-radius: 15px; font-weight: 850; }
 .random-signal-primary { color: white; background: var(--ink); }
 .random-signal-secondary { color: var(--ink); background: white; }
 .random-signal-orbit { position: relative; width: 116px; height: 116px; border: 1px solid var(--line); border-radius: 50%; box-shadow: 0 0 0 20px white, 0 0 0 21px var(--line); }
