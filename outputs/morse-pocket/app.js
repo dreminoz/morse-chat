@@ -1404,6 +1404,7 @@ const state = {
   asciiImage: null,
   asciiBrushMode: "keep",
   asciiAutoEnhance: false,
+  asciiImageZoom: 1,
   asciiKeepCanvas: null,
   asciiEraseCanvas: null,
   asciiLightCanvas: null,
@@ -3247,6 +3248,8 @@ async function loadFriendProfiles() {
 
 function renderMyProfile() {
   if (!state.account) return;
+  // A themed Random Signal view must never remain visible behind the profile.
+  $("#randomSignalWorld").hidden = true;
   const profile = { ...state.account, profileAscii: state.profileDraftAscii ?? state.account.profileAscii ?? "" };
   $("#myProfileVisual").innerHTML = profileVisualHtml(profile, state.account.signalId);
   applyProfileCosmetics($("#myProfileVisual"), profile);
@@ -4387,6 +4390,7 @@ function switchWorld(world) {
     world = "hall";
   }
   state.world = world;
+  document.body.classList.toggle("random-signal-active", world === "randomSignal");
   if (world === "friends") {
     state.unreadDirect = {};
     const dailyGroupIds = new Set([
@@ -6396,6 +6400,7 @@ $("#saveMyProfile").addEventListener("click", async () => {
     };
     try {
       applyAccountUpdate(account);
+      renderMyProfile();
     } catch (renderError) {
       console.warn("Profile saved but refresh failed", renderError);
     }

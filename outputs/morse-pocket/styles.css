@@ -13,6 +13,8 @@
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
+/* A Random Signal theme must not leak into another tab if a stale render occurs. */
+body:not(.random-signal-active) #randomSignalWorld { display: none !important; }
 body { margin: 0; min-height: 100vh; background: var(--paper); }
 button, input { font: inherit; }
 button { cursor: pointer; }
