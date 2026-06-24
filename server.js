@@ -17,11 +17,52 @@ const lastPartners = new Map();
 let colAccounts, colSessions, colDirect, colSpace, mongoDb;
 
 async function connectMongo() {
-  const mongoUrl = process.env.MONGO_URL;
-  if (!mongoUrl) throw new Error("MONGO_URL environment variable is not set");
-  const client = new MongoClient(mongoUrl);
-  await client.connect();
-  mongoDb = client.db();
+  // Prefer constructing the connection string from individual Railway env vars
+  // so we always use the private internal domain (MongoDB.railway.internal),
+  // which avoids the public-URL network issues that cause indefinite hangs.
+  let mongoUrl;
+  const host = process.env.MONGOHOST;
+  const port = process.env.MONGOPORT || "27017";
+  const user = process.env.MONGOUSER;
+  const password = process.env.MONGOPASSWORD;
+  const dbName = process.env.MONGO_DB_NAME || "morse_chat";
+
+  if (host && user && password) {
+    mongoUrl = `mongodb://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${dbName}`;
+  } else {
+    mongoUrl = process.env.MONGO_URL;
+  }
+
+  if (!mongoUrl) {
+    throw new Error(
+      "MongoDB connection details are missing. Set MONGOHOST, MONGOUSER, MONGOPASSWORD " +
+      "(and optionally MONGOPORT / MONGO_DB_NAME), or set MONGO_URL."
+    );
+  }
+
+  // Log a sanitized URL for debugging (credentials replaced with ***).
+  const sanitizedUrl = mongoUrl.replace(/:\/\/([^:]+):([^@]+)@/, "://$1:***@");
+  console.log(`Connecting to MongoDB: ${sanitizedUrl}`);
+
+  const connectionOptions = {
+    serverSelectionTimeoutMS: 10000,
+    connectTimeoutMS: 10000,
+    socketTimeoutMS: 10000,
+  };
+
+  let client;
+  try {
+    client = new MongoClient(mongoUrl, connectionOptions);
+    await client.connect();
+  } catch (error) {
+    throw new Error(
+      `MongoDB connection failed (${sanitizedUrl}): ${error.message}. ` +
+      "Check that MONGOHOST points to the private internal domain (e.g. MongoDB.railway.internal) " +
+      "and that credentials are correct."
+    );
+  }
+
+  mongoDb = client.db(host && user && password ? dbName : undefined);
   colAccounts = mongoDb.collection("accounts");
   colSessions = mongoDb.collection("sessions");
   colDirect = mongoDb.collection("direct_messages");
@@ -37,9 +78,8 @@ async function connectMongo() {
     colSpace.createIndex({ sender: 1, day: 1 }),
     colSpace.createIndex({ createdAt: -1 }),
   ]);
-  console.log("Connected to MongoDB");
+  console.log("Connected to MongoDB successfully");
 }
-
 function cleanDoc(doc) {
   if (!doc) return null;
   const { _id, nicknameLower, ...cleaned } = doc;
